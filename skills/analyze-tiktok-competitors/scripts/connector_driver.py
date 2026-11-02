@@ -8,9 +8,9 @@ recorded by what they asked for, the hand-over of each round's calls to the mode
 naming public MCP tools; `--placed` picks the staged responses up), one more hand-over of a round
 the data service briefly failed, the run directory, the stage lock and the stage state file.
 
-This package makes no data calls itself (`fetch` always raises `NoOutbox`), so every round is
-handed over: the model makes the printed calls, stages each complete result with
-`static_host.py stage`, and runs the stage again with `--placed`.
+This package makes no data calls itself, so every round is handed over: the model makes the printed
+calls, fetches (or stages) each complete result with `static_host.py`, and runs the stage again with
+`--placed`.
 
 Where a stage runs. The first stage of a run (`start`, or `fetch`) works in the run directory that
 `static_host.py init` reserved (`KABO_STATIC_RUN_DIR`). Every later stage runs only from inside the
@@ -44,8 +44,6 @@ SCRIPTS = Path(__file__).resolve().parent
 SKILL_DIR = SCRIPTS.parent
 REFERENCES = SKILL_DIR / "references"
 
-# The platform takes at most four requests per `data_connector_batch_run`; the hand-over expands
-# each such batch into individual public tool calls.
 BATCH_LIMIT = 4
 # A rate-limited request is retried once, after at most this long.
 RETRY_WAIT_MAX = 5.0
@@ -62,17 +60,14 @@ LIVE_LOCK_SECONDS = 1800.0
 # Inside the run directory, so the placement scripts count it as taken.
 SUPERSEDED = ".superseded"
 
-# The host's record of each request of the last fetch, paired with the file it staged (None when it
-# could not say which). Read it as `connector_driver.LAST_RECORDS`, after `fetch_round`.
+# Pairs each request of the last fetch with the file holding its response. The stages never fetch
+# themselves (the model makes every call), so there is no such pairing and this stays None: every
+# response is placed by content, from this run's staged copies, in call order.
 LAST_RECORDS: list[tuple[dict[str, Any], Path | None]] | None = None
 
 
 class StageError(Exception):
     """A stage cannot go on; the message says what to fix."""
-
-
-class NoOutbox(Exception):
-    """This host does not fetch for scripts."""
 
 
 class Busy(Exception):
@@ -101,11 +96,6 @@ def batch_calls(requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return calls
 
 
-def fetch(calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """This package makes no data calls itself: every round goes to the model as a hand-over."""
-    raise NoOutbox()
-
-
 def requests_of(call: dict[str, Any]) -> list[dict[str, Any]]:
     arguments = call.get("arguments") or {}
     if call.get("tool") == "data_connector_batch_run":
@@ -115,94 +105,10 @@ def requests_of(call: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
-def records_of(calls: list[dict[str, Any]], results: list[dict[str, Any]]) -> list[tuple[dict[str, Any], Path | None]]:
-    """Each connector request with the host's own record of its response, where the host says which.
-
-    The host stages a call's Envelopes in request order and reports their file names, so a request
-    and its record pair up exactly when the counts agree. When they do not (a record too large to
-    stage), that call's requests get None and are placed the old way, by content.
-    """
-    records: list[tuple[dict[str, Any], Path | None]] = []
-    for call, result in zip(calls, results):
-        requests = requests_of(call)
-        files = [Path(batch.get("directory") or "") / name
-                 for batch in result.get("staged") or [] for name in batch.get("names") or []]
-        paired = len(files) == len(requests) and all(f.is_file() for f in files)
-        records += [(request, files[i] if paired else None) for i, request in enumerate(requests)]
-    return records
-
-
 # Failures worth one retry before a stage reads them as an answer, with the default wait in seconds:
 # a rate limit, and a transient upstream outage (HTTP 503 seen on Instagram Feed reads, 2026-10-15,
 # that ended two whole account reviews although the same read succeeded minutes later).
 RETRIED_ONCE = {"rate_limited": 1.0, "service_unavailable": 3.0}
-
-
-# A call the host could not complete at all: it answered `error` and staged no response, so the
-# request or its answer was lost between this machine and the platform (a dropped connection, a
-# gateway error, a platform reply with no result). The platform may well have done the work; nothing
-# of it reached this run. Read-only calls are sent again once, alone, after this many seconds.
-LOST_RETRY_WAIT = 2.5
-# The calls a stage may send twice: they only read. Anything else (a job submission, a write) is never
-# repeated here, whatever came back.
-READ_ONLY_TOOLS = frozenset({"data_connector_run", "data_connector_batch_run",
-                             "collect_instagram_trend_candidates", "collect_youtube_trend_candidates",
-                             "enrich_instagram_shortlist", "enrich_youtube_shortlist"})
-# Fixed wording for a round that stopped because calls were lost on the way even after that retry.
-# The host model relays it to the user in the user's own language.
-LOST_NOTE = ("Tell the user: the network or the data service was briefly interrupted. This is not a "
-             "problem with their request or anything they entered, and not something any social platform "
-             "did; do not guess another cause. Ask them to try again in a few minutes.")
-
-
-def staged_count(result: dict[str, Any]) -> int:
-    return sum(len(batch.get("names") or []) for batch in result.get("staged") or [] if isinstance(batch, dict))
-
-
-def lost(call: dict[str, Any], result: dict[str, Any]) -> bool:
-    """Whether the host lost this read-only call on the way: an error with no staged response at all."""
-    return (call.get("tool") in READ_ONLY_TOOLS and result.get("status") == "error"
-            and staged_count(result) == 0 and not result.get("receipt"))
-
-
-def retry_lost(calls: list[dict[str, Any]], results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Send the calls the host lost on the way once more, alone; a recovered call's result replaces its error."""
-    again = [i for i, (call, result) in enumerate(zip(calls, results)) if lost(call, result)]
-    if not again:
-        return results
-    time.sleep(LOST_RETRY_WAIT)
-    try:
-        retried = fetch([calls[i] for i in again])
-    except NoOutbox:
-        retried = []  # the host took nothing this time: those calls stay lost
-    results = list(results)
-    for i, result in zip(again, retried):
-        if result.get("status") != "refused":  # a refused retry was never made; keep the original error
-            results[i] = result
-    still = [i for i in again if lost(calls[i], results[i])]
-    say(f"[drive] {len(again)} call(s) came back with nothing (lost on the way); retried once, "
-        f"{len(again) - len(still)} recovered")
-    if still:
-        remember_lost([str(request.get("operation") or "") for i in still for request in requests_of(calls[i])]
-                      + [str(calls[i].get("tool")) for i in still])
-    return results
-
-
-def remember_lost(operations: list[str]) -> None:
-    """Record in this run's state which operations (and tools) were lost on the way, for a later stop to explain."""
-    if run_dir_of(Path.cwd() / STATE) is None:
-        return
-    known = [str(op) for op in state().get("lost_operations") or []]
-    save_state(lost_operations=sorted({*known, *(op for op in operations if op)}))
-
-
-def lost_in_transit(operations: list[str] | None = None) -> bool:
-    """Whether this run lost calls on the way that the retry did not recover (of these operations, if named)."""
-    try:
-        known = set(state().get("lost_operations") or [])
-    except StageError:
-        return False
-    return bool(known if operations is None else known & set(operations))
 
 
 def rate_limited(path: Path | None) -> float | None:
@@ -283,112 +189,44 @@ def hand_over(calls, why=""):
 
 def fetch_or_hand_over(calls: list[dict[str, Any]], placed: bool,
                        hand_over_calls: Callable[[], None] | None = None, optional: bool = False) -> None:
-    """Fetch the calls; when this package cannot (always, here), print them for the model and stop the stage.
+    """Print the calls for the model and stop the stage; with `placed`, go on to placement.
 
     `hand_over_calls` prints the hand-over its own way instead (it ends the stage itself).
 
     `optional` says this round's subjects can go without an answer: its caller places what came back
-    and names the subjects that got nothing. Only a round whose placement does that passes it.
+    and names the subjects that got nothing. The stages never fetch themselves, so it changes nothing
+    here; it is kept so every caller states which rounds may come back thin.
 
-    If local persistence fails after a fetch, retry the write, never switch Connector operations or
-    refetch the account: the stage is run again with `--placed`, which skips this fetch.
+    If local persistence fails after the calls were made, never switch Connector operations or
+    refetch the account: the stage is run again with `--placed`, which places what was staged.
     """
-    global LAST_RECORDS
-    LAST_RECORDS = None
     if placed:
         return
-    started = time.monotonic()
-    try:
-        results = fetch(calls)
-    except NoOutbox as why:
-        if hand_over_calls is not None:
-            hand_over_calls()
-        hand_over(calls, str(why))
-    # Before anything reads a lost call as «no profile» or «no more history», and before a stage
-    # spends a reserve in its place.
-    results = retry_lost(calls, results)
-    failed = [r for r in results if r.get("status") == "refused"]
-    if failed and not optional:
-        raise StageError(f"connector call refused: {failed[0].get('message')}")
-    if failed:
-        # Refusing here is a thinner answer, not a broken run, so the round goes on to place what
-        # did come back. Raising instead threw away the responses that had already returned: a turn
-        # whose retrieval budget ran out on the first batch of a round delivered nothing at all,
-        # though the stage was written to carry on with the subjects it had.
-        say(f"[drive] the host refused {len(failed)} of {len(results)} call(s) in this round "
-            f"({str(failed[0].get('message') or '')[:200]}); placing what did come back")
-    records = records_of(calls, results)
-    # A rate-limited or briefly unavailable request is retried once, alone, before anything reads it as «no profile» or
-    # «no more history»; its retry's record replaces the failed one.
-    again = [i for i, (_, path) in enumerate(records) if rate_limited(path) is not None]
-    if again:
-        time.sleep(min(RETRY_WAIT_MAX, max(rate_limited(records[i][1]) or 1 for i in again)))
-        retry_calls = [run_call(records[i][0]["connector_id"], records[i][0]["operation"], records[i][0].get("params") or {})
-                       for i in again]
-        retried = records_of(retry_calls, fetch(retry_calls))
-        for i, (_, path) in zip(again, retried):
-            if path is not None:
-                supersede(records[i][1])
-                records[i] = (records[i][0], path)
-        say(f"[drive] retried {len(again)} rate-limited or unavailable request(s); "
-            f"{sum(rate_limited(records[i][1]) is None for i in again)} recovered")
-    LAST_RECORDS = records
-    kept = sum(staged_count(r) for r in results)
-    if results and kept == 0 and all(r.get("status") == "error" for r in results):
-        # Nothing came back at all, even after the retry: the data service or the network failed, not
-        # an artifact of this run. Placing would only report a missing response, which reads like a
-        # call never sent.
-        raise StageError(f"every connector call failed on the way ({str(results[0].get('message') or '')[:200]}), "
-                         "and the driver already sent them once more; nothing was fetched and nothing is wrong "
-                         "with this run's files. Stop here without trying other tools. " + LOST_NOTE)
-    for index, (call, result) in enumerate(zip(calls, results)):
-        if result.get("status") == "error":
-            staged = staged_count(result)
-            after = " (nothing came back, after one retry)" if lost(call, result) else ""
-            say(f"[drive] call {index + 1} ({result.get('tool')}) reported an error"
-                f"{f' ({staged} response(s) kept)' if staged else after}: {str(result.get('message') or '')[:300]}")
-    say(f"[drive] fetched {len(calls)} call(s) in {time.monotonic() - started:.1f}s")
+    if hand_over_calls is not None:
+        hand_over_calls()
+    hand_over(calls)
 
 
 def place_record(operation: str, dest: str | Path, by_content: Callable[[], Any], nth: int = 0,
                  any_status: bool = True) -> None:
-    """Place the response to this round's `nth` request of `operation` at `dest`.
+    """Place the response to this round's request of `operation` at `dest`, by content.
 
-    From the host's own record of that request when the fetch named one — the final attempt, after a
-    rate-limit retry — byte for byte, which is what `persist_envelope.py --dest` copies. Otherwise (the
-    model made the call, `--placed`) `by_content` places it, by what the staging area holds. Without
-    `any_status` a record that is not a completed response goes to `by_content` too, which refuses it
-    the way it always did.
+    `by_content` places it from this run's staged copies (`persist_envelope.py --dest`). A
+    rate-limited response the model retried is followed by its retry: set the limited one aside as
+    superseded and take the next. `nth` and `any_status` are the caller's; `by_content` already
+    carries both.
     """
-    records = [path for request, path in (LAST_RECORDS or []) if request.get("operation") == operation]
-    record = records[nth] if nth < len(records) else None
-    if record is None or not record.is_file():
-        by_content()
-        # By content, a rate-limited response the model retried is followed by its retry: set the
-        # limited one aside as superseded and take the next, as a record-based placement does.
-        for _ in range(3):
-            if rate_limited(Path(dest)) is None:
-                return
-            kept = Path(dest).read_bytes()
-            supersede(Path(dest))
-            try:
-                by_content()
-            except StageError:
-                Path(dest).write_bytes(kept)  # no retry was made: the limited response is the answer
-                return
-        return
-    if not any_status:
-        try:
-            envelope = pe.unwrap_envelope(record.read_text(encoding="utf-8")) or {}
-        except (OSError, UnicodeDecodeError):
-            envelope = {}
-        if envelope.get("status") not in USABLE_STATUSES:
-            by_content()
+    by_content()
+    for _ in range(3):
+        if rate_limited(Path(dest)) is None:
             return
-    target = Path(dest)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(record.read_bytes())
-    target.chmod(0o600)
+        kept = Path(dest).read_bytes()
+        supersede(Path(dest))
+        try:
+            by_content()
+        except StageError:
+            Path(dest).write_bytes(kept)  # no retry was made: the limited response is the answer
+            return
 
 
 def round_key(calls: list[dict[str, Any]]) -> str:
@@ -400,24 +238,23 @@ def now_iso() -> str:
 
 
 def typed_records_since(roots: list[Path], since: datetime) -> int:
-    """Typed tool results (a collector's, an enrichment's) staged since then."""
+    """Typed tool results (a collector's, an enrichment's) staged in this run since then."""
     count = 0
     for root in roots:
-        for base in (root,):
+        try:
+            metas = sorted(root.rglob("*.meta")) if root.is_dir() else []
+        except OSError:
+            continue
+        for meta_path in metas:
             try:
-                metas = sorted(base.rglob("*.meta")) if base.is_dir() else []
-            except OSError:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
                 continue
-            for meta_path in metas:
-                try:
-                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
-                except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-                    continue
-                if not isinstance(meta, dict) or "connector_id" in meta or not meta.get("schema_version"):
-                    continue
-                recorded = pe.parse_time(meta.get("staged_at")) or pe.file_time(meta_path)
-                if recorded is not None and recorded >= since and meta_path.with_suffix(".json").is_file():
-                    count += 1
+            if not isinstance(meta, dict) or "connector_id" in meta or not meta.get("schema_version"):
+                continue
+            recorded = pe.parse_time(meta.get("staged_at")) or pe.file_time(meta_path)
+            if recorded is not None and recorded >= since and meta_path.with_suffix(".json").is_file():
+                count += 1
     return count
 
 
@@ -440,7 +277,7 @@ def staged_answers(roots: list[Path], connector: str, operation: str, since: dat
 
 
 def made_since(calls: list[dict[str, Any]], handed_at: str) -> bool:
-    """Whether the host recorded a response for every one of these calls since they were handed over."""
+    """Whether a response to every one of these calls was staged since they were handed over."""
     since = pe.parse_time(handed_at)
     if since is None:
         return False
@@ -463,7 +300,7 @@ def made_since(calls: list[dict[str, Any]], handed_at: str) -> bool:
 def round_responses(calls: list[dict[str, Any]], handed_at: str) -> list[dict[str, Any]] | None:
     """The responses the model's calls of this round left since the hand-over, one per request.
 
-    From this run's staging and from response files already held in `snapshot/`. None unless every
+    From this run's staged copies. None unless every
     request of the round has exactly one response: a missing one, or one the model already sent again
     on its own, leaves the round to placement as it always was.
     """
@@ -482,8 +319,6 @@ def round_responses(calls: list[dict[str, Any]], handed_at: str) -> list[dict[st
     found: list[dict[str, Any]] = []
     for (connector, operation), count in wanted.items():
         candidates = staged_answers(roots, connector, operation, since, problems)
-        candidates += [c for c in pe.drained_candidates(Path("snapshot"), connector, operation, problems)
-                       if c.recorded_at is not None and c.recorded_at >= since]
         if len(candidates) != count:
             return None
         found += [c.envelope for c in candidates]
@@ -565,15 +400,6 @@ def fetch_round(calls: list[dict[str, Any]], args: argparse.Namespace, place_res
     handed.pop(key, None)
     save_state(rounds=[*done, key], handed=handed)
     return True
-
-
-def drained() -> list[str]:
-    """`--drained snapshot` when `snapshot/` already holds this run's response files (envelope-NN.json).
-
-    The placement scripts then read those copies when staging has nothing left to place. Decided
-    by what is on disk, never by the host's name.
-    """
-    return ["--drained", "snapshot"] if any(Path("snapshot").glob("envelope-*.json")) else []
 
 
 def script(name: str, *args: str, show: bool = False) -> str:

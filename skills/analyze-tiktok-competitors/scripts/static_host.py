@@ -56,6 +56,10 @@ JOB_TOOLS = {"get_research_data_job", "read_research_data_artifacts"}
 # 本 Skill 没有返回固定投影的业务级工具；共用的过期提示据此决定能否重签。
 PROJECTIONS: dict[str, str] = {}
 
+# 本 Skill 交给模型的组合取数工具（竞品发现（各意图 × 两种排序）与入选账号的历史）：一次调用由后台做完那段多轮取数，
+# 结果按 calls[] 拆成单工具证据（见下方 COMPOSITE 段）。入参在顶层、不套 parameters。
+COMPOSITE_CALLS = {"collect_tiktok_video_candidates", "collect_account_history"}
+
 
 def run_dir():
     raw = os.environ.get("KABO_STATIC_RUN_DIR")
@@ -97,6 +101,8 @@ def public_calls(call):
         if name is None:
             raise ValueError("No reviewed public MCP tool for " + key)
         return [{"tool": name, "arguments": {"parameters": args["params"], "delivery": "download"}}]
+    if tool in COMPOSITE_CALLS:
+        return [{"tool": tool, "arguments": {**args, "delivery": "download"}}]
     if tool not in AGGREGATE_TOOLS | JOB_TOOLS:
         raise ValueError("Unsupported public MCP operation: " + tool)
     if tool in JOB_TOOLS:

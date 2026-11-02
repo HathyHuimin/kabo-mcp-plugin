@@ -6,10 +6,10 @@ directory and use `<skill directory>` exactly as `SKILL.md` defines them.
 ## What `content` does
 
 `content` deterministically selects up to five accounts and prints each included handle with its
-relationship. It hands over `tiktok_list_account_posts` once with `limit` 100 for each included
-exact handle and never replaces a failed account with a new search. It places each history under
-its own handle, builds and analyzes one public Snapshot, projects retrieved titles into
-`topic-coverage.json`, and prints `synthesis-evidence.json` with the synthesis schema.
+relationship. It hands over one `collect_account_history` call that fetches the latest 100 posts
+of each included exact handle, and never replaces a failed account with a new search. It places
+each history under its own handle, builds and analyzes one public Snapshot, projects retrieved
+titles into `topic-coverage.json`, and prints `synthesis-evidence.json` with the synthesis schema.
 
 **Latest-N sampling.** With explicit latest-N sampling, search uses `publish_time=0`; account
 history is sorted by UTC publication time descending, then canonical content ID, with identical IDs
