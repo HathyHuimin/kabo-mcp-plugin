@@ -1208,6 +1208,8 @@ def stage_report(args: argparse.Namespace) -> None:
     reply = Path("creator-reply.md").resolve()
     say(f"creator_report: {reply}")
     say(reply.read_text(encoding="utf-8").rstrip())
+    # 交付方式紧跟报告打印：实测里短问题的回复常被模型改写成摘要。
+    say('Your reply is this report, even when the question was short: at most one short sentence of your own, then the report above complete and unchanged (translated only where the Skill says), then this creator_report line.')
 
 
 STAGES = {

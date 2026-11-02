@@ -1021,6 +1021,9 @@ def stage_report(args: argparse.Namespace) -> None:
         say("[drive] an earlier report in this run asked for author corrections, so this one is "
             "non-final: run drive.py verify-report as the final step.")
     say(report.read_text(encoding="utf-8").rstrip())
+    if final:
+        # 交付方式紧跟报告打印：实测里短问题的回复常被模型改写成摘要。
+        say('Your reply is this report, even when the question was short: at most one short sentence of your own, then the report above complete and unchanged (translated only where the Skill says), then this creator_report line.')
 
 
 def close_unwrapped_reservation() -> None:
