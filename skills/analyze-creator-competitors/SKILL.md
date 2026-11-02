@@ -34,9 +34,11 @@ wrote or re-run the scripts it ran.
 
 ## Running commands
 
-`<skill directory>` is the folder holding this `SKILL.md`. Reserve exactly one run per request: the
-first command of the run (step 1) runs from the user's workspace with `--workspace '<user workspace>'`
-and reserves it, so no separate setup command is needed:
+`<skill directory>` is the folder holding this `SKILL.md`; `<user workspace>` is the working
+directory the host gives this request, exactly as it is (never a subfolder you name or create).
+Reserve exactly one run per request: the first command of the run (step 1) runs there with
+`--workspace '<user workspace>'` and reserves the run under it, so no separate setup command is
+needed:
 
 ```sh
 cd '<user workspace>' && python3 '<skill directory>/scripts/drive.py' <first stage> --workspace '<user workspace>' …
