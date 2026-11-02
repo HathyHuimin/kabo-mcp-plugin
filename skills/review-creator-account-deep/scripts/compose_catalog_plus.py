@@ -13,7 +13,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.dont_write_bytecode = True
-from run_paths import resolve_input  # noqa: E402
+from run_paths import missing_input, resolve_input  # noqa: E402
 from build_catalog_stability import handle_from_url
 from media_payload import load_json
 from select_watch_set import account_handle
@@ -106,7 +106,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stability", type=Path, required=True)
     parser.add_argument("--markdown", type=Path, required=True)
     args = parser.parse_args(argv)
-    text = compose_catalog_plus(load_json(resolve_input(args.analysis)), load_json(resolve_input(args.stability)))
+    try:
+        sources = resolve_input(args.analysis), resolve_input(args.stability)
+    except FileNotFoundError as missing:
+        return missing_input(missing)
+    text = compose_catalog_plus(load_json(sources[0]), load_json(sources[1]))
     args.markdown.parent.mkdir(parents=True, exist_ok=True)
     args.markdown.write_text(text, encoding="utf-8")
     return 0

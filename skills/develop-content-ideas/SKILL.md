@@ -108,9 +108,12 @@ lineage validation still apply. Collection failure does not authorize brief fall
    a generative shortlist. Choose between `open_shortlist`, `capacity_plan`, `rework_content` and
    `brief_only` as *Choosing task_intent* in `references/idea-set-rules.md` says.
 2. Fill `generation_basis` before synthesis:
-   - `direct_topic` is a literal content-topic phrase the user supplied. A handle, account/display
+   - `direct_topic` is an exact content-topic span from the current `user_brief.text`, not a
+     paraphrase (“sourdough shaping techniques”, not “bread tutorials”). A handle, account/display
      name, URL, platform, format, or generic request for ideas is not a topic. Never derive it from
      another Skill's description, the environment, or model knowledge.
+   - For a follow-up such as “10 more in the same style”, read *Continuations* in
+     `references/core-generation.md` whole before writing the intent.
    - `required_sources` lists evidence the user explicitly requires: `creator`, `account`,
      `trend`, `competitor`, `video`, or `comments`. A request about comments on a video requires
      `comments`; it does not also require `video` unless the Creator asks to analyze the clip
@@ -125,9 +128,8 @@ lineage validation still apply. Collection failure does not authorize brief fall
    `account-idea-context.v1`, `trend-research-report.v3`, `competitor-research-report.v3`, and
    optional VideoAnalysis. Consume only the deterministic `idea_context.creator/trend/competitor/account`
    projection the upstream Skills write.
-4. Write `intent.json` with all required request fields except `upstream_sources` and
-   `idea_context`. Never put either field in `intent.json`, even empty: prep builds both from the
-   artifact flags and rejects an intent that carries them. Include
+4. Write `intent.json` without `upstream_sources`, `idea_context` or `continuation_context`, not
+   even empty: prep derives them from the flags and rejects an intent that carries them. Include
    `schema_version="idea-request.v3-candidate2"`, a run-local unique `request_id`, ISO-8601
    `created_at`, `task_intent`, counts, goal, audience, desired action, platforms, languages,
    `report_language`, `user_brief`, `generation_basis`, production constraints and exclusions; the
@@ -143,11 +145,14 @@ lineage validation still apply. Collection failure does not authorize brief fall
    or `--comment-context`. Account evidence reaches prep as `--account-review <copied
    account_review.json>` alone: prep projects that review into `account_idea_context.json` in this
    run itself. Never write or edit an account context by hand; an `--account-context` that differs
-   from the review's projection is rejected. If a flag points at a non-JSON file, prep exits `0`
-   with `status="needs_correction"`, lists the flag, path and JSON files beside it, and changes
-   nothing in the run: rerun the same prep in the same run with the JSON path. Prep writes
-   `request.json`, `decision.json`, and the prep section of `stage_timing.json`. Do not synthesize
-   before reading that decision.
+   from the review's projection is rejected. Prep writes `request.json`, `decision.json`, and the
+   prep section of `stage_timing.json`. Do not synthesize before reading that decision.
+
+   Read prep's `status` even on exit `0`: `needs_correction` (a non-JSON or missing artifact, a
+   nonliteral topic, a malformed locale) is not generation permission. Fix every listed `issues[]`
+   entry once and rerun the same prep in the same run; never invent identifiers, switch the report
+   language, drop required sources or reword the user's brief to pass. A second invalid input ends
+   prep as `not_met`.
 5. Obey the decision exactly:
    - `blocked_missing_required_source`: write an empty IdeaSet, add every canonical `missing_required_source:<source>` reason, and set `interaction.next_actions` to include all of `blocked`, `refresh_evidence` and `provide_own_direction` (never `choose`). Then run core once to validate/render the empty block (this is not a creative generation success).
    - `needs_selection_context`: write an empty IdeaSet with
@@ -169,12 +174,11 @@ lineage validation still apply. Collection failure does not authorize brief fall
 Core starts only after prep reports `ready_for_generation` (prep opens `stage_timing.json`
 core.started_at at that moment). The target is **at most two** model generation passes that write
 or revise `idea_set.json` (generate, then revise only if programmatic validation fails). Do not
-invent extra critique/rewrite loops. Network, 5xx or host truncation retries are allowed and are
-recorded with `cd '<run directory>' && python3 '<skill directory>/scripts/run_ideas_stages.py' core
---run-dir . --record-network-retry "<note>"` (this does not consume a generation attempt).
+invent extra critique/rewrite loops. Record network, 5xx or truncation retries with
+`--record-network-retry` as `references/core-generation.md` says; they use no attempt.
 
 1. Apply explicit production constraints. Record only assets the user supplied or evidence shows
-   are available.
+   are available. For a continuation, differ from every previous idea as *Continuations* says.
 2. In **one** generation pass, write the complete `idea_set.json`: distinct titles the Creator could publish, hooks, making direction, evidence basis, ranking, gates, and limitations. Remove near-duplicates and rank by Creator fit, evidence strength, differentiation, timeliness, and realistic production cost. A plain question or statement is sufficient for a title; keep teaching method detail in `making_direction`. Never invent loss amounts, customer outcomes, efficiency gains, market facts, policy facts, numbers, or URLs. Preserve artifact-level lineage in `upstream_sources`, context-level refs in `source_context_refs`, `must_avoid` as `must_differ`, and risk language. `required_assets` must be a subset of the request's declared `available_assets`; when the user supplied no assets, leave both `required_assets` and `assets_used` empty and put possible future props in `assumptions` or `production_missing`. Do not edit, patch, or replace the skill scripts, schemas, or validators; fix a rejected IdeaSet by revising only `idea_set.json` once.
 3. Put missing information into `gates.selection_missing` only when it prevents a valid choice.
    Put filming, editing, CTA, cadence, or other later details into `gates.production_missing`;
@@ -186,15 +190,12 @@ recorded with `cd '<run directory>' && python3 '<skill directory>/scripts/run_id
    ```sh
    cd '<run directory>' && python3 '<skill directory>/scripts/run_ideas_stages.py' core --run-dir .
    ```
-
-   Every core call is non-final, so its one permitted revision runs in the same run.
 5. Read the script's structured stdout (`stage`, `status`, `errors`, `revision_remaining`) as well
    as its exit code. Both `ok` and recoverable `needs_revision` exit `0`; the latter keeps the run
    open but does not validate or render a deliverable.
    - `status="ok"` with report paths (exit `0`): run step 7, then deliver. The `--concise` output is the sole Creator-facing artifact: `RESULT.md`. The `--full` output is an audit-only artifact; keep `IDEA_REPORT_FULL.md` in the run directory and never deliver it or copy it to `RESULT.md`.
    - `status="needs_revision"` with `revision_remaining=1` (exit `0`, unvalidated): use the returned errors and `revision_brief.json` to revise `idea_set.json` **once**, then run the same core command in the same run directory. Do not rerun prep, reset the attempt counter, or replace this runnable revision with an unvalidated prose answer. If the working file cannot be read directly, write the corrected file into the same run directory from the retained IdeaSet content and returned errors.
-   - `status="not_met"` (exit `3`): record not_met from `stage_timing.json`; do not start another
-     creative pass or loosen validation.
+   - `status="not_met"` (exit `3`): stop; do not start another creative pass or loosen validation.
    - `status="failed"`, absent/unreadable script status, or an unavailable execution tool: diagnose
      the specific failure. Do not infer successful validation or permission for another creative
      pass. If recovery cannot complete, say the draft is unvalidated rather than presenting it as
@@ -212,16 +213,12 @@ recorded with `cd '<run directory>' && python3 '<skill directory>/scripts/run_id
    There is no final step for `needs_revision`, `not_met` or a failed/unreadable stage result. A
    zero exit with `needs_revision` never permits emitting the draft as a validated report.
 
-`build_idea_request.py`, `validate_ideas.py` and `render_idea_report.py` exist for the stage
-runner; the stage runner is the required execution path so fixed steps are not each re-decided.
-
 ## What may not be claimed
 
 Read `references/idea-set-rules.md` whole before writing `idea_set.json`; it holds the per-intent
 contract and ranking rules. In short:
 
-- Never invent loss amounts, customer outcomes, efficiency gains, market facts, policy facts,
-  numbers, URLs or metrics to satisfy a schema. Exact numbers trace to evidence.
+- Never invent numbers, URLs or metrics; exact numbers trace to evidence.
 - `source_backed` only when upstream/context refs and evidence refs are present; otherwise
   `brief_based` or `hypothesis`. `why_now` is an evidence-backed claim only when a dated source
   supports it; otherwise say timeliness is unverified.
@@ -236,8 +233,9 @@ Set `report_language` on both IdeaRequest and IdeaSet to the language requested 
 report and interaction (BCP 47 tag), separate from `language_targets`. Infer it from the current
 user request unless explicitly specified earlier; preserve quotations, titles and supplied creative
 text verbatim, and generate all explanatory fields, questions and rationale in that language. Every
-explicit `report_language` also needs `evidence_gap_translations` entries. Read
-`references/report-language.md` whole before writing `idea_set.json`.
+explicit `report_language` also needs `evidence_gap_translations` entries, and any language
+outside zh/en/fr/ar also needs its UI labels there. Read `references/report-language.md` whole
+before writing `idea_set.json`.
 
 Before asking for a topic, audience, goal or evidence, reuse the relevant conversation up to the
 current turn. Do not import subsequent replies. When no explicit topic or usable evidence exists,

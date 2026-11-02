@@ -317,8 +317,10 @@ def record_batch(plan_path: Path, ledger_path: Path, batch_index: int,
             json.dump(ledger, output, ensure_ascii=False, indent=2)
             output.write("\n")
         os.replace(temporary, ledger_path)
+        jobs = [{key: row[key] for key in ("content_id", "operation", "job_id", "status")}
+                for row in derive(signature, plan, entry)]
         return {"status": "recorded", "sequence": entry["sequence"], "batch_index": batch_index,
-                "ledger": str(ledger_path)}
+                "ledger": str(ledger_path), "jobs": jobs}
     finally:
         os.close(descriptor)
         if temporary is not None:

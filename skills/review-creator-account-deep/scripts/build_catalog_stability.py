@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.dont_write_bytecode = True
-from run_paths import resolve_input  # noqa: E402
+from run_paths import missing_input, resolve_input  # noqa: E402
 from media_payload import load_json, write_json
 
 SCHEMA_VERSION = "catalog-stability.v1"
@@ -277,7 +277,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("account_analysis", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
-    payload = build_catalog_stability(load_json(resolve_input(args.account_analysis)))
+    try:
+        source = resolve_input(args.account_analysis)
+    except FileNotFoundError as missing:
+        return missing_input(missing)
+    payload = build_catalog_stability(load_json(source))
     if not payload["analysis_id"]:
         raise ValueError("account_analysis.json is missing analysis_id")
     write_json(args.output, payload)

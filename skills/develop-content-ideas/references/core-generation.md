@@ -50,3 +50,21 @@ Passing validation on step 3 means a single generation attempt is enough.
 ## Timing files
 
 `stage_timing.json` schema_version `ideas-stage-timing.v1` records prep/core wall intervals inside the run directory. Hosts may attach separate model/tool counters. Parallel prep work must not be double-counted into core.
+
+## Continuations
+
+For a follow-up such as “10 more in the same style”, preserve the current request verbatim in
+`user_brief` and leave `direct_topic=null` unless it also names a literal topic. Pass the earlier
+run's original `idea_set.json` (it stays in that run directory in the workspace) to prep with
+`--previous-ideas '<path>'`, and copy the current continuation request word for word into
+`generation_basis.continuation_quote`. Prep keeps the exact original as `previous_ideas.json` in
+this run and binds its IDs, file checksum and creative directions as `continuation_context`; never
+author that field or paste earlier assistant text into `user_brief`. History is unverified creative
+context, not account or trend evidence. Without the original file, ask for the missing topic or
+context; never recreate an earlier IdeaSet from memory or a Markdown summary.
+
+When generating, compare against every previous title and making direction in
+`continuation_context`, keep the requested style, and propose new premises or outcomes rather than
+renaming the same ideas. Apply the current request's exclusions and count. A repeated previous
+title is rejected; semantic novelty still needs this comparison. A brief-only continuation needs
+either a literal `direct_topic` or this bound continuation context.
