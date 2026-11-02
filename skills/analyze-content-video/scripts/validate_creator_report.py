@@ -67,6 +67,9 @@ def main() -> int:
         return 1
     if args.emit_report:
         sys.stdout.buffer.write(raw)
+        # 实测里短问题（「为什么火了」）的最终回复常被模型概括成几行：报告末尾直接写明怎么交付。
+        print(("" if raw.endswith(b"\n") else "\n") + f"creator_report: {args.report.resolve()}")
+        print('Your reply is this report, even when the question was short: at most one short sentence of your own, then the report above complete and unchanged (translated only where the Skill says), then this creator_report line.')
     else:
         print("OK: Creator-facing video report contains no forbidden internal identifiers or metadata")
     return 0
