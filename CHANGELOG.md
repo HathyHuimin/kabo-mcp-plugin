@@ -4,6 +4,7 @@
 
 ## 未发布
 
+- 仓库规则进 CI：恢复 `scripts/repo-rules.test.mjs`（供应商名、宿主专属机制、用例编号、溯源文档、字节码），并新增两条：Skill 的 Markdown 不写版本代号与日期；带脚本的 Skill 在正文开头写明前台子 agent 执行（KS2.4）。`analyze-creator-competitors`、`research-instagram-trends`、`research-youtube-trends` 的 references 去掉测量 / 观察日期，结论与数字不变。CodeRabbit 补三条判断规则：description 不写执行规则、交付契约前置、能交给校验脚本的例外不再加进正文。
 - 规范清理（不改行为）：`create-script-and-packaging`、`develop-content-ideas` 的标题去掉 V3/V4 版本来历；`analyze-content-video` 版式说明与 `review-creator-account-deep` 等待说明去掉来历与日期，只留结论。
 - `analyze-creator-competitors` 同步到 creator-skills 0.5.88（`c414fac55`）：重复竞品保留第一条、不再整份报告失败，主页 tab 链接按账号接受；
   缺 `competitor-eligibility.json`（或写错文件名）、缺 intents 文件时返回 `needs_correction`、不关闭 run；长表 Gate 漏打不超过 1/20 行时补 0 分并注明；

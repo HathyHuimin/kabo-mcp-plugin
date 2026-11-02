@@ -66,7 +66,7 @@ two are not interchangeable.**
 product-category candidates ahead of workflow-only fallbacks, then chooses up to six profile
 targets plus two reserves by 75% semantic fit and 25% comparable retrieval support. When the
 Request names a market, that six-seat budget is filled from the complementary profile-search lane
-first, then leftover seats from Search/Popular (measured 2026-09-14: local product accounts entered
+first, then leftover seats from Search/Popular (measured: local product accounts entered
 the pool via profile search but lost the six seats to English Search/Popular agencies because
 retrieval rewarded more posts). Caption phrases do not flip this lane: profile search on a form
 phrase often returns accounts named after the phrase. Profile-search authors are merged into the
