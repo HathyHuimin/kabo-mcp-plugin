@@ -226,6 +226,10 @@ def role_of(envelope: dict[str, Any]) -> str | None:
         return "public_post"
     if envelope.get("connector_id") != MEDIA_CONNECTOR:
         return None
+    # A YouTube measurement now runs through the same hosted fetch as its keyframes and comes back
+    # under that execution's name; it is still the measurement that was asked for.
+    if envelope.get("operation") == "measure_media_signals_hosted_stream":
+        return "measurements"
     return ROLE_OF_OPERATION.get(str(envelope.get("operation")))
 
 
@@ -580,7 +584,7 @@ def media_block(frames: dict[str, Any] | None, metadata: dict[str, Any] | None,
         # `declared` and `discrepancies` stay absent on this path, and that is correct rather than
         # missing: nothing declared a duration to disagree with. The platform's own numbers are not
         # here because the platform was never asked -- this is the file the creator exported.
-        return {
+        local_block = {
             "status": "available" if isinstance(duration, (int, float)) and duration > 0 else "unavailable",
             "duration_s": duration,
             "duration_source": "local_probe" if isinstance(duration, (int, float)) and duration > 0 else "unavailable",
@@ -589,6 +593,13 @@ def media_block(frames: dict[str, Any] | None, metadata: dict[str, Any] | None,
             "has_audio": facts.get("has_audio"),
             "encoding": encoding or None,
         }
+        # Measured here with the connector's thresholds and in its shape, so it reads through the
+        # same filter: a reader of `probed` never needs to know which side measured the file.
+        signals = facts.get("signals")
+        probed = probed_block({"status": "completed", "data": signals}) if isinstance(signals, dict) else None
+        if probed:
+            local_block["probed"] = probed
+        return local_block
     observed = as_record(frames.get("data")).get("duration_s") if usable(frames) else None
     declared = as_record(as_record(metadata.get("data")).get("video")).get("duration_seconds") if usable(metadata) else None
     observed = observed if isinstance(observed, (int, float)) and observed > 0 else None
@@ -607,7 +618,21 @@ def media_block(frames: dict[str, Any] | None, metadata: dict[str, Any] | None,
         "height": None,
         "has_audio": None,
     }
+    # Where the media could only be fetched once, the keyframe job measures the same file it sampled
+    # and carries the result in the measurement operation's shape. A separate measurement response,
+    # when one arrived, still wins: it is the call that was asked for.
+    carried = as_record(as_record(frames.get("data")).get("signals")) if usable(frames) else {}
+    if not usable(measurements) and carried:
+        measurements = {"status": "completed", "data": carried}
     probed = probed_block(measurements)
+    if probed and duration is not None:
+        # The connector leaves the span a file ends inside open (no end line was printed); the
+        # evidence wants a number there, and with the length known its end is the end of the file.
+        for key in ("silence", "freeze"):
+            for span in as_record(probed.get(key)).get("spans") or []:
+                if isinstance(span, dict) and span.get("end_s") is None and isinstance(span.get("start_s"), (int, float)):
+                    span["end_s"] = round(duration, 3)
+                    span["duration_s"] = round(max(0.0, duration - span["start_s"]), 3)
     if probed:
         block["probed"] = probed
         framing = as_record(probed.get("framing"))
@@ -679,26 +704,32 @@ def local_transcript_block(local: dict[str, Any], request: dict[str, Any]) -> di
     cues = cues_from(local.get("cues"))
     plain = local.get("plain_text") if isinstance(local.get("plain_text"), str) else None
     name = local.get("source_file_name") or "the file the creator supplied"
+    # A host's machine transcription of the same upload arrives through the same reader, and keeps
+    # its own origin: its words are what the analysis heard, never the creator's exact wording.
+    heard = local.get("origin") == "speech_recognition"
     if cues:
         text = "\n".join(cue["text"] for cue in cues)
         block.update({
             "status": "available", "granularity": "timestamped", "timestamps_available": True,
             "segment_count": len(cues), "cues": cues,
-            "status_basis": f"read {len(cues)} cues from {name}, the subtitle file the creator "
-                            "supplied; its timings were not checked against the media",
+            "status_basis": (f"read {len(cues)} cues the host transcribed from this file by machine"
+                             if heard else
+                             f"read {len(cues)} cues from {name}, the subtitle file the creator "
+                             "supplied; its timings were not checked against the media"),
         })
     elif plain and plain.strip():
         text = plain.strip()
         block.update({
             "status": "available", "granularity": "plain_text", "plain_text": text,
-            "status_basis": f"read untimed text from {name}, the file the creator supplied",
+            "status_basis": ("read untimed text the host transcribed from this file by machine"
+                             if heard else f"read untimed text from {name}, the file the creator supplied"),
         })
     else:
         block["status"] = "provider_error"
         block["status_basis"] = f"{name} carried no readable text"
         return block
 
-    block["origin"] = "creator_supplied"
+    block["origin"] = "speech_recognition" if heard else "creator_supplied"
     block["character_count"] = len(text)
     block["text_sha256"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
     return block
@@ -1006,8 +1037,8 @@ def build(
     else:
         used_local_transcript = False
     frame_block = frames_block(frames, local_media)
-    # Local extraction already names its own real files with canonical IDs (including '#'
-    # and timestamps). Only connector pixels are renamed by host envelope staging.
+    # Local extraction already writes its own real files under hashed names and records each
+    # path. Only connector pixels are renamed by host envelope staging.
     if snapshot_root is not None and local_media is None:
         if analysis_root is None:
             raise ValueError("snapshot frame binding requires this run's analysis directory")

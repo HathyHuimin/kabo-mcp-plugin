@@ -4,6 +4,7 @@
 
 ## 未发布
 
+- `analyze-content-video` 同步到 creator-skills 0.14.29、`create-script-and-packaging` 同步到 0.2.27（冻结提交 `a9514ba30`）：本地视频抽帧改用哈希文件名、720px、限 90 帧 / 12 MiB 且先写开头和结尾，`--measure-signals` 测剪辑点与停顿进 `media.probed`，宿主机器转写用 `--origin speech_recognition` 记为「听到的」；健康的 job 在本轮内等约 3 分钟；测量、长视频文字、图文帖、剪辑请求拿不到时的处理写进 `references/evidence-reading.md`；脚本的 `video_analysis_sources` 只认 `video_analysis.json`；续集先核实上一集。两个 SKILL.md 正文不增长。
 ## 1.0.6（2026-11-02；GitHub Release）
 
 - 推荐交付增加统一兜底：已有入选视频不会因 synthesis 留空而丢失；正常推荐为空时，最多展示三个本轮采到的视频参考，明确标注匹配或资料不足，不填造指标。原 Gate 和名额不改写，也不追加数据或模型调用。YouTube 一次重搜后仍覆盖不足时继续利用已有候选，不再直接中止报告。

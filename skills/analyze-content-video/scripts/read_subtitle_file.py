@@ -97,6 +97,11 @@ def main() -> int:
     parser.add_argument("--subtitle", type=Path, required=True)
     parser.add_argument("--artifact", type=Path, required=True)
     parser.add_argument("--language", default=None, help="ISO 639-1 code, when the creator states it.")
+    # Who produced the words. A file the creator handed over is their own wording; a transcript a
+    # host's speech recognition made of the same upload is a machine's hearing of it, and quoting
+    # that as the creator's exact line is the claim the evidence exists to prevent.
+    parser.add_argument("--origin", choices=("creator_supplied", "speech_recognition"),
+                        default="creator_supplied")
     args = parser.parse_args()
 
     path = args.subtitle.expanduser()
@@ -140,6 +145,7 @@ def main() -> int:
         "source_file_name": path.name,
         "source_file_sha256": source_sha,
         "language": args.language,
+        "origin": args.origin,
         "cues": None,
         "plain_text": None,
         "notes": [],
