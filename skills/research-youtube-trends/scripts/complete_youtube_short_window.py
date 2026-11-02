@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
-"""Fill YouTube Search rows with get_video plays. Search has no statistics."""
+"""Fill YouTube Search rows with get_video plays. Search has no statistics.
+
+`place` splits this run's staged collect_youtube_recent_videos result (searches, then get_video in
+chunks of 50) into envelope-NN.json, envelope-detail-NN.json and video-id-chunks.json, then merges them
+into the short-window input.
+"""
 from __future__ import annotations
 
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 CHUNK_SIZE = 50
 WATCH_ID = re.compile(r"(?:v=|/shorts/|/live/|/embed/)([A-Za-z0-9_-]{11})")
@@ -268,6 +277,80 @@ def merge(paths: list[Path], since: str, until: str, chunks: dict[str, Any] | No
     }
 
 
+COLLECT_TOOL = "collect_youtube_recent_videos"
+SEARCH_TOOL, DETAIL_TOOL = "youtube_search_videos", "youtube_get_video"
+USABLE = {"completed", "completed_partial"}
+
+
+def place(run: Path) -> dict[str, Any]:
+    """Split this run's collect_youtube_recent_videos record into the files merge reads.
+
+    Searches become envelope-NN.json and the get_video chunks envelope-detail-NN.json, numbered in
+    the backend's call order (query-<i>, then detail-<j>), each the staged envelope byte for byte, plus
+    video-id-chunks.json. A search or chunk that failed, did not run, or is missing stops here: the
+    layers do not project partial failures.
+    """
+    import static_host  # the record and the envelopes static_host.py fetch/stage wrote, never model text
+
+    records = static_host.composite_records(COLLECT_TOOL)
+    if not records:
+        raise ValueError(f"no staged {COLLECT_TOOL} result in this run; fetch (or stage) it first")
+    record = records[-1]
+    queries = (record.get("summary") or {}).get("queries")
+    if not isinstance(queries, list) or not queries:
+        raise ValueError(f"the {COLLECT_TOOL} record names no searches")
+    calls = record.get("calls") or []
+    searches = [call for call in calls if str(call.get("group", "")).startswith("query-")]
+    details = [call for call in calls if str(call.get("group", "")).startswith("detail-")]
+    if len(searches) + len(details) != len(calls):
+        raise ValueError(f"the {COLLECT_TOOL} record holds calls of an unknown group")
+    by_group = {call["group"]: call for call in searches}
+    problems = []
+    for query in queries:
+        call = by_group.get(query.get("group"))
+        if call is None or call.get("tool") != SEARCH_TOOL:
+            problems.append(f"{query.get('group')} did not run")
+        elif call.get("status") not in USABLE:
+            problems.append(f"{query.get('group')} search status is {call.get('status')}")
+    if [call["group"] for call in searches] != [query.get("group") for query in queries]:
+        problems.append("the searches do not match the record's queries")
+    expected = (record.get("summary") or {}).get("detail_chunks")
+    if expected != len(details):
+        problems.append(f"{len(details)} of {expected} get_video chunks came back")
+    for call in details:
+        if call.get("tool") != DETAIL_TOOL or call.get("status") != "completed":
+            problems.append(f"{call.get('group')} get_video status is {call.get('status')}")
+    if problems:
+        raise ValueError("the short-window collection is incomplete (" + "; ".join(problems) +
+                         "); the short-window report cannot be completed")
+    search_files, detail_files = [], []
+    for number, call in enumerate(searches, start=1):
+        search_files.append(copy_envelope(Path(call["path"]), run / f"envelope-{number:02d}.json"))
+    chunks = build_chunks(search_files)
+    for number, call in enumerate(details, start=1):
+        source = Path(call["path"])
+        asked = (json.loads(source.with_suffix(".meta").read_text(encoding="utf-8")).get("composite_parameters")
+                 or {}).get("video_ids")
+        if number > len(chunks["chunks"]) or asked != chunks["chunks"][number - 1]:
+            raise ValueError(f"{call['group']} asked for other video ids than chunk {number} of these searches")
+        detail_files.append(copy_envelope(source, run / f"envelope-detail-{number:02d}.json"))
+    if len(detail_files) != len(chunks["chunks"]):
+        raise ValueError(f"{len(chunks['chunks'])} chunks of video ids but {len(detail_files)} get_video results")
+    write_json(run / "video-id-chunks.json", chunks)
+    return {"status": "ok", "searches": [path.name for path in search_files],
+            "details": [path.name for path in detail_files], "video_ids": len(chunks["video_ids"]),
+            "chunks": len(chunks["chunks"]), "limitations": record.get("limitations") or []}
+
+
+def copy_envelope(source: Path, target: Path) -> Path:
+    body = source.read_bytes()
+    if target.exists() and target.read_bytes() != body:
+        raise ValueError(f"{target.name} already holds another response; this run was placed from another result")
+    target.write_bytes(body)
+    target.chmod(0o600)
+    return target
+
+
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -276,32 +359,21 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command", required=True)
-    ids_cmd = sub.add_parser("ids")
-    ids_cmd.add_argument("envelopes", nargs="+", type=Path)
-    ids_cmd.add_argument("--output", type=Path, required=True)
-    merge_cmd = sub.add_parser("merge")
-    merge_cmd.add_argument("envelopes", nargs="+", type=Path)
-    merge_cmd.add_argument("--since", required=True)
-    merge_cmd.add_argument("--until", required=True)
-    merge_cmd.add_argument("--output", type=Path, required=True)
-    merge_cmd.add_argument("--chunks", type=Path, required=True,
-                           help="video-id-chunks.json from ids: every chunk must have its get_video Envelope")
+    place_cmd = sub.add_parser("place", help=f"split the staged {COLLECT_TOOL} result, then merge it")
+    place_cmd.add_argument("--since", required=True)
+    place_cmd.add_argument("--until", required=True)
+    place_cmd.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        if args.command == "ids":
-            result = build_chunks(args.envelopes)
+        if args.command == "place":
+            import static_host
+            run = static_host.run_dir()
+            placed = place(run)
+            files = [run / name for name in placed["searches"] + placed["details"]]
+            result = merge(files, args.since, args.until, chunks=load_json(run / "video-id-chunks.json"))
             write_json(args.output, result)
-            print(json.dumps({
-                "status": "ok",
-                "video_ids": len(result["video_ids"]),
-                "chunks": len(result["chunks"]),
-                "chunk_size": CHUNK_SIZE,
-            }))
+            print(json.dumps({**placed, "merge": {"status": "ok", **result["coverage"]}}, ensure_ascii=False))
             return 0
-        result = merge(args.envelopes, args.since, args.until, chunks=load_json(args.chunks))
-        write_json(args.output, result)
-        print(json.dumps({"status": "ok", **result["coverage"]}))
-        return 0
     except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
         print(json.dumps({"status": "failed", "error": f"{type(error).__name__}: {error}"}))
         return 2

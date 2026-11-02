@@ -3,7 +3,7 @@ name: research-youtube-trends
 description: "Research what is working on YouTube now: current high-performing videos, repeated mechanisms, emerging creators and Creator-fit directions in a niche or like a given video, ranked by exact public metrics and channel-relative baselines; the hottest videos of the last seven days; or an analysis of a supplied public-content Snapshot. Use for YouTube trend scans and outlier videos; a Shorts soundtrack ask gets an honest no-evidence answer. Not for private Analytics or full scripts."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read to read the Creator's saved account profile and workspace:write to save edits to it the user asks for."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_youtube_trend_candidates enrich_youtube_shortlist youtube_search_videos youtube_get_video list_connected_accounts get_creator_profile update_content_preferences
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_youtube_trend_candidates enrich_youtube_shortlist collect_youtube_recent_videos youtube_get_video list_connected_accounts get_creator_profile update_content_preferences
 ---
 
 # Research YouTube Trends
@@ -60,17 +60,10 @@ individual call, never combined into one batch call. Never retype, paste or edit
   That pause is unfinished work. Make exactly those calls with the arguments verbatim, all in one
   response; then do what it prints under each call (save the complete result to the named file, run
   the printed `fetch` command) and finally run the printed resume command.
-- **Short window** makes the calls its reference names (`youtube_search_videos`,
-  `youtube_get_video`, which take `{"parameters": {…}, "delivery": "download"}`), saves each
-  complete result as `host-results/<NN>-<tool-name>.json` (numbered in call order across the run)
-  and fetches it at once:
-
-  ```sh
-  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --input 'host-results/<NN>-<tool-name>.json'
-  ```
-
-  Then it places them with the `persist_short_window.py` command the reference names; never write
-  an envelope or a typed result yourself or place one response twice.
+- **Short window** makes the one `collect_youtube_recent_videos` call its reference names, saves
+  the complete result and fetches it as that reference prints, then places it with the
+  `complete_youtube_short_window.py place` command there; never write an envelope or a typed result
+  yourself.
 - **Readiness once.** In the short-window route, call `get_research_capabilities` once and reuse its
   answer; an operation it marks missing, unimplemented or not ready is a capability gap to report,
   never retried or substituted. The workflow's stages need no readiness check.
@@ -82,8 +75,9 @@ individual call, never combined into one batch call. Never retype, paste or edit
   - `collect_youtube_trend_candidates` or `enrich_youtube_shortlist`: resume the stage; it stops and
     says the result was not recorded. The trend report cannot be completed: say so and stop. Never
     call collection or enrichment again to repair it.
-  - a short-window search or `get_video` call: the short-window report cannot be completed; say so
-    and stop, and never build from the remaining calls.
+  - `collect_youtube_recent_videos`, or a search or `get_video` chunk inside it that `place`
+    refuses: the short-window report cannot be completed; say so and stop, and never build from the
+    remaining calls.
 
 ## Which question is this
 
