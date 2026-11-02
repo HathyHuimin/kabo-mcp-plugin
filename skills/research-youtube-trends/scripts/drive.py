@@ -575,13 +575,9 @@ def stage_discover(args: argparse.Namespace) -> None:
                                 f"collection passed coverage; restore {PLAN} and {REQUEST} to what it collected with. "
                                 "Collection runs once per validated plan.")
         if len(collections) >= 2:
-            stop("This run already recollected once and that plan failed coverage as well. Stop: never produce a "
-                 "Creator report from a second failed plan. Tell the user the YouTube search returned too little for "
-                 "these intents right now.")
-    if entry is not None and entry.get("covered") is False:
-        if len(collections) >= 2:
-            stop("The recollection failed coverage as well. Stop: never produce a Creator report from a second failed "
-                 "plan. Tell the user the YouTube search returned too little for these intents right now.")
+            stop("This run already recollected once. Restore the latest plan and continue with the candidates "
+                 "already returned; do not collect a third time.")
+    if entry is not None and entry.get("covered") is False and len(collections) < 2:
         raise cd.StageError(f"this plan already failed coverage (its result is kept as {FIRST_CANDIDATES}); write the "
                             f"replacement plan to {PLAN} and run discover again without --placed")
 
@@ -607,28 +603,30 @@ def stage_discover(args: argparse.Namespace) -> None:
             cd.save_state(handed_collections=[*handed, key])
         raise
     need(CANDIDATES)
+    coverage_passed = True
     try:
         cd.say(cd.script("validate_youtube_candidate_coverage.py", "--plan", PLAN, CANDIDATES).rstrip())
     except cd.StageError as error:
+        coverage_passed = False
         for c in collections:
             if c.get("key") == key:
                 c["covered"] = False
         cd.save_state(collections=collections)
         if len(collections) >= 2:
-            stop(f"{error}\nThe recollection failed coverage as well. Stop: never produce a Creator report from a "
-                 "second failed plan. Tell the user the YouTube search returned too little for these intents right now.")
-        # Kept under another name so the recollection's persist takes the new result: it takes the
-        # earliest result not yet on disk, so while the first sits at the target it copies it again.
-        Path(CANDIDATES).replace(FIRST_CANDIDATES)
-        failed = failed_intents(str(error), plan)
-        raise cd.StageError(
-            f"{error}\nThe first collection failed coverage for: {', '.join(failed) or 'see above'}. It is kept as "
-            f"{FIRST_CANDIDATES}. Shorten only the failed query to its 2–5 core topic terms, write the replacement "
-            f"plan to {PLAN} (same intent_ids; leave {REQUEST} as it is) and run discover again without --placed: "
-            "it validates the plan and recollects once.")
+            cd.say("[drive] coverage remains incomplete after one recollection; continue with available candidates")
+        else:
+            # Kept under another name so the recollection's persist takes the new result: it takes the
+            # earliest result not yet on disk, so while the first sits at the target it copies it again.
+            Path(CANDIDATES).replace(FIRST_CANDIDATES)
+            failed = failed_intents(str(error), plan)
+            raise cd.StageError(
+                f"{error}\nThe first collection failed coverage for: {', '.join(failed) or 'see above'}. It is kept as "
+                f"{FIRST_CANDIDATES}. Shorten only the failed query to its 2–5 core topic terms, write the replacement "
+                f"plan to {PLAN} (same intent_ids; leave {REQUEST} as it is) and run discover again without --placed: "
+                "it validates the plan and recollects once.")
     for c in collections:
         if c.get("key") == key:
-            c["covered"] = True
+            c["covered"] = coverage_passed
     cd.save_state(collections=collections)
     # Coverage judges the collection as the backend returned it; eligibility then narrows what the
     # Creator is shown, so a thin eligible set never reads as a failed route.
@@ -703,8 +701,8 @@ def stage_rank(args: argparse.Namespace) -> None:
                          "--output", ALLOCATION).rstrip())
     cd.script("analyze_public_snapshot.py", SNAPSHOT, "--mode", "trend", "--request", REQUEST,
               "--relevance-gate", GATE, "--trend-enrichment", ENRICHMENT,
-              *(("--allocation", ALLOCATION) if profiled else ()), "--output", ANALYSIS)
-    cd.say(Path(ANALYSIS).read_text(encoding="utf-8").rstrip())
+              *(("--allocation", ALLOCATION) if profiled else ()), "--output", ANALYSIS,
+              "--print-synthesis", show=True)
     cd.script("prepare_hook_context.py", "--platform", "youtube", "--purpose", "trends",
               "--output", "hook-context.json", show=True)
     cd.show_schema("trend-research-synthesis.schema.json")
@@ -723,6 +721,16 @@ def language_option(args: argparse.Namespace) -> tuple[str, ...]:
     """The Creator's chat language for the report's closing basis sentence; none keeps English."""
     language = getattr(args, "language", None)
     return ("--language", language.strip()) if isinstance(language, str) and language.strip() else ()
+
+
+def reference_args() -> list[str]:
+    # 只读本次运行已有的候选；交付兜底不再触发采集或改写原 Gate。
+    args = []
+    for flag, paths in (("--reference-candidates", [CANDIDATES, FIRST_CANDIDATES]), ("--reference-gate", [GATE])):
+        for name in paths:
+            if Path(name).is_file():
+                args.extend([flag, name])
+    return args
 
 
 def restore(files: dict[str, bytes | None]) -> None:
@@ -779,8 +787,8 @@ def stage_report(args: argparse.Namespace) -> None:
                                      "report_id": report_id_of(request)})
     try:
         cd.script("compose_report.py", "--request", REQUEST, "--snapshot", SNAPSHOT, "--analysis", ANALYSIS,
-                  "--synthesis", SYNTHESIS, "--output", REPORT)
-        cd.script("validate_output.py", REPORT, "--request", REQUEST, "--analysis", ANALYSIS)
+                  "--synthesis", SYNTHESIS, "--output", REPORT, *reference_args())
+        cd.script("validate_output.py", REPORT, "--request", REQUEST, "--analysis", ANALYSIS, *reference_args())
     except cd.StageError as error:
         # Nothing is fetched here, so a synthesis that Compose or Validate rejects (a momentum claim
         # from one snapshot, a ref outside the evidence) is the model's to fix. Putting the run back

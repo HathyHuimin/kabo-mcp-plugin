@@ -160,7 +160,7 @@ test("start：--profile 与 --video / --post 互斥", async (t) => {
   }
 });
 
-test("他平台画像与无主打内容的画像：打印为未使用，discover 交出的调用与不带画像时相同", async (t) => {
+test("他平台和 null 画像不附加；零分类画像仍附加基础字段", async (t) => {
   const instagram = await fixture("instagram");
   const tiktok = await fixture("tiktok");
   const none = { ...tiktok, contentProfile: { ...tiktok.contentProfile, signatureContentStatus: "no_qualifying_group", signatureContent: [] } };
@@ -174,7 +174,7 @@ test("他平台画像与无主打内容的画像：打印为未使用，discover
   const baseline = await plainCalls();
   for (const [label, value, printed] of [
     ["other platform", instagram, /creator profile: for instagram, not tiktok; it is not used in this run/],
-    ["no signature content", none, /no signature content to attach \(no_signature_content \(no_qualifying_group\)\); plan as without a profile/],
+    ["no signature content", none, /no signature content \(base_profile_only \(no_qualifying_group\)\)/],
     ["null profile", { ...tiktok, contentProfile: null }, /no signature content to attach \(no_content_profile\)/],
   ]) {
     const temp = await workspace(t);
@@ -185,10 +185,20 @@ test("他平台画像与无主打内容的画像：打印为未使用，discover
     await authored(RTT, run);
     const discovered = drive(RTT, run, "discover", "--policy", "default_1y");
     assert.equal(discovered.exit, 0, discovered.stderr);
-    assert.deepEqual(callsOf(discovered.stdout), baseline, label);
-    assert.doesNotMatch(discovered.stdout, /--without-include/, label);
+    if (label === "no signature content") {
+      const searches = callsOf(discovered.stdout).filter((call) => call.tool === "tiktok_discovery_search_videos");
+      assert.ok(searches.length > 0);
+      for (const call of searches) assert.deepEqual(call.arguments.parameters.include, ["content_signals"]);
+    } else {
+      assert.deepEqual(callsOf(discovered.stdout), baseline, label);
+      assert.doesNotMatch(discovered.stdout, /--without-include/, label);
+    }
     const request = JSON.parse(await readFile(path.join(run, "trend-research-request.json"), "utf8"));
     assert.equal(request.creator_profile?.signature_content, undefined, label);
+    if (label === "no signature content") {
+      assert.equal(request.creator_profile.audience_count, value.account.audienceCount);
+      assert.deepEqual(request.creator_profile.formats, ["short_video"]);
+    }
   }
 });
 

@@ -231,6 +231,12 @@ def table_parts(output: dict[str, Any]):
     """Yield the original table records without shortening any evidence."""
     header = {key: output[key] for key in ("request_id", "platform", "subject")}
     subject = output["subject"]
+    header["topic_relevance_rule"] = (
+        "Score topic_relevance against subject.niche, the frozen goal of this request. "
+        "Historical signature content and anchor mechanisms cannot replace that goal. "
+        "Judge creator_transferability and signature_content separately: an on-topic item may match "
+        "no historical class, and a class match does not make an off-topic item relevant."
+    )
     if subject.get("signature_content"):
         # 模型只按打印出的编号作答。id 只留在投影文件里给打分脚本用，表头不印 id，
         # 免得模型在编号那一列写成 id。

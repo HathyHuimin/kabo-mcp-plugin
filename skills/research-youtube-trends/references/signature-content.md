@@ -31,10 +31,8 @@ Creator, the profile names the channel it was read for. `start` refuses both tog
 the profile's content language, accepted languages, formats and numbered signature content items
 (the main one first, marked `main`), each with its name, topic, approach and seed terms or hashtags,
 then any topics the Creator excluded, the market they set and the edits that no longer match the
-current profile (those are not applied). A profile for another platform, or one with neither
-signature content nor a setting of the Creator's, is printed as not used and the run plans exactly
-as without one. One with settings but no signature content plans as without signature content and
-keeps those settings.
+current profile (those are not applied). A profile for another platform is not used. A recognized profile with no signature content
+keeps its reliable language, audience, formats and settings; only class-specific steps are skipped.
 
 ## The Request
 
@@ -53,18 +51,23 @@ keeps those settings.
 
 ## The query plan
 
-Every intent belongs to one signature content item and carries one of that item's seed terms or
-hashtags verbatim, written in the printed content language (when the language is not settled, in the
-language of the item's own seeds). The two intents go to the first two printed items (the main one,
-then the heaviest), one each; with one item, both go to it. This replaces the workflow reference's
-split between the source's own wording and the format's common name; the length rules stay (a seed
-in a script written without spaces is matched inside the query with its spaces removed). `discover`
-passes `--request` to the plan validator, which rejects an intent without a seed and names the seeds
-to copy. The Creator's own seed words are what other creators of the same content title with; a
-paraphrase in analyst vocabulary retrieves a different pool.
+`Request.niche` is the goal for this run. Preserve the user's explicit topic even when their
+historical signature content covers something else. Only an account-led ask without an explicit
+topic may derive its goal from the profile; write that goal into `niche` before freezing it.
 
-Never put a topic the Creator excluded into an intent, with or without signature content: the plan
-validator rejects one and names the topic.
+Write natural queries about that goal, in the requested content language or the usable profile
+language. Reuse a profile seed only when it helps retrieve the same topic and approach. Never add
+unrelated historical seeds, require every class to be covered, or spend an intent on a class just
+because it has a high weight. With two intents, keep one directly on the goal; use the other for an
+on-topic wording or approach variant. When the profile conflicts, both stay on the goal.
+
+The validator checks structure and excluded topics; it does not certify semantic alignment. Before
+collection, read each complete query against `niche` and correct any drift. Finding a seed word is
+not proof of alignment. For example, a cozy/indie game review request must not become gaming jobs
+or blogging income research because those words occur in the account's historical seeds.
+
+Never search an excluded topic. If the current request conflicts with a saved exclusion, ask the
+user to resolve that conflict; do not silently edit their preferences or reinterpret the request.
 
 ## Discover
 
@@ -88,9 +91,9 @@ entries; every other rule of the Gate file stays.
 
 - `signature_content`: the `number` of the entry whose approach this item reproduces, judged from
   that entry's `name`, `topic`, `approach` and `examples`, or 0 when it reproduces none. Write the
-  number, never an id or a name, and pick the single closest entry. With that list present,
-  `topic_relevance` asks whether the item reproduces the approach of one of those entries, in the
-  same bands.
+  number, never an id or a name, and pick the single closest entry. `topic_relevance` always judges the frozen `Request.niche`;
+  `creator_transferability` and class matching are separate judgments. An on-topic item may
+  match no class, and an off-topic class match must still receive a low topic score.
 - Text after `platform summary, not by the author:` was written by the platform, not by the item's
   author. Use it to see what the item shows; never read it as the author naming a mechanism or as
   the author's wording.
@@ -111,6 +114,12 @@ call itself is unchanged.
 
 ## The synthesis
 
+When Analysis has `selected_content_ids`, every featured, pattern and emerging-creator reference
+must belong to that set, including selected items whose `signature_content_id` is null. `rank` prints
+only selected candidate evidence for synthesis; the saved Analysis retains the full population for
+calculation and validation. An empty selection is not relabeled as passed evidence.
+
+
 When the Analysis lists `signature_content` (each item with the seats it was given), cite at least
 one video whose `ranked_content` row carries that item's `signature_content_id`, in
 `featured_content_refs` or a pattern's `content_refs`, for every item whose `filled` is above 0;
@@ -118,3 +127,6 @@ the report validator rejects a report that leaves one out. The ranking stays as 
 only make sure each kind of content the Creator is known for is represented. When an item filled
 fewer seats than its `quota`, note it briefly in `data_gaps`, never in Creator-facing prose, and
 never make up the difference with videos that were not seated.
+
+
+When no recommendation survives, the report adds up to three `reference_videos` from this run's existing candidates, ordered by the existing topic/locale scores. These are visibly marked as uncertain references, without invented metrics, dates or strong-match claims. Empty authored selections reuse available selected evidence first. Do not stop before the report stage or claim that no videos were found solely because the selected list is empty. No extra search or model step is added; genuinely empty source data cannot supply a video, and explicit excluded topics remain excluded.

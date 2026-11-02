@@ -309,11 +309,9 @@ def projection(profile: dict[str, Any]) -> tuple[dict[str, Any] | None, str]:
     market = region if isinstance(region, str) and REGION.match(region) else None
     status = content.get("signatureContentStatus") or "none listed"
     # 主打内容为空、但创作者自己设过排除话题、语言或市场时照写这些设定：用户把主打内容全删了，
-    # 设定仍然要生效。两样都没有时与 v1 一样什么都不写。
+    # 设定仍然要生效。没有主打分类时仍保留可信语言、受众和格式。
     settings = bool(excluded) or market is not None or (effective and language.get("source") == "user")
-    if not items and not settings:
-        return None, f"no_signature_content ({status})"
-    # 主打的那项排第一：闸门编号 1、TikTok / YouTube 两条 intent 里的第一条都归它。平台保证主打项的权重
+    # 主打的那项排第一：用于闸门编号和名额分配，不改写本次搜索目标。平台保证主打项的权重
     # 不低于任何非主打项，这里再按主打标记排一次，同权时也不会被 id 排到后面。
     items.sort(key=lambda item: (not item.get("primary", False), -item["weight"], item["id"]))
     fields: dict[str, Any] = _language(language, effective)
@@ -340,7 +338,7 @@ def projection(profile: dict[str, Any]) -> tuple[dict[str, Any] | None, str]:
         if own:
             fields["own_content_ids"] = own
         fields["profile_basis"] = "profile_with_edits" if content.get("edited") is True else "profile"
-    return fields, ("attached" if items else f"settings_only ({status})")
+    return fields, ("attached" if items else f"{'settings_only' if settings else 'base_profile_only'} ({status})")
 
 
 # --------------------------------------------------------------------------- the Request
@@ -360,7 +358,7 @@ def signature_content(request: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def attached(request: dict[str, Any]) -> bool:
-    """Whether signature content is attached: the plan anchors on it, the seats are shared by it."""
+    """Whether signature content is attached for class-aware seat allocation."""
     return bool(signature_content(request))
 
 
@@ -568,33 +566,6 @@ def mentions_topic(text: str, hashtags: list[str], topic: str) -> bool:
                               or any(contains_seed(tag, topic) or _unspaced(tag) == spelled for tag in hashtags))
 
 
-def hits(query: str, item: dict[str, Any]) -> bool:
-    return (any(contains_seed(query, term) for term in item.get("seed_terms") or [])
-            or any(contains_hashtag(query, tag) for tag in item.get("seed_hashtags") or []))
-
-
-def _seeds_named(number: int, item: dict[str, Any]) -> str:
-    seeds = list(item.get("seed_terms") or []) + [f"#{tag}" for tag in item.get("seed_hashtags") or []]
-    return f"{number} {item.get('name')!r} (seeds {json.dumps(seeds, ensure_ascii=False)})"
-
-
-def _assign(queries: list[str], items: list[tuple[int, dict[str, Any]]]) -> bool:
-    """Whether each item can take a different query that carries one of its seeds."""
-    taken: dict[int, int] = {}
-
-    def place(position: int, seen: set[int]) -> bool:
-        for q, query in enumerate(queries):
-            if q in seen or not hits(query, items[position][1]):
-                continue
-            seen.add(q)
-            if q not in taken or place(taken[q], seen):
-                taken[q] = position
-                return True
-        return False
-
-    return all(place(position, set()) for position in range(len(items)))
-
-
 def check_excluded(queries: list[str], request: dict[str, Any]) -> int:
     """Refuse an intent that carries a topic the Creator excluded; the number of topics checked.
 
@@ -608,51 +579,6 @@ def check_excluded(queries: list[str], request: dict[str, Any]) -> int:
                 raise ValueError(f"intents[{index}].search_query {query!r} carries {topic!r}, a topic the Creator "
                                  "excluded; write that intent without it")
     return len(topics)
-
-
-def check_plan(queries: list[str], request: dict[str, Any], *, per_intent: str) -> dict[str, Any] | None:
-    """Require the plan to search for the Creator's signature content in the Creator's own seed words.
-
-    `per_intent="covering"` (Instagram, up to six intents): every intent carries a seed of some
-    signature content, and together they reach min(count, 4) of them. `per_intent="top_two"`
-    (TikTok and YouTube, two intents): the intents go to the first two items (the main one, then
-    the heaviest), one each, and every intent carries a seed of the item it belongs to. Items
-    without seeds cannot be searched for verbatim and are left out of the count. No intent may carry
-    a topic the Creator excluded, with or without signature content. Returns what was checked, or
-    None without a profile.
-    """
-    excluded = check_excluded(queries, request)
-    numbered = [(number, item) for number, item in enumerate(signature_content(request), start=1)
-                if item.get("seed_terms") or item.get("seed_hashtags")]
-    if not signature_content(request):
-        return {"excluded_topics_checked": excluded} if excluded else None
-    checked: dict[str, Any] = {"excluded_topics_checked": excluded} if excluded else {}
-    if not numbered:
-        return {"signature_content_checked": 0, **checked}
-    if per_intent == "top_two":
-        wanted = numbered[:2]
-    else:
-        wanted = numbered[:SIGNATURE_LIMIT]
-    for index, query in enumerate(queries):
-        if not any(hits(query, item) for _, item in wanted):
-            raise ValueError(f"intents[{index}].search_query {query!r} carries no seed term of the signature content "
-                             "it belongs to; copy one verbatim from: "
-                             + "; ".join(_seeds_named(number, item) for number, item in wanted))
-    if per_intent == "top_two":
-        if len(queries) < len(wanted):
-            raise ValueError(f"write {len(wanted)} intents, one for each of the first two signature content items: "
-                             + "; ".join(_seeds_named(number, item) for number, item in wanted))
-        if not _assign(queries, wanted):
-            raise ValueError("the intents must belong to different signature content items, one each, and carry that "
-                             "item's seed verbatim: " + "; ".join(_seeds_named(number, item) for number, item in wanted))
-    else:
-        covered = [number for number, item in wanted if any(hits(query, item) for query in queries)]
-        if len(covered) < len(wanted):
-            missing = [(number, item) for number, item in wanted if number not in covered]
-            raise ValueError(f"the intents reach {len(covered)} of {len(wanted)} signature content items; give each "
-                             "missing item an intent carrying one of its seeds verbatim: "
-                             + "; ".join(_seeds_named(number, item) for number, item in missing))
-    return {"signature_content_checked": len(wanted), **checked}
 
 
 # --------------------------------------------------------------------------- include, refused by Kabo

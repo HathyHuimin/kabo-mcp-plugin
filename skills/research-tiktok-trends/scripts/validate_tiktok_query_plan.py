@@ -90,21 +90,16 @@ def validate(plan: dict[str, Any]) -> None:
 
 
 def validate_against_request(plan: dict[str, Any], request: dict[str, Any]) -> dict[str, Any] | None:
-    """With the Creator's signature content attached, the two intents search for its two heaviest
-    items, one each, in the Creator's own seed words; without it nothing more is checked.
-
-    TikTok search matches the words typed, so an intent that paraphrases a signature content item
-    retrieves a different pool than the Creator's own vocabulary does.
-    """
+    """Enforce the Creator's exclusions; the host judges queries against Request.niche."""
     queries = [str(intent.get("search_query") or "") for intent in plan.get("intents") or []]
-    return _profile_intake().check_plan(queries, request, per_intent="top_two")
+    return {"excluded_topics_checked": _profile_intake().check_excluded(queries, request)}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("plan", type=Path)
     parser.add_argument("--request", type=Path,
-                        help="TrendResearchRequest; with signature content attached, intents must carry its seeds")
+                        help="TrendResearchRequest; enforce excluded topics without requiring historical seed terms")
     args = parser.parse_args()
     try:
         value = load(args.plan)
