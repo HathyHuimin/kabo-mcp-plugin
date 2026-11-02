@@ -18,55 +18,38 @@ plays: a collection on a short-window ask is a failed delivery, not a reason to 
 2. Freeze the requested window in UTC: `until` is now unless the user named an end, and `since` is
    `until` minus the requested span (resolve a relative span once against the current time). At
    most two intents from the user's niche.
-3. Window lane: for each intent, `youtube_search_videos` once with that exact `published_after` /
-   `published_before` window. Copy the frozen intent phrase into the tool's required search-term
-   field (`query`).
-4. Heat lane: for each intent, `youtube_search_videos` once over the last 30 days, ordered by view
-   count (`order: viewCount`), with the same search-term field.
+3. Make one `collect_youtube_recent_videos` call. It runs every search, deduplicates the video ids
+   and reads their public plays with `get_video` in chunks of 50. Its `queries`, in this order:
+   - Window lane: for each intent, `{"q": "<intent phrase>", "published_after": "<since>",
+     "published_before": "<until>"}`, the exact frozen window.
+   - Heat lane: for each intent, `{"q": "<intent phrase>", "published_after": "<until minus 30
+     days>", "published_before": "<until>", "order": "viewCount"}`.
 
-Make each call on its own, never batched. After every search call of steps 3 and 4, window lane
-and heat lane alike, completed or failed, save and fetch its result and persist it, numbering the
-files `01`, `02`, … in call order. The placement refuses a failed response; a search that still
-fails after its one retry (`references/data-calls.md`) means the short-window report cannot
-be completed: say so and stop, and never build from the remaining lanes.
-
-```bash
-cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/persist_short_window.py' --dest envelope-NN.json --connector youtube-public --operation search_videos
-```
-
-Calls made together may also be persisted afterwards, one command per call: each takes this run's
-earliest unplaced response of that operation. Search rows have no `statistics`; do not treat null
-plays as zero and do not rank that union as heat. Missing collections, or only failed responses,
-stop the builder rather than proving zero results. A completed empty collection remains a valid
-empty result; any explicit failed or unavailable source, including one mixed with completed
-sources, stops the builder because these layers do not project partial failures.
-
-5. Extract the unique video ids from the persisted search Envelopes, listing every
-   `envelope-NN.json` that steps 3 and 4 placed by file name, as positional arguments in number
-   order. Chunks hold at most 50 ids, the `get_video` maximum:
+   Add `"delivery": "download"` and leave every other argument at its default. Save the complete
+   result as `host-results/01-collect_youtube_recent_videos.json` and fetch it at once:
 
    ```bash
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/complete_youtube_short_window.py' ids envelope-01.json envelope-02.json ... --output video-id-chunks.json
+   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool collect_youtube_recent_videos --input 'host-results/01-collect_youtube_recent_videos.json'
    ```
 
-6. For each chunk, call `youtube_get_video` with `video_ids` (not one-by-one `video_id` unless the
-   chunk has one id). After each call, save, fetch and persist it:
+4. Place and merge it with the frozen window:
 
    ```bash
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/persist_short_window.py' --dest envelope-detail-NN.json --connector youtube-public --operation get_video
+   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/complete_youtube_short_window.py' place --since <since> --until <until> --output short-window-input.json
    ```
 
-   If any `get_video` is missing, failed, or not `completed` (the script refuses those), stop.
+   It writes each search and each `get_video` chunk as its own envelope file and merges them into
+   `short-window-input.json`; never write an envelope yourself. Search rows have no `statistics`;
+   plays come only from `get_video`, and null plays are never zero. It refuses a collection in which
+   any search or `get_video` chunk failed, did not run or did not complete, and one whose
+   `get_video` filled no plays: then the short-window report cannot be completed: say so and stop,
+   and never call again or build from the remaining lanes.
 
 ## Build and author
 
-7. Merge search and `get_video` results into `short-window-input.json`, passing every
-   `envelope-NN.json` and then every `envelope-detail-NN.json` in number order, and the chunk file:
-   merge refuses a chunk no persisted `get_video` answered. If merge reports `views_filled` 0, stop:
-   do not write a heat layer ordered as plays. Then build and print the presentation contract:
+5. Build the layers and print the presentation contract:
 
 ```bash
-cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/complete_youtube_short_window.py' merge envelope-01.json ... envelope-detail-01.json ... --chunks video-id-chunks.json --since <since> --until <until> --output short-window-input.json
 cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/build_short_window_layers.py' short-window-input.json --output short-window-layers.json
 cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/render_short_window_report.py' short-window-layers.json --language <the user's chat language> --print-presentation-contract --text-only --contract-output short-window-presentation.json
 ```

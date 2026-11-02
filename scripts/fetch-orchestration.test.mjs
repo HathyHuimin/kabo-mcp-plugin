@@ -25,17 +25,17 @@ export const HOST_PROBE = /connector-outbox|\boutbox_dir\b|\bCODEX_THREAD_ID\b|\
 const HANDOVER_SITES = {
   "analyze-creator-competitors": 12,
   "analyze-tiktok-competitors": 3,
-  "diagnose-reach-drop": 1,
+  "diagnose-reach-drop": 5,
   "research-instagram-trends": 5,
   "research-tiktok-trends": 4,
   "research-youtube-trends": 3,
-  "review-creator-account": 1,
+  "review-creator-account": 8,
   "verify-platform-rule": 1,
 };
 
 const HOST_PROBE_FILES = [
-  "skills/research-instagram-trends/scripts/connector_driver.py",
-  "skills/verify-platform-rule/scripts/connector_driver.py",
+  "skills/diagnose-reach-drop/scripts/connector_driver.py",
+  "skills/review-creator-account/scripts/connector_driver.py",
 ];
 
 export function handoverSites(files = scripts()) {

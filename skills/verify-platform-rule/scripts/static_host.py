@@ -49,8 +49,9 @@ CONNECTOR_TOOLS = {
 }
 # 取页是同步操作；若服务端以异步任务返回，终态由它读取。页面没有转写或帧这类产物，所以不收 read_research_data_artifacts。
 JOB_TOOLS = {"get_research_data_job"}
-# 交接给模型时可以原样调用的非数据工具：任务读回与一次就绪查询，与 allowed-tools 一致。
-DIRECT_TOOLS = JOB_TOOLS | {"get_research_capabilities"}
+# 交接给模型时可以原样调用的非数据工具：任务读回、一次就绪查询与一次渲染全部计划页面的组合取数工具，
+# 与 allowed-tools 一致。组合工具的 delivery 由驱动写进入参。
+DIRECT_TOOLS = JOB_TOOLS | {"get_research_capabilities", "render_official_pages"}
 # 本 Skill 没有返回固定投影的业务级工具；共用的过期提示据此决定能否重签。
 PROJECTIONS: dict[str, str] = {}
 
