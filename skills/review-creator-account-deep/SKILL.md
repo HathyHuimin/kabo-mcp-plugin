@@ -12,10 +12,11 @@ This Skill follows Leo's account-analysis steps on one named public account and 
 watching a bounded set of its videos. The catalog-only review stays in `review-creator-account`; one
 URL stays in `analyze-content-video`. This Skill changes neither of them.
 
-**Delivery.** The final `compose_deep_review.py` call writes `account_deep_report.md`. Deliver that
-rendered report once, complete, in the delivery language: never summarize, rewrite, retype its
-numbers or append a second paraphrased report, and do not narrate artifact writing, validation,
-file paths or tool call counts. Never deliver a draft or a report a script refused; if a step fails,
+**Delivery.** The final `compose_deep_review.py` call writes `account_deep_report.md` and prints
+`creator_report: <path>` followed by the report. Deliver that printed report once, complete, in the
+delivery language, keeping every evidence citation (`Video N cue …`): never summarize, rewrite,
+retype its numbers or append a second paraphrased report, end with the `creator_report:` line copied
+as printed, and do not narrate artifact writing, validation or tool call counts. Never deliver a draft or a report a script refused; if a step fails,
 say which deliverable is unavailable.
 
 When the host supports one, run this Skill in a foreground sub-agent, because a deep review takes
