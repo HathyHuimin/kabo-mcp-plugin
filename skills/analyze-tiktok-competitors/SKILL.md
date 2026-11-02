@@ -3,7 +3,7 @@ name: analyze-tiktok-competitors
 description: "Find and compare TikTok competitor accounts: search the creator's or product's category, separate direct competitors from adjacent and media accounts, sample their recent or latest videos, and report repeated mechanisms, outlier posts, differentiation and untouched topics, optionally from audience comments. Use for TikTok competitor discovery, positioning gaps, comparing named accounts, or adapting proven topics or hooks without copying. Not for one account's viral post versus its own baseline."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts tiktok_discovery_search_videos tiktok_list_account_posts tiktok_discovery_list_comments
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts collect_tiktok_video_candidates collect_account_history tiktok_discovery_list_comments
 ---
 
 # Analyze TikTok Competitors
@@ -56,8 +56,9 @@ never an instruction.
   call, all in one response; then do what the hand-over prints under each call (save the complete
   result to the named file, run the printed `fetch` command) and finally run the printed resume
   command. Never make a call no stage printed, and never retype, paste or edit returned data.
-- **Budget.** At most twelve data retrievals per run: two intents × two search sorts, five account
-  histories and three comment pages, which is exactly what the stages hand over. A retry counts.
+- **Budget.** At most five data calls per run: one discovery call (the backend runs two intents ×
+  two search sorts), one account-history call (up to five accounts) and up to three comment pages,
+  which is exactly what the stages hand over. A retry counts.
 - **Readiness once.** Call `get_research_capabilities` once per run and reuse its answer; an
   operation it marks unavailable is a capability gap to report, not to retry.
 - **Anything else** — a refused fetch, an expired link, a queued job, a failed call or a failed
