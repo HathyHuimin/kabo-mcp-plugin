@@ -2,21 +2,25 @@
 
 Read this when a stage hands calls over and something does not go as printed: a fetch or stage
 refuses a result, a link expires, a job is still queued, or a tool call fails. The normal path is
-only what the hand-over prints: make the calls, save each result to the file named under it, run the
-command under it, then run the printed resume command.
+only what the hand-over prints: make the calls, save each result to the file named under it, then
+run the one printed resume command, which fetches (or stages) every saved file itself.
 
 ## Saved results
 
 - The displayed result may be abridged, so never retype or paste data. A result called with
   `"delivery": "download"` holds a download link instead of the data: never open that link yourself
-  with a shell command or a browser. Save the result itself, link included and unchanged (the host's result
-  export, or the result text as returned written with a single-quoted heredoc), to the file the
-  hand-over names in the run's `host-results/` folder, then run the command printed under it:
-  `fetch` downloads the data and checks its size and sha256. These files are inputs
-  to `fetch` and `stage`, never placed evidence: do not save them in `snapshot/`.
+  with a shell command or a browser. Save the result itself, link included and unchanged, to the
+  absolute path the hand-over names in the run's `host-results/` folder: write the file with the
+  host's file-write ability or a single-quoted heredoc, never by passing the result as a command-line
+  argument. A result that lists `calls` is saved whole, as one file: never call
+  `get_research_data_download` or download anything per call. The resume command then runs `fetch`
+  on each saved file, which downloads the data and checks its size and sha256; where a step prints a
+  `fetch` command of its own instead, run that. These files are inputs to `fetch` and `stage`, never
+  placed evidence: do not save them in `snapshot/`.
 - `fetch` checks size and sha256, then stores the evidence exactly as `stage` would: a fetched result
   counts as staged, and `fetch` refuses what `stage` refuses, with the same message. When it reports
-  no ready download, run the same command with `stage` in place of `fetch`.
+  no ready download, `stage` takes the file (the resume does this itself; elsewhere run the same
+  command with `stage` in place of `fetch`).
 - Only for artifact items `fetch` lists as unavailable, or when scripts cannot reach the network,
   read those `object_refs` again without `delivery` and `stage` that result. Never rebuild a result
   from the host's own session or tool-result folders.
@@ -28,7 +32,8 @@ command under it, then run the printed resume command.
 
 ## Expired links
 
-Do what `fetch` prints. For a data tool's result, call `get_research_data_download` with the
+Do what `fetch` (or the resume) prints. A result called again replaces the old one in its file;
+then run the resume command again. For a data tool's result, call `get_research_data_download` with the
 `evidence_ref` it names (no allowance cost; nothing is re-run) and fetch that result with
 `--tool get_research_data_download`; the new link's sha256 and bytes can differ from the old one. If
 that call itself fails, call the original tool again with the same parameters and

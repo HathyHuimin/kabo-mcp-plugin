@@ -32,7 +32,7 @@ async function newRun(t, skill) {
 }
 
 const calls = (out) => out.split("\n").filter((line) => line.startsWith("call: ")).map((line) => JSON.parse(line.slice(6)));
-const resumeOf = (out) => out.split("\n").find((line) => line.startsWith("When every result above")).replace(/^.*resume: /, "");
+const resumeOf = (out) => { const line = out.split("\n").find((l) => l.startsWith("Then run this one command")); return line.slice(line.indexOf("cd '")); };
 
 function envelope(connector_id, operation, data, extra = {}) {
   return {
@@ -70,15 +70,12 @@ function composite(args, list, accountStatus, extra = {}) {
   };
 }
 
-// 模型做的事：调组合工具、把整份结果存进交接点名的文件、跑交接打印的命令（下载缺席时退回 stage）。
+// 模型做的事：调组合工具、把整份结果原样存进交接点名的文件（绝对路径）；之后只跑续跑命令，
+// 续跑自己 fetch（这里没有就绪下载，退回 stage）。
 async function answer(skill, run, fetched, result) {
-  const [call] = calls(fetched);
   const saved = fetched.split("\n").find((line) => line.startsWith("  save: ")).slice(8);
-  await writeFile(path.join(run, saved), JSON.stringify({ content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: result }));
-  const fetchStep = python(skill, "static_host.py", ["fetch", "--tool", call.tool, "--input", saved], { cwd: run, run });
-  assert.match(fetchStep.out, /No ready download/);
-  const staged = python(skill, "static_host.py", ["stage", "--tool", call.tool, "--input", saved], { cwd: run, run });
-  assert.equal(staged.code, 0, staged.out);
+  assert.ok(path.isAbsolute(saved) && saved.startsWith(run), saved);
+  await writeFile(saved, JSON.stringify({ content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: result }));
 }
 
 function resume(command, input) {
@@ -113,6 +110,7 @@ test("账号复盘 Instagram：一次组合调用交出 100 条合计上限与�
   await answer(REVIEW, run, first.out, result);
   const second = resume(resumeOf(first.out), question);
   assert.equal(second.code, 0, second.out);
+  assert.match(second.out, /01-collect_account_history\.json: staged collect_account_history/);
   assert.match(second.out, /list_posts 2 page\(s\)\/5 rows, list_reels 1 page\(s\)\/4 rows; snapshot flags: --complete-operation list_posts --complete-operation list_reels/);
   assert.match(second.out, /account-review-synthesis-input\.v1/);
   assert.deepEqual(await placedOperations(run), ["resolve_profile", "list_posts", "list_reels", "list_posts"]);
@@ -229,4 +227,26 @@ test("流量诊断：Instagram 每种格式一页（max_pages 2）、YouTube 一
   assert.equal(ttSecond.code, 2, ttSecond.out);
   assert.match(ttSecond.out, /list_account_posts failed for @neutral\.creator .*confirm the exact handle with the user/s);
   assert.deepEqual((await readdir(path.join(tt, "rejected"))).length, 1);
+});
+
+test("流量诊断：续跑时交接点名的文件还没存，停下并点名该文件与该存的结果，不当作取数为空", async (t) => {
+  const run = await newRun(t, DIAGNOSE);
+  const question = "My reach dropped on Instagram lately, why?";
+  const first = python(DIAGNOSE, "drive.py", ["fetch", "--platform", "instagram", "--handle", "neutral.creator", "--language", "en",
+    "--question-file", "-"], { cwd: run, run, input: question });
+  assert.equal(first.code, 0, first.out);
+  const saved = first.out.split("\n").find((line) => line.startsWith("  save: ")).slice(8);
+  const second = resume(resumeOf(first.out), question);
+  assert.equal(second.code, 2, second.out);
+  assert.ok(second.out.includes(`no saved result at ${saved} (save the complete collect_account_history result there)`), second.out);
+  assert.deepEqual(await placedOperations(run), []);
+  // 存好之后同一条续跑命令即可放置；再跑一次不重复取。
+  await answer(DIAGNOSE, run, first.out, composite(calls(first.out)[0].arguments, [
+    ["instagram_resolve_profile", { handle: "neutral.creator", include_post_count: true }, profile],
+    ["instagram_list_posts", { handle: "neutral.creator" }, envelope("instagram-discovery", "list_posts", igPage("FP", 6, false, null))],
+    ["instagram_list_reels", { handle: "neutral.creator", user_id: "u1" }, envelope("instagram-discovery", "list_reels", igPage("RL", 8, true, null))],
+  ], "completed"));
+  const third = resume(resumeOf(first.out), question);
+  assert.equal(third.code, 0, third.out);
+  assert.deepEqual(await placedOperations(run), ["resolve_profile", "list_posts", "list_reels"]);
 });

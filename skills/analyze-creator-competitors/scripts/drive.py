@@ -26,17 +26,16 @@ deterministic steps, and prints exactly what the next judgment reads.
     report                               Compose -> Validate -> Render
 
 A stage makes no data calls itself: it prints the calls as public MCP tool names (`call:` lines)
-for the model to make and stops; the model stages each complete result with `static_host.py
-stage`, and the same stage run again with `--placed` picks those responses up.
+for the model to make and stops; the model saves each complete result to the file named under it,
+and the same stage run again with `--placed` fetches (or stages) those files and picks them up.
 
 The hand-over, the retry of a briefly failed round, the run directory, the stage lock and the state
 file are `connector_driver.py`, the same file every other driver package ships.
 
 Two options save host round trips without changing what is fetched or judged. `--workspace W` on a
 first stage (`start`, `subject`) reserves the run directory itself when none is reserved yet, so the
-run needs no separate `static_host.py init` command. `--result <tool>=<file>` on any stage fetches
-(or, with no ready download, stages) each saved result of the last hand-over before the stage
-resumes as with `--placed`, so a hand-over costs the calls and one command.
+run needs no separate `static_host.py init` command. `--result <tool>=<file>` on any stage takes a
+saved result from another file the same way (implies `--placed`); the printed resume needs none.
 """
 
 from __future__ import annotations
@@ -389,7 +388,7 @@ def history_record(call: dict[str, Any]) -> dict[str, Any]:
         save_state(history_records=[*used, record["id"]])
         return record
     raise StageError(f"no staged {HISTORY_TOOL} result for these accounts in this run. Make the handed-over call, "
-                     f"save its result and run the printed fetch command, then run this stage again with --placed.")
+                     f"save its result to the file named under it, then run the printed resume command.")
 
 
 def copy_evidence(source: str | Path, target: Path) -> None:
@@ -1276,61 +1275,32 @@ def reserve_from_workspace(args: argparse.Namespace) -> None:
 
 
 def take_results(items: list[str]) -> None:
-    """`--result <tool>=<file>`: fetch each saved result (stage it when it holds no ready download).
-
-    The same two `static_host.py` commands the hand-over prints under each call, run here in the
-    printed order before the stage resumes, so a hand-over costs the calls and one command. Every
-    file is checked to exist before any is taken.
-    """
-    import static_host
-
+    """`--result <tool>=<file>`: take saved results the way the resume takes the files its hand-over named."""
     pairs: list[tuple[str, Path]] = []
     for item in items:
         tool, sep, name = item.partition("=")
         if not sep or not tool.strip() or not name.strip():
             raise StageError(f"--result takes <tool>=<saved result file>, not {item!r}")
         pairs.append((tool.strip(), Path(name.strip())))
-    missing = [str(path) for _, path in pairs if not path.is_file()]
+    missing = [str(path.resolve()) for _, path in pairs if not path.is_file()]
     if missing:
-        raise StageError(f"no saved result at {', '.join(missing)}: save each call's complete result to the file "
-                         "named under it (or name the file where the host saved it), then run this command again")
-    for tool, path in pairs:
-        with path.open("rb") as stream:
-            raw = stream.read(static_host.MAX_BYTES + 1)
-        try:
-            result = static_host.fetch(tool, raw)
-            how = "fetched"
-            if result.get("fetched") == 0:
-                result = static_host.stage(tool, raw)
-                how = "staged"
-        except (ValueError, OSError, KeyError, TypeError) as error:
-            raise StageError(f"{path} ({tool}): {error}") from None
-        held = result.get("duplicate")
-        say(f"[drive] {path.name}: {how} {tool}" + (" (already held)" if held is True or (held and not result.get("staged"))
-                                                   else ""))
+        raise StageError(f"no saved result at {', '.join(missing)}: save the complete result there, then run this "
+                         "command again")
+    cd.take_saved_results(pairs)
 
 
-def hand_over_in_one(calls: list[dict[str, Any]], why: str = "") -> None:
-    """The shared hand-over, plus the same resume as one command that takes every saved result itself."""
-    from static_host import public_calls
-
-    public = [mapped for call in calls for mapped in public_calls(call)]
-    results = Path("host-results")
-    first = len(list(results.glob("*.json"))) + 1 if results.is_dir() else 1
-    names = [f"host-results/{number:02d}-{mapped['tool']}.json" for number, mapped in enumerate(public, first)]
+def hand_over_with_note(calls: list[dict[str, Any]], why: str = "") -> None:
+    """The shared hand-over, plus a reminder that the results feed the resume, not the reply."""
     try:
         shared_hand_over(calls, why)
     except SystemExit:
         say("These results are this run's inputs, not the reply: whatever they show, the next step after the "
             "calls is the resume, never an answer from the returned data.")
-        say("Or, once every result above is saved, resume in one command instead (it fetches or stages each saved "
-            "result itself, in this order): " + cd.resume_command() + "".join(
-                f" --result {mapped['tool']}={name}" for mapped, name in zip(public, names)))
         raise
 
 
 shared_hand_over = cd.hand_over
-cd.hand_over = hand_over_in_one
+cd.hand_over = hand_over_with_note
 
 
 def with_results(stage):

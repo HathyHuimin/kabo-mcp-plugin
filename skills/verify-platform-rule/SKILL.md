@@ -66,9 +66,9 @@ run before the first fetch (or reuse a readiness note); if the official page ren
 ready, report the missing capability and stop.
 
 - **Hand-over.** `drive.py fetch` exits 0 after printing one `call:` line that reads every planned
-  page. That pause is unfinished work. Make exactly that call with the arguments verbatim; then do
-  what it prints under it (save the result to the named file, run the printed `fetch` command) and
-  finally run the printed resume command. Never retype or paste page text.
+  page. That pause is unfinished work. Make exactly that call with the arguments verbatim; save the
+  result to the file named under it, then run the printed resume command, which fetches the saved
+  file itself. Never retype or paste page text.
 - **Anything else** — a refused fetch, an expired link, a queued job, a failed call — follow
   `references/data-calls.md`. A failed page read is evidence: `drive.py` records that page as
   unreachable. An invalid-input error (such as a

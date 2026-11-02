@@ -67,7 +67,7 @@ into one batch call. Never retype, paste or edit returned data.
 
 - **Hand-over.** A Workflow stage that needs data exits 0 after printing the calls (`call:` lines,
   or one named tool with its JSON arguments printed above it), each followed by the file to save its
-  result in and the `fetch` command to run, and ends with the resume command. That pause is
+  result in, and ends with the resume command, which fetches each saved file itself. That pause is
   unfinished work: make exactly those calls with the arguments verbatim, all in one response, do
   what it prints, then run the resume command. The collector takes about 80 s and the enrichment
   about 40 s: wait for each result. Still read candidates from a collector's inline `items` where a

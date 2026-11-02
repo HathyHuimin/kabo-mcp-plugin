@@ -133,3 +133,21 @@ for (const [name, options, message] of [
     assert.match(placed.out, message);
   });
 }
+
+// place 自己取走存好的结果（没有就绪下载时 stage）：模型只存文件、跑 place，不再单独跑 static_host.py。
+test("place 自己 stage 存在 host-results/ 的整份组合结果；没存时点名该存的文件", async (t) => {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "kabo-ytsw-save-"));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  const run = python("static_host.py", ["init", "--workspace", workspace]).out.trim();
+  const file = path.join(run, "host-results", "01-collect_youtube_recent_videos.json");
+  const missing = place(run);
+  assert.equal(missing.code, 2, missing.out);
+  assert.ok(missing.out.includes(`save its complete result to ${file} and run place again`), missing.out);
+  const value = collection();
+  await writeFile(file, JSON.stringify({ content: [{ type: "text", text: JSON.stringify(value) }], structuredContent: value }));
+  const placed = place(run);
+  assert.equal(placed.code, 0, placed.out);
+  assert.deepEqual(JSON.parse(placed.out).merge, { status: "ok", search_ids: 60, detail_rows: 60, merged: 60, views_filled: 60 });
+  const again = place(run);
+  assert.equal(again.code, 0, again.out);
+});

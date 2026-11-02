@@ -31,8 +31,8 @@ account-relative multiple, is not a short-window copy ask: it stays in this work
   same request, repeat its exact arguments and add `--placed`. Run a command a stage prints
   exactly as printed.
 - **Hand-over.** A stage that needs data exits 0 after printing one `call:` line per call, each
-  followed by the file to save its result in and the `fetch` command to run, and ends with the
-  resume command. Do exactly that (see *Data calls* in `SKILL.md`). `discover` and `rank` each hand
+  followed by the file to save its result in, and ends with the resume command, which fetches each
+  saved file itself. Do exactly that (see *Data calls* in `SKILL.md`). `discover` and `rank` each hand
   over one backend call that runs that stage's whole retrieval; `start --video` hands over the source
   video. Do not make data calls a stage has not printed.
 - Failed calls: see `references/data-calls.md` and *Data calls* in `SKILL.md`.

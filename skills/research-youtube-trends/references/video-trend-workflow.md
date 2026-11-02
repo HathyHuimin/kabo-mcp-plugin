@@ -28,8 +28,8 @@ stop this workflow and use the short-window route (`references/short-window.md`)
   same request, repeat its exact arguments and add `--placed`. Run a command a stage prints
   exactly as printed.
 - **Hand-over.** A stage that needs data exits 0 after printing one `call:` line per call, each
-  followed by the file to save its result in and the `fetch` command to run, and ends with the
-  resume command. Do exactly that (see *Data calls* in `SKILL.md`), and handle a failed call as
+  followed by the file to save its result in, and ends with the resume command, which fetches each
+  saved file itself. Do exactly that (see *Data calls* in `SKILL.md`), and handle a failed call as
   that section says. Do not make data calls a stage has not printed. `collect_youtube_trend_candidates` and `enrich_youtube_shortlist` take their printed
   arguments directly, not inside `parameters`.
 - A stage can still be running when the command first returns output; when your shell tool lets

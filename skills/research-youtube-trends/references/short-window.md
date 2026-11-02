@@ -26,13 +26,13 @@ plays: a collection on a short-window ask is a failed delivery, not a reason to 
      days>", "published_before": "<until>", "order": "viewCount"}`.
 
    Add `"delivery": "download"` and leave every other argument at its default. Save the complete
-   result as `host-results/01-collect_youtube_recent_videos.json` and fetch it at once:
+   result as is, download link included and `calls` whole, to
+   `<run directory>/host-results/01-collect_youtube_recent_videos.json` (with the host's file-write
+   ability or a single-quoted heredoc, never as a command-line argument); never call
+   `get_research_data_download` yourself.
 
-   ```bash
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool collect_youtube_recent_videos --input 'host-results/01-collect_youtube_recent_videos.json'
-   ```
-
-4. Place and merge it with the frozen window:
+4. Place and merge it with the frozen window right away (`place` fetches the saved file itself;
+   links expire in 10 minutes):
 
    ```bash
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/complete_youtube_short_window.py' place --since <since> --until <until> --output short-window-input.json

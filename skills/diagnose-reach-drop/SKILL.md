@@ -77,9 +77,8 @@ Public account history comes from one `collect_account_history` call that `drive
 over: the backend resolves the account and fetches its bounded recent history in that one call.
 
 - **Hand-over.** `drive.py fetch` exits 0 after printing a `call:` line. That pause is unfinished
-  work. Make exactly that call with the arguments verbatim; then do what it prints under the call
-  (save the result to the named file, run the printed `fetch` command) and finally run the printed
-  resume command. Never retype, paste, hand-write or patch data.
+  work. Make exactly that call with the arguments verbatim; save the result to the file named under
+  it, then run the printed resume command, which fetches the saved file itself. Never retype, paste, hand-write or patch data.
 - **Anything else** — a refused fetch, an expired link, a queued job or a failed call — follow
   `references/data-calls.md`. An invalid-input error is never retried unchanged: confirm the exact
   handle with the user.

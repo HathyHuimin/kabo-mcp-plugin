@@ -9,8 +9,8 @@ naming public MCP tools; `--placed` picks the staged responses up), one more han
 the data service briefly failed, the run directory, the stage lock and the stage state file.
 
 This package makes no data calls itself (`fetch` always raises `NoOutbox`), so every round is
-handed over: the model makes the printed calls, stages each complete result with
-`static_host.py stage`, and runs the stage again with `--placed`.
+handed over: the model makes the printed calls, saves each complete result to the file named
+under it, and runs the stage again with `--placed`, which fetches (or stages) those files itself.
 
 Where a stage runs. The first stage of a run (`start`, or `fetch`) works in the run directory that
 `static_host.py init` reserved (`KABO_STATIC_RUN_DIR`). Every later stage runs only from inside the
@@ -257,28 +257,108 @@ def resume_command() -> str:
             + " ".join(f"'{arg}'" if re.search(r"[^\w./=:-]", arg) else arg for arg in stage) + " --placed")
 
 
+# 交接点名的结果文件（绝对路径，按调用顺序）与续跑已取走的文件（路径 -> 内容 sha256），记在本次运行的状态里。
+AWAITING = "awaiting_results"
+TAKEN = "taken_results"
+# 每轮交接都打印，所以要短。实测里模型把组合结果里的 calls[] 逐个拿去 get_research_data_download、
+# 用命令行参数传 base64 写文件（参数过长）、在错的目录里跑 stage——这里各说一次。
+SAVE_RULE = ("Save each result as is, download link included, to the absolute path under it; write the file with "
+             "your file-write tool or a single-quoted heredoc, never by passing the result as a command-line argument. "
+             "A result that lists `calls` is saved whole, as one file: never call get_research_data_download and "
+             "never download anything yourself.")
+
+
+def await_results(tools: list[str]) -> list[Path]:
+    """Name one file under this run's host-results/ per handed-over call, in call order, and remember them.
+
+    The paths are absolute, so a save from another working directory still lands in this run; the
+    resume takes exactly these files (`take_handed_results`).
+    """
+    results = Path.cwd() / "host-results"
+    first = len(list(results.glob("*.json"))) + 1 if results.is_dir() else 1
+    files = [results / f"{number:02d}-{tool}.json" for number, tool in enumerate(tools, first)]
+    save_state(**{AWAITING: [{"tool": tool, "file": str(file)} for tool, file in zip(tools, files)]})
+    return files
+
+
+def say_resume() -> None:
+    say("Then run this one command right away (it fetches and checks every saved result; links expire in 10 "
+        "minutes): " + resume_command())
+
+
 def hand_over(calls, why=""):
-    # 每条调用后面直接打印要存的文件名与 fetch 命令，结尾打印续跑命令：模型照抄即可，不必自己拼路径
-    # （实测里模型猜过不存在的参数、写错过运行目录，最后绕开脚本自己复制、下载，跳过了整条存证）。
+    # 每条调用下面打印要存的绝对路径，结尾只打印一条续跑命令：续跑自己 fetch（没有就绪下载时 stage）
+    # 每个存好的结果，模型不再单独跑 static_host.py。
     from static_host import public_calls
     public = [mapped for call in calls for mapped in public_calls(call)]
-    results = Path("host-results")
-    first = len(list(results.glob("*.json"))) + 1 if results.is_dir() else 1
-    say(f"Hand-over: make these {len(public)} call(s) now, each as its own individual call (never combined into "
-        "one batch call), all in one response, with the arguments verbatim. Each result holds a download link: never "
-        "download it yourself with a shell command or a browser. In the order below, save each result itself, link included and "
-        "unchanged, to the file named under it (the host's result export, or the result text as returned written "
-        "with a single-quoted heredoc) and run the command under it at once: fetch downloads and checks the data; "
-        "links expire in 10 minutes. When fetch reports no ready download, run the same command with stage in "
-        "place of fetch.")
-    for number, mapped in enumerate(public, first):
-        saved = f"host-results/{number:02d}-{mapped['tool']}.json"
+    files = await_results([mapped["tool"] for mapped in public])
+    say(f"Hand-over: make these {len(public)} call(s) now, each as its own call (never combined into one batch "
+        "call), all in one response, with the arguments verbatim. " + SAVE_RULE)
+    for mapped, file in zip(public, files):
         say(HANDOVER_PREFIX + json.dumps(mapped, ensure_ascii=False))
-        say(f"  save: {saved}")
-        say(f"  then: cd '{Path.cwd()}' && KABO_STATIC_RUN_DIR='{Path.cwd()}' python3 "
-            f"'{SCRIPTS / 'static_host.py'}' fetch --tool {mapped['tool']} --input '{saved}'")
-    say("When every result above is fetched or staged, resume: " + resume_command())
+        say(f"  save: {file}")
+    say_resume()
     raise SystemExit(0)
+
+
+def take_saved_results(pairs: list[tuple[str, Path]]) -> None:
+    """Fetch each saved result (stage it when it holds no ready download), in order, each file once.
+
+    The same `static_host` fetch and stage the model used to run by hand. Every file is read before
+    any is taken; a file already taken with the same bytes is skipped, so a resume run again does not
+    download an expired link a second time.
+    """
+    import static_host
+
+    read = []
+    for tool, path in pairs:
+        try:
+            with path.open("rb") as stream:
+                read.append((tool, path, stream.read(static_host.MAX_BYTES + 1)))
+        except OSError as error:
+            raise StageError(f"cannot read {path} ({error.strerror or error}); save the complete {tool} result "
+                             "there, then run the same resume command again") from None
+    taken = dict(state().get(TAKEN) or {})
+    for tool, path, raw in read:
+        digest = hashlib.sha256(raw).hexdigest()
+        if taken.get(str(path)) == digest:
+            continue
+        try:
+            result, how = static_host.fetch(tool, raw), "fetched"
+            if result.get("fetched") == 0:
+                result, how = static_host.stage(tool, raw), "staged"
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            raise StageError(f"{path} does not hold a usable {tool} result ({error}). Save the complete {tool} "
+                             "result there as returned (a result that lists `calls` whole, download link included), "
+                             "then run the same resume command again") from None
+        taken[str(path)] = digest
+        save_state(**{TAKEN: taken})
+        held = result.get("duplicate")
+        say(f"[drive] {path.name}: {how} {tool}"
+            + (" (already held)" if held is True or (held and not result.get("staged")) else ""))
+
+
+def take_handed_results(calls: list[dict[str, Any]], handed_at: str, placed: bool, optional: bool = False) -> None:
+    """Before a handed-over round is placed, take the results its hand-over named.
+
+    Each named file that exists is fetched or staged (`take_saved_results`). Nothing is taken when the
+    host already recorded a response for every call of the round some other way (a result fetched by
+    hand, a link renewed after it expired). With `--placed`, a named file that does not exist stops the
+    stage with its path, unless the round is `optional` (its placement goes on without the answers
+    that did not come back, and names them).
+    """
+    awaited = [(str(item["tool"]), Path(str(item["file"]))) for item in state().get(AWAITING) or []
+               if isinstance(item, dict) and item.get("tool") and item.get("file")]
+    if not awaited or made_since(calls, handed_at):
+        return
+    missing = [(tool, path) for tool, path in awaited if not path.is_file()]
+    if missing and placed and optional:
+        say("[drive] nothing saved at " + ", ".join(str(path) for _, path in missing) + "; placing what came back")
+    elif missing and placed:
+        raise StageError("no saved result at " + "; ".join(f"{path} (save the complete {tool} result there)"
+                                                           for tool, path in missing)
+                         + ". Save each result as is, download link included, then run the same resume command again")
+    take_saved_results([pair for pair in awaited if pair not in missing])
 
 
 def fetch_or_hand_over(calls: list[dict[str, Any]], placed: bool,
@@ -543,6 +623,9 @@ def fetch_round(calls: list[dict[str, Any]], args: argparse.Namespace, place_res
     if key in done:
         return False
     handed = dict(current.get("handed") or {})
+    if key in handed:
+        # 交接点名的结果文件由续跑自己 fetch / stage，模型只存文件、跑一条续跑命令。
+        take_handed_results(calls, str(handed[key]), args.placed, optional)
     if not args.placed and key in handed:
         if made_since(calls, str(handed[key])):
             say("[drive] the calls handed over earlier were made; placing their responses (as --placed would)")

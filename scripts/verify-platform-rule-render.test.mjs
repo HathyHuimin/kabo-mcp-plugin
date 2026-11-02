@@ -4,6 +4,7 @@
 // 夹具是中性的合成页面正文，只用登记表里已有的官方页面 URL。
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -59,16 +60,15 @@ async function handedOver(t) {
   return { run, first, calls };
 }
 
+// 模型只把结果原样存进交接点名的文件、跑续跑命令；续跑自己 fetch（没有就绪下载时 stage）。
 async function placeComposite(run, value) {
   const file = path.join(run, "host-results", "01-render_official_pages.json");
   await writeFile(file, JSON.stringify({ content: [{ type: "text", text: JSON.stringify(value) }], structuredContent: value }));
-  const staged = python("static_host.py", ["stage", "--tool", "render_official_pages", "--input", file], { cwd: run, run });
-  assert.equal(staged.code, 0, staged.out);
   return python("drive.py", [...FETCH, "--placed"], { cwd: run, run });
 }
 
 test("fetch 交出一条 render_official_pages：全部计划页面、带 source_id 与下载交付", async (t) => {
-  const { first, calls } = await handedOver(t);
+  const { run, first, calls } = await handedOver(t);
   assert.deepEqual(calls.map((call) => call.tool), ["render_official_pages"]);
   const { pages, delivery } = calls[0].arguments;
   assert.equal(delivery, "download");
@@ -80,8 +80,11 @@ test("fetch 交出一条 render_official_pages：全部计划页面、带 source
   ]);
   // 只有登记页本身带 source_id；随源一起读的 watch 页没有。
   assert.deepEqual(pages.map((p) => p.source_id), ["instagram.originality", undefined, "instagram.reels_feature", undefined]);
-  assert.match(first.out, /save: host-results\/01-render_official_pages\.json/);
-  assert.match(first.out, /static_host\.py' fetch --tool render_official_pages/);
+  // 交接只点名存放文件（绝对路径）与一条续跑命令，不再让模型自己跑 fetch / stage。
+  assert.ok(first.out.includes(`  save: ${path.join(run, "host-results", "01-render_official_pages.json")}`), first.out);
+  assert.doesNotMatch(first.out, /static_host\.py' (?:fetch|stage)/);
+  assert.match(first.out, /^Then run this one command right away .*drive\.py' fetch .*--placed$/m);
+  assert.match(first.out, /never call get_research_data_download/);
 });
 
 test("组合结果按 page-<i> 绑回：读到的页面可引用，失败 / 未渲染 / 跳出主机的记为 unreachable，报告通过校验", async (t) => {
@@ -124,4 +127,13 @@ test("组内回答的不是计划里那一页时整轮拒绝，不改标签", as
   const placed = await placeComposite(run, value);
   assert.notEqual(placed.code, 0);
   assert.match(placed.out, /page-0 answers .* not the planned page .*no page was relabelled/);
+});
+
+test("续跑时交接点名的文件不存在：一句话点名文件与该存什么，什么都不放", async (t) => {
+  const { run } = await handedOver(t);
+  const placed = python("drive.py", [...FETCH, "--placed"], { cwd: run, run });
+  assert.equal(placed.code, 2, placed.out);
+  const file = path.join(run, "host-results", "01-render_official_pages.json");
+  assert.ok(placed.out.includes(`no saved result at ${file} (save the complete render_official_pages result there)`), placed.out);
+  assert.equal(existsSync(path.join(run, "analysis", "rule-input.json")), false);
 });

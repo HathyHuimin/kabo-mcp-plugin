@@ -56,8 +56,8 @@ batch call. Never retype, paste or edit returned data.
 
 - **Hand-over.** A `drive.py` stage that needs data exits 0 after printing a `call:` line per call.
   That pause is unfinished work. Make exactly those calls with the arguments verbatim, all in one
-  response; then do what it prints under each call (save the complete result to the named file, run
-  the printed `fetch` command) and finally run the printed resume command.
+  response; save each complete result to the file named under it, then run the printed resume
+  command, which fetches each saved file itself.
 - **Routes without the driver** make the calls their reference names, with exactly the documented
   parameters, and save each complete result as `host-results/<NN>-<tool-name>.json` (numbered in
   call order across the run), then fetch it at once:

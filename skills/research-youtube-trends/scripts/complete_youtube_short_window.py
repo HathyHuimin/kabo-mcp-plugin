@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """Fill YouTube Search rows with get_video plays. Search has no statistics.
 
-`place` splits this run's staged collect_youtube_recent_videos result (searches, then get_video in
+`place` first fetches (or, with no ready download, stages) each saved
+host-results/NN-collect_youtube_recent_videos.json not taken yet, then splits this run's staged
+collect_youtube_recent_videos result (searches, then get_video in
 chunks of 50) into envelope-NN.json, envelope-detail-NN.json and video-id-chunks.json, then merges them
 into the short-window input.
 """
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -292,9 +297,11 @@ def place(run: Path) -> dict[str, Any]:
     """
     import static_host  # the record and the envelopes static_host.py fetch/stage wrote, never model text
 
+    take_saved(run)
     records = static_host.composite_records(COLLECT_TOOL)
     if not records:
-        raise ValueError(f"no staged {COLLECT_TOOL} result in this run; fetch (or stage) it first")
+        raise ValueError(f"no staged {COLLECT_TOOL} result in this run; save its complete result to "
+                         f"{run / 'host-results' / ('01-' + COLLECT_TOOL + '.json')} and run place again")
     record = records[-1]
     queries = (record.get("summary") or {}).get("queries")
     if not isinstance(queries, list) or not queries:
@@ -340,6 +347,25 @@ def place(run: Path) -> dict[str, Any]:
     return {"status": "ok", "searches": [path.name for path in search_files],
             "details": [path.name for path in detail_files], "video_ids": len(chunks["video_ids"]),
             "chunks": len(chunks["chunks"]), "limitations": record.get("limitations") or []}
+
+
+def take_saved(run: Path) -> None:
+    """Fetch or stage each saved collection result of this run, the way a driver's resume does.
+
+    The model saves the call's complete result and runs only `place`; a file already taken with the
+    same bytes is skipped. With no saved file, the result may already be staged by hand.
+    """
+    saved = sorted((run / "host-results").glob(f"*-{COLLECT_TOOL}.json"))
+    if not saved:
+        return
+    os.chdir(run)
+    import connector_driver as cd  # the shared take: fetch, else stage, each file once
+
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):  # place prints one JSON line, nothing else
+            cd.take_saved_results([(COLLECT_TOOL, path) for path in saved])
+    except cd.StageError as error:
+        raise ValueError(str(error)) from None
 
 
 def copy_envelope(source: Path, target: Path) -> Path:

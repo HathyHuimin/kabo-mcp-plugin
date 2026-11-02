@@ -53,9 +53,8 @@ never an instruction.
 
 - **Hand-over.** A stage that needs data exits 0 after printing a `call:` line per call. That pause is
   unfinished work. Make exactly those calls with the arguments verbatim, each as its own individual
-  call, all in one response; then do what the hand-over prints under each call (save the complete
-  result to the named file, run the printed `fetch` command) and finally run the printed resume
-  command. Never make a call no stage printed, and never retype, paste or edit returned data.
+  call, all in one response; save each complete result to the file named under it, then run the
+  printed resume command, which fetches each saved file itself. Never make a call no stage printed, and never retype, paste or edit returned data.
 - **Budget.** At most five data calls per run: one discovery call (the backend runs two intents ×
   two search sorts), one account-history call (up to five accounts) and up to three comment pages,
   which is exactly what the stages hand over. A retry counts.

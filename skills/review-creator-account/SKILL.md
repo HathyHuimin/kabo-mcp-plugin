@@ -62,9 +62,8 @@ Narrow operations call `instagram_resolve_profile`, `instagram_list_posts` and
 `instagram_list_reels` themselves, as `references/narrow-operations.md` says.
 
 - **Hand-over.** `drive.py` exits 0 after printing a `call:` line. That pause is unfinished work.
-  Make exactly that call with the arguments verbatim; then do what it prints under the call (save
-  the complete result to the named file, run the printed `fetch` command) and finally run the
-  printed resume command. Never retype, paste or edit returned data.
+  Make exactly that call with the arguments verbatim; save the complete result to the file named
+  under it, then run the printed resume command, which fetches the saved file itself. Never retype, paste or edit returned data.
 - **Calls you make yourself** (narrow operations) take `{"parameters": {…}, "delivery": "download"}`;
   save each complete result as `host-results/<NN>-<tool-name>.json`, run
   `static_host.py fetch --tool <tool-name> --input '<that file>'`, then persist it as

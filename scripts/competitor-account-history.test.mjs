@@ -3,7 +3,7 @@
 // content（只补还欠页的账号，通常没有）。这里用中性的小 fixture 跑驱动：核对交出的调用逐字节、
 // 组合结果按记录逐项放到原来的文件名，下游快照构建一路跑到打印综合判断的输入。
 // 少一次宿主往返的两个入口也在这里测：首个阶段带 --workspace 自己占运行目录（不用单独 init），
-// 续跑命令带 --result 自己 fetch / stage 存好的结果（一条命令代替「每条 stage + 续跑」）。
+// 续跑（--placed）自己 fetch / stage 交接点名的文件（一条命令代替「每条 stage + 续跑」）；--result 仍可另指文件。
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, realpath, rm, writeFile, access } from "node:fs/promises";
@@ -65,17 +65,16 @@ const realpathOf = (dir) => realpath(dir);
 const runDirOf = (out) => /^run directory: (.+)$/m.exec(out)?.[1];
 // 交接末尾打印的「一条命令续跑」：去掉 cd / 环境变量前缀，只留参数。
 const oneCommand = (out) => {
-  const line = out.split("\n").find((l) => l.startsWith("Or, once every result above is saved"));
+  const line = out.split("\n").find((l) => l.startsWith("Then run this one command"));
   const command = line.slice(line.indexOf("cd '"));
   return [...command.slice(command.indexOf("drive.py'") + "drive.py'".length).matchAll(/'([^']*)'|(\S+)/g)]
     .map((m) => m[1] ?? m[2]);
 };
 
+// 模型只把结果原样存进交接点名的文件（绝对路径）；续跑自己取。
 async function answer(runDir, item, result) {
-  const file = path.join(runDir, item.save);
-  await writeFile(file, JSON.stringify({ structuredContent: result }));
-  const staged = run([path.join(scripts, "static_host.py"), "stage", "--tool", item.call.tool, "--input", file], runDir, runDir);
-  assert.equal(staged.code, 0, staged.out);
+  assert.ok(path.isAbsolute(item.save) && item.save.startsWith(runDir), item.save);
+  await writeFile(item.save, JSON.stringify({ structuredContent: result }));
 }
 
 test("竞品账号取数：subject / select 各交出一次 collect_account_history（IG 的 Reels 历史随 select 一起取，content 不再交接），结果逐项落到原来的文件", async (t) => {
@@ -95,9 +94,9 @@ test("竞品账号取数：subject / select 各交出一次 collect_account_hist
     delivery: "download" } }]);
   // 一条命令续跑：存好结果后只跑这一条，它自己 stage（结果里没有就绪下载）再续跑。
   const resume = oneCommand(step.out);
-  assert.deepEqual(resume.slice(0, 5), ["subject", "--workspace", workspace, "--handle", "neutral.creator"]);
-  assert.ok(resume.includes("--placed") && resume.at(-1) === `collect_account_history=${calls[0].save}`, resume.join(" "));
-  await writeFile(path.join(runDir, calls[0].save), JSON.stringify({ structuredContent: composite([
+  assert.deepEqual(resume, ["subject", "--workspace", workspace, "--handle", "neutral.creator", "--placed"]);
+  assert.match(step.out, /not the reply/);
+  await writeFile(calls[0].save, JSON.stringify({ structuredContent: composite([
     call("instagram_resolve_profile", { handle: "neutral.creator", include_post_count: true }, "acct-0", profile("neutral.creator", 1)),
     call("instagram_list_reels", { handle: "neutral.creator", user_id: "id-neutral.creator" }, "acct-0", reels("neutral.creator", 1, [2, 5, 9])),
   ], [summary("acct-0", "neutral.creator", 1)]) }));
@@ -184,4 +183,25 @@ test("竞品主体：IG 账号解析不到时同一次调用带回候选，打�
   assert.match(step.out, /ask the user which public account they mean/);
   assert.doesNotMatch(step.out, /competitor-research-request|caption phrases:/, "no Request is written before the user confirms");
   assert.equal(handed(step.out).length, 0);
+});
+
+test("竞品主体：--result 另指一份存好的结果时照样取走（等同 --placed）；文件不存在时点名该文件", async (t) => {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "kabo-acc-result-"));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  let step = run([path.join(scripts, "drive.py"), "subject", "--workspace", workspace, "--handle", "neutral.creator"], workspace);
+  assert.equal(step.code, 0, step.out);
+  const runDir = runDirOf(step.out);
+  const elsewhere = path.join(runDir, "saved-elsewhere.json");
+  const subject = ["subject", "--workspace", workspace, "--handle", "neutral.creator"];
+  step = run([path.join(scripts, "drive.py"), ...subject, "--result", `collect_account_history=${elsewhere}`], runDir, runDir);
+  assert.equal(step.code, 2, step.out);
+  assert.ok(step.out.includes(`no saved result at ${elsewhere}`), step.out);
+  await writeFile(elsewhere, JSON.stringify({ structuredContent: composite([
+    call("instagram_resolve_profile", { handle: "neutral.creator", include_post_count: true }, "acct-0", profile("neutral.creator", 1)),
+    call("instagram_list_reels", { handle: "neutral.creator", user_id: "id-neutral.creator" }, "acct-0", reels("neutral.creator", 1, [2, 5, 9])),
+  ], [summary("acct-0", "neutral.creator", 1)]) }));
+  step = run([path.join(scripts, "drive.py"), ...subject, "--result", `collect_account_history=${elsewhere}`], runDir, runDir);
+  assert.equal(step.code, 0, step.out);
+  assert.match(step.out, /saved-elsewhere\.json: staged collect_account_history/);
+  assert.match(step.out, /subject history: completed, 3 rows/);
 });
