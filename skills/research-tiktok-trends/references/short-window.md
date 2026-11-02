@@ -1,7 +1,7 @@
 # Short window: hottest and fastest-rising
 
 Read this whole file before the first call of this route. `<run directory>` and
-`<skill directory>` are the absolute paths from *Set up one run* in `SKILL.md`; run every command
+`<skill directory>` are the absolute paths from *Running commands* in `SKILL.md`; run every command
 from the run directory.
 
 Use this route when the requested window is seven days or shorter (the last day, the last 48
@@ -37,7 +37,7 @@ cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill di
 ```
 
 Keep each completed response at its own slot before building. The placement refuses a failed
-response, and a call that still fails after its one retry (*Failed tool calls* in `SKILL.md`)
+response, and a call that still fails after its one retry (`references/data-calls.md`)
 leaves its slot empty. Then the short-window report cannot be completed: say so and stop. Never
 build the layers from the remaining lanes. Missing collections, or only failed responses, stop the
 builder rather than proving zero results. A completed empty collection remains
@@ -118,4 +118,4 @@ It recomputes the original strict validation and requires the existing report by
 exactly; it never creates or rewrites a report. No connector call, new run or extra evidence is
 needed. Do not emit, return or claim success from the rendered file until this final step
 succeeds; then deliver `creator-report.md` after the complete-report language check in `SKILL.md`
-(*Deliver once*).
+(*Language at delivery*).
