@@ -3,7 +3,7 @@ name: analyze-creator-competitors
 description: "Find and compare Instagram or YouTube competitors of a creator or product: discover comparable accounts from a name, handle, post link or niche, or compare named accounts; separate direct competitors from adjacent and media references; surface same-account outlier posts, repeated mechanisms, differentiation and topics nobody covers yet, optionally from audience comments. Use for competitor discovery, positioning gaps, or adapting proven topics, hooks or structures without copying."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts collect_instagram_trend_candidates collect_youtube_trend_candidates lookup_instagram_post instagram_search_accounts instagram_resolve_profile instagram_list_reels instagram_search_profiles instagram_list_comments youtube_search_channels youtube_get_channel youtube_list_channel_uploads youtube_list_comments
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts collect_instagram_trend_candidates collect_youtube_trend_candidates lookup_instagram_post collect_account_history instagram_search_accounts instagram_search_profiles instagram_list_comments youtube_search_channels youtube_get_channel youtube_list_comments
 ---
 
 # Analyze Creator Competitors

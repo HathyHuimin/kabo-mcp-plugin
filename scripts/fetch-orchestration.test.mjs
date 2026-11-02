@@ -23,7 +23,7 @@ export const HANDOVER_CALL = /\b(?:fetch_round|fetch_or_hand_over|hand_over)\(/;
 export const HOST_PROBE = /connector-outbox|\boutbox_dir\b|\bCODEX_THREAD_ID\b|\bturn_token\b/;
 
 const HANDOVER_SITES = {
-  "analyze-creator-competitors": 12,
+  "analyze-creator-competitors": 6,
   "analyze-tiktok-competitors": 3,
   "diagnose-reach-drop": 5,
   "research-instagram-trends": 5,

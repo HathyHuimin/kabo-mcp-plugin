@@ -90,8 +90,8 @@ cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill di
 cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' subject --channel-id <UC… channel id>
 ```
 
-It retrieves the subject profile and one bounded page of the subject's own recent public items,
-prints the profile, writes and prints `caption_phrases`, then prints the Request and intents
+It retrieves the subject profile and one bounded page of the subject's own recent public items in
+one `collect_account_history` call, prints the profile, writes and prints `caption_phrases`, then prints the Request and intents
 schemas.
 
 - If that history is failed, unsupported or empty, write one data gap and continue competitor
@@ -110,7 +110,7 @@ schemas.
 
 If no returned candidate supports the requested identity, stop as unresolved instead of assigning
 an unrelated market. When only a YouTube @handle is known, run `subject --platform youtube --handle
-<@handle>`: the driver resolves it to its channel id with `youtube_get_channel` first (a bare
+<@handle>`: the same call resolves it to its channel before reading the uploads (a bare
 `--handle` without `--platform youtube` means Instagram). For an explicit YouTube @handle, the
 driver preserves that handle and requires the fetched profile's canonical public handle to match it; a bio mention or promotion of
 the product does not establish that identity. A mismatch or missing handle proof stops before
