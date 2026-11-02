@@ -548,9 +548,12 @@ def offered_models(path):
     structured = from_file.get("structuredContent", from_file) if isinstance(from_file, dict) else {}
     if isinstance(structured, dict) and "content" in structured and "status" not in structured:
         structured = json.loads(structured["content"][0]["text"])
-    models = structured.get("talking_models") if isinstance(structured, dict) else None
+    # all_models 时服务端给全部档位（talking_model_choices，第一档是默认）；旧服务端只有 talking_models。
+    models = None
+    if isinstance(structured, dict):
+        models = structured.get("talking_model_choices") or structured.get("talking_models")
     if not isinstance(models, list) or not models:
-        raise ValueError("That result lists no talking_models; use the waiting_script result of get_remake_video")
+        raise ValueError("That result lists no talking models; use the waiting_script result of get_remake_video")
     return [m.get("id") for m in models if isinstance(m, dict)], structured.get("job_id")
 
 

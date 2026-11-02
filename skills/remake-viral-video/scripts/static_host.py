@@ -67,7 +67,11 @@ RUN_DIRS = ("host-results", "brief", "script", "render", "output")
 # 与 start_remake_video 的入参约束一致；服务端仍会再校验一次。
 YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}
 INSTAGRAM_HOSTS = {"instagram.com", "www.instagram.com"}
-TIKTOK_HOSTS = {"tiktok.com", "www.tiktok.com", "m.tiktok.com", "vm.tiktok.com", "vt.tiktok.com"}
+TIKTOK_HOSTS = {"tiktok.com", "www.tiktok.com", "m.tiktok.com"}
+TIKTOK_SHORT_HOSTS = {"vm.tiktok.com", "vt.tiktok.com"}
+TIKTOK_USER = re.compile(r"^@[A-Za-z0-9._]{1,64}$")
+TIKTOK_ID = re.compile(r"^[0-9]{6,25}$")
+TIKTOK_CODE = re.compile(r"^[A-Za-z0-9]{5,20}$")
 CREATOR_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 LANGUAGE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$")
 HANDLE = re.compile(r"^@?[A-Za-z0-9._]{1,30}$")
@@ -121,14 +125,25 @@ def _url(raw, role):
     url = raw.strip()
     parts = urlsplit(url)
     host = (parts.hostname or "").lower()
-    if host in TIKTOK_HOSTS:
-        raise ValueError(f"{role}: TikTok links are not supported by this version; use a YouTube or Instagram link")
-    if parts.scheme != "https" or host not in YOUTUBE_HOSTS | INSTAGRAM_HOSTS or parts.username or parts.port:
-        raise ValueError(f"{role} must be an https YouTube or Instagram video link")
+    if parts.scheme != "https" or host not in YOUTUBE_HOSTS | INSTAGRAM_HOSTS | TIKTOK_HOSTS | TIKTOK_SHORT_HOSTS \
+            or parts.username or parts.port:
+        raise ValueError(f"{role} must be an https YouTube, Instagram or TikTok video link")
     if not parts.path.strip("/"):
         raise ValueError(f"{role} must link to one video, not a home page")
     if any(ord(char) <= 32 or ord(char) == 127 for char in url):
         raise ValueError(f"{role} link contains spaces or control characters")
+    # TikTok 与服务端 remakeVideoLink 一致：长链规范成 www 写法（幂等键对得上），短链原样交给服务端解析。
+    segments = [s for s in parts.path.split("/") if s]
+    if host in TIKTOK_HOSTS:
+        if len(segments) != 3 or not TIKTOK_USER.match(segments[0]) or segments[1] != "video" \
+                or not TIKTOK_ID.match(segments[2]):
+            raise ValueError(f"{role} must be a TikTok video link like https://www.tiktok.com/@name/video/123..."
+                             " (photo posts are not supported)")
+        return f"https://www.tiktok.com/{segments[0]}/video/{segments[2]}"
+    if host in TIKTOK_SHORT_HOSTS:
+        if len(segments) != 1 or not TIKTOK_CODE.match(segments[0]):
+            raise ValueError(f"{role} must be a TikTok share link like https://vm.tiktok.com/ABC123/")
+        return f"https://{host}/{segments[0]}/"
     return url
 
 
@@ -137,7 +152,7 @@ def _same_video(a, b):
     def key(url):
         parts = urlsplit(url)
         host = (parts.hostname or "").lower()
-        family = "youtube" if host in YOUTUBE_HOSTS else "instagram"
+        family = "youtube" if host in YOUTUBE_HOSTS else "tiktok" if host in TIKTOK_HOSTS | TIKTOK_SHORT_HOSTS else "instagram"
         path = parts.path.rstrip("/").lower()
         video = parse_qs(parts.query).get("v", [""])[0]
         if host == "youtu.be":
@@ -418,6 +433,49 @@ def fetch_brief(run, structured, loaded=None):
     return result
 
 
+# 终审转述由脚本定稿：review.qc.failed 是唯一来源，交付说明里的自检、qc 行不进转述（模型会把它们当结论）。
+QC_ITEMS = {
+    "framing": "the shot is framed differently from the reference (for example wider or tighter)",
+    "caption_overlap": "captions overlap the speaker or another caption",
+    "overlay_on_face": "on-screen text covers the face",
+    "glyphs": "some characters may render wrongly",
+    "fake_captions": "caption text may not match the speech",
+    "speech": "the voice may be unclear or cut",
+    "line_tails": "line endings may be clipped",
+    "loudness": "the volume is off",
+    "duration_vs_reference": "the length differs a lot from the reference",
+    "insert_padded": "an inserted shot was stretched",
+    "original_person": "the reference's speaker may still appear",
+}
+NOTE_SECTIONS = ("## Rewritten lines", "## Notes from the run")
+NOTE_NOISE = re.compile(r"\bqc\b|failed \[|self-check|likeness|verdict", re.I)
+
+
+def review_relay(structured):
+    review = structured.get("review") if isinstance(structured.get("review"), dict) else {}
+    qc = review.get("qc") if isinstance(review.get("qc"), dict) else None
+    message = None
+    if qc is not None:
+        failed = [str(item) for item in qc.get("failed") or [] if str(item).strip()]
+        if failed:
+            items = "; ".join(QC_ITEMS.get(item, item) for item in failed)
+            message = ("The video was delivered, but Kabo's final automated checks flagged: " + items
+                       + ". Please check those moments before publishing.")
+        elif qc.get("status") == "incomplete":
+            message = "Some of Kabo's final checks could not be measured."
+    notes = []
+    text = review.get("delivery_notes")
+    if isinstance(text, str):
+        section = None
+        for line in text.splitlines():
+            if line.startswith("## "):
+                section = line.strip()
+                continue
+            if section in NOTE_SECTIONS and line.startswith("- ") and not NOTE_NOISE.search(line):
+                notes.append(line[2:].strip()[:300])
+    return {"review_message": message, "notes_for_user": notes[:6]}
+
+
 def fetch_video(run, structured):
     video = structured.get("video")
     if structured.get("status") != "delivered" or not isinstance(video, dict) or not isinstance(video.get("download"), dict):
@@ -432,7 +490,8 @@ def fetch_video(run, structured):
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                 existing.update(chunk)
         if existing.hexdigest() == descriptor.get("sha256"):
-            return {"saved": "video", "job_id": job_id, "status": "already_saved", "path": str(final)}
+            return {"saved": "video", "job_id": job_id, "status": "already_saved", "path": str(final),
+                    **review_relay(structured)}
         raise ValueError("A different video is already saved at " + str(final))
     partial = run / "output" / f".partial-{secrets.token_hex(6)}"
     try:
@@ -447,7 +506,8 @@ def fetch_video(run, structured):
     finally:
         if partial.exists():
             partial.unlink()
-    return {"saved": "video", "job_id": job_id, "sha256": digest, "bytes": size, "path": str(final)}
+    return {"saved": "video", "job_id": job_id, "sha256": digest, "bytes": size, "path": str(final),
+            **review_relay(structured)}
 
 
 def fetch_pages(descriptors, target):
