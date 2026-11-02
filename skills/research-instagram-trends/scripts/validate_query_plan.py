@@ -140,18 +140,14 @@ def validate_against_request(plan: dict[str, Any], request: dict[str, Any]) -> N
     and change the qualifier, which is what reaches the rest of the community without drifting
     onto a different subject.
 
-    With the Creator's saved account profile attached, its signature content replaces the caption
-    phrases as the plan's anchor: every intent carries a seed term or hashtag of one signature
-    content item verbatim, and together the intents reach min(count, 4) items. The caption-phrase
-    floors then do not apply, because the seeds already are the Creator's own words, grouped by
-    what the account is known for, and the two rules would compete for the same six slots.
+    A saved profile supplies optional vocabulary and preferences. It cannot replace the current
+    Request.niche or require coverage of historical content classes. Source-post caption rules
+    below apply only without a saved profile.
     """
     intake = _profile_intake()
-    # 排除话题不依赖主打内容：只有设定、没有主打内容时 caption phrase 那套规则照常，排除话题照样拒收。
+    # 排除话题只检查一次；画像存在时不再强制历史 seed 或 caption phrase。
     intake.check_excluded([str(intent["search_query"]) for intent in plan["intents"]], request)
-    if intake.attached(request):
-        intake.check_plan([str(intent["search_query"]) for intent in plan["intents"]], request,
-                          per_intent="covering")
+    if intake.profile_fields_attached(request):
         return
     phrases = caption_phrases(request)
     if not phrases:
@@ -292,16 +288,14 @@ def main() -> int:
             raise ValueError("--collector-output requires --request")
         validate(plan, request)
         anchored = None
-        signature = 0
+        profiled = False
         if request is not None:
             validate_against_request(plan, request)
             anchored = len(caption_phrases(request))
-            signature = len(_profile_intake().signature_content(request))
+            profiled = _profile_intake().profile_fields_attached(request)
         result = {"valid": True, "intents": len(plan["intents"])}
-        if anchored is not None and not signature:
+        if anchored is not None and not profiled:
             result["caption_phrases_checked"] = anchored
-        if signature:
-            result["signature_content_checked"] = signature
         excluded = len(_profile_intake().excluded_topics(request)) if request is not None else 0
         if excluded:
             result["excluded_topics_checked"] = excluded

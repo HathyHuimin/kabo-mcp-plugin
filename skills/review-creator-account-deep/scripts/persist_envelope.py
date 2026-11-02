@@ -27,6 +27,10 @@ the model sent, so no identifier is ever copied by hand.
   fill two slots. The host's raw tool results that ``static_host.py fetch`` / ``stage`` read (kept
   in ``<run>/host-results/``, or saved anywhere else in the run) are inputs, not placements, and
   never count.
+- ``--drained <dir>`` reads envelope files that were moved into this run without a staging
+  sidecar (``drive.py`` sets aside ``snapshot/envelope-NN.json`` files it did not place itself).
+  It is read only when the staging directory holds nothing left to place, and files under that
+  directory count as the source rather than as placements.
 - Responses are taken in that order whatever their status, so a failed call cannot slide the next
   call's response into its slot. A response that is not completed (without ``--any-status``) is
   refused, nothing is written, and it is recorded in ``.persist-rejected.jsonl`` beside the run
@@ -57,6 +61,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
+CLAIMED_ROWS = re.compile(r"\bFound\s+(\d+)\b", re.IGNORECASE)
 # 宿主把工具结果记进 rollout 时,正文裹在这个标签里,于是它不以 "{" 开头。
 # 只认这一个标签名,标签内仍必须是合法 JSON——放宽成「尖括号开头就剥」会让读取器
 # 开始接受任意标记文本。
@@ -257,6 +262,15 @@ def nested_typed(obj: Any, schema: str) -> Iterator[dict[str, Any]]:
 
 
 
+def claimed_row_count(envelope: dict[str, Any]) -> int | None:
+    summary = envelope.get("summary")
+    if isinstance(summary, str):
+        match = CLAIMED_ROWS.search(summary)
+        if match:
+            return int(match.group(1))
+    return None
+
+
 def row_count(envelope: dict[str, Any]) -> int | None:
     data = envelope.get("data")
     if not isinstance(data, dict):
@@ -282,6 +296,20 @@ def in_flight(envelope: dict[str, Any]) -> bool:
     return str(envelope.get("status") or "").lower() in IN_FLIGHT_STATUSES
 
 
+
+
+def truncated(envelope: dict[str, Any]) -> str | None:
+    """Why a copy is a stub rather than the response: it claims rows and holds none.
+
+    Fewer rows than the summary's count is not evidence of anything: a page of a larger total
+    ("Found 120 videos", 30 on this page) reads the same way.
+    """
+    if envelope.get("status") not in USABLE_STATUSES:
+        return None
+    claimed = claimed_row_count(envelope)
+    if claimed and row_count(envelope) == 0:
+        return f"envelope claims {claimed} rows but data.rows is empty; refusing the stub"
+    return None
 
 
 def usable(envelope: dict[str, Any], any_status: bool = False) -> str | None:
@@ -329,6 +357,9 @@ def account_of(envelope: dict[str, Any]) -> str | None:
     return None
 
 
+
+
+DRAINED_RECORD = re.compile(r"envelope-\d+\.json")
 
 
 # SKILL.md 给宿主导出的原始工具结果定的存放目录（运行目录下）。
@@ -387,7 +418,7 @@ def source_copies(staging_roots: list[Path], records: list[Path]) -> dict[str, s
 
 def already_persisted(
     target: Path, slot: tuple[Path, list[str]] | None, schema: str | None = None,
-    staging_roots: list[Path] | None = None,
+    source_dir: Path | None = None, staging_roots: list[Path] | None = None,
 ) -> Counter[str]:
     """Identities of the envelopes this run already stored, one count per stored copy.
 
@@ -409,6 +440,7 @@ def already_persisted(
         files = sorted(target.parent.glob("*.json"))
     else:
         return taken
+    source_root = source_dir.resolve() if source_dir is not None else None
     from static_host import run_dir as static_run_dir
     run = static_run_dir()
     # 暂存区是来源；host-results/ 是 SKILL.md 给原始结果定的位置，同样只是 fetch / stage 的输入。
@@ -418,6 +450,15 @@ def already_persisted(
         if any(directory in path.resolve().parents for directory in inputs):
             continue
         if slot is None and path.resolve() == target.resolve():
+            continue
+        # With --drained, the moved envelope files (envelope-NN.json) are the source, not
+        # placements. Anything else written there, such as a bundle this run is filling, still
+        # counts, or every slot of that bundle would take the same first record.
+        if (
+            source_root is not None
+            and source_root in path.resolve().parents
+            and DRAINED_RECORD.fullmatch(path.name)
+        ):
             continue
         try:
             body = path.read_bytes()
@@ -429,8 +470,10 @@ def already_persisted(
             # 结果长这样：某份来源正文的逐字节副本，它照旧计入；与自身之外任何来源都不相同的，是模型
             # 存下的输入，不计。
             if sources is None:
+                # --drained 目录里能当来源读的文件，含归档的等价副本。
+                records = sorted(source_root.rglob("*.json")) if source_root is not None else []
                 roots = default_staging_roots() if staging_roots is None else staging_roots
-                sources = source_copies(roots, [])
+                sources = source_copies(roots, records)
             if not sources.get(hashlib.sha256(body).hexdigest(), set()) - {path.resolve()}:
                 continue
         if slot is not None and path.resolve() == slot[0].resolve():
@@ -555,6 +598,43 @@ def staged_candidates(
     return found
 
 
+
+
+def drained_candidates(
+    directory: Path,
+    connector_id: str | None,
+    operation: str | None,
+    problems: list[str],
+    schema: str | None = None,
+) -> list[Candidate]:
+    """Envelope files already moved into this run without a sidecar, newest numbering last.
+
+    They may fill a slot once, and the envelope body still carries its ``request_id``, so
+    per-route provenance survives the move.
+    """
+    found: list[Candidate] = []
+    try:
+        paths = sorted(directory.glob("*.json")) if directory.is_dir() else []
+    except OSError as error:
+        problems.append(f"{directory}: {error.strerror or error}")
+        return found
+    for path in paths:
+        try:
+            body = path.read_bytes()
+            text = body.decode("utf-8", errors="replace")
+        except OSError:
+            continue
+        recorded = file_time(path)
+        if schema:
+            envelope = unwrap_typed(text, schema)
+            if envelope is None:
+                continue
+        else:
+            envelope = unwrap_envelope(text)
+            if envelope is None or not matches(envelope, connector_id, operation) or in_flight(envelope):
+                continue
+        found.append(Candidate(recorded, envelope, body, f"drained:{path}", None))
+    return found
 
 
 def verified_conversations(
@@ -754,6 +834,7 @@ def persist(
     record_request: Path | None = None,
     params: dict[str, Any] | None = None,
     any_status: bool = False,
+    drained: Path | None = None,
     staging_roots: list[Path] | None = None,
 ) -> dict[str, Any]:
     if (dest is None) == (into is None):
@@ -768,7 +849,7 @@ def persist(
     assert target is not None
     from static_host import require_target
     require_target(target)
-    for source in staging_roots or []:
+    for source in [*(staging_roots or []), *([drained] if drained else [])]:
         require_target(Path(source) / "evidence.json")
     since = run_started(target)
     run_dir = run_dir_of(target)
@@ -785,7 +866,7 @@ def persist(
 
     with run_lock(base):
         taken = already_persisted(
-            target, (into, list(at or [])) if into is not None else None, schema,
+            target, (into, list(at or [])) if into is not None else None, schema, drained,
             staging_roots=roots,
         )
         # The ledger only holds responses refused for their status, which --any-status accepts.
@@ -829,6 +910,8 @@ def persist(
         if since is None:
             staged = newest_group([candidate for candidate in staged if account_ok(candidate)])
         candidates = admissible(staged)
+        if not candidates and drained is not None:
+            candidates = admissible(drained_candidates(drained, connector_id, operation, problems, schema))
         if not candidates:
             detail = f" ({'; '.join(problems[:5])})" if problems else ""
             wanted = f"schema_version={schema!r}" if schema else f"connector_id={connector_id!r} operation={operation!r}"
@@ -912,6 +995,9 @@ def main() -> int:
     parser.add_argument("--handle", help="the verified handle of the account this response must belong to")
     parser.add_argument("--any-status", action="store_true",
                         help="also accept failed/unsupported responses (for consumers that record failed routes)")
+    parser.add_argument("--drained", type=Path,
+                        help="a directory of envelope files already moved into this run without a staging "
+                             "sidecar; read when staging holds nothing left to place")
     parser.add_argument("--staging", type=Path, action="append", help="staging root to search instead of the defaults")
     args = parser.parse_args()
     try:
@@ -929,6 +1015,7 @@ def main() -> int:
             record_request=args.record_request,
             params=params,
             any_status=args.any_status,
+            drained=args.drained,
             staging_roots=args.staging,
         )
     except (OSError, ValueError, json.JSONDecodeError) as error:

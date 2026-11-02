@@ -971,8 +971,8 @@ def stage_rank(args: argparse.Namespace) -> None:
                       "--output", ALLOCATION).rstrip())
     cd.script("analyze_public_snapshot.py", SNAPSHOT, "--mode", "trend", "--request", REQUEST,
               "--relevance-gate", GATE, "--trend-enrichment", ENRICHMENT,
-              *(("--allocation", ALLOCATION) if profiled else ()), "--output", ANALYSIS)
-    cd.say(Path(ANALYSIS).read_text(encoding="utf-8").rstrip())
+              *(("--allocation", ALLOCATION) if profiled else ()), "--output", ANALYSIS,
+              "--print-synthesis", show=True)
     cd.script("prepare_hook_context.py", "--platform", "tiktok", "--purpose", "trends",
               "--output", "hook-context.json", show=True)
     cd.show_schema("trend-research-synthesis.schema.json")
@@ -991,6 +991,16 @@ def language_option(args: argparse.Namespace) -> tuple[str, ...]:
     """The Creator's chat language for the report's closing basis sentence; none keeps English."""
     language = getattr(args, "language", None)
     return ("--language", language.strip()) if isinstance(language, str) and language.strip() else ()
+
+
+def reference_args() -> list[str]:
+    # 只读本次运行已有的候选；交付兜底不再触发采集或改写原 Gate。
+    args = []
+    for flag, paths in (("--reference-candidates", [CANDIDATES]), ("--reference-gate", [GATE])):
+        for name in paths:
+            if Path(name).is_file():
+                args.extend([flag, name])
+    return args
 
 
 def restore(files: dict[str, bytes | None]) -> None:
@@ -1047,8 +1057,8 @@ def stage_report(args: argparse.Namespace) -> None:
                                      "report_id": report_id_of(request)})
     try:
         cd.script("compose_report.py", "--request", REQUEST, "--snapshot", SNAPSHOT, "--analysis", ANALYSIS,
-                  "--synthesis", SYNTHESIS, "--output", REPORT)
-        cd.script("validate_output.py", REPORT, "--request", REQUEST, "--analysis", ANALYSIS)
+                  "--synthesis", SYNTHESIS, "--output", REPORT, *reference_args())
+        cd.script("validate_output.py", REPORT, "--request", REQUEST, "--analysis", ANALYSIS, *reference_args())
     except cd.StageError as error:
         # Nothing is fetched here, so a synthesis that Compose or Validate rejects (a momentum claim
         # from one snapshot, a ref outside the evidence) is the model's to fix. Putting the run back

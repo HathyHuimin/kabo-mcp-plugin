@@ -4,10 +4,11 @@ import re
 from pathlib import Path
 
 CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'references/report-locales.json').read_text(encoding='utf-8'))
+LEGACY_LANGUAGES = {'zh', 'en', 'fr', 'ar'}
 
 
 def report_language(data):
-    """Resolve a supported UI locale; omission is allowed only for identifiable legacy Chinese input."""
+    """Validate a locale tag; new languages use authored UI labels, not new catalogs."""
     value = data.get('report_language')
     if value is None and 'report_language' not in data:
         targets = data.get('language_targets')
@@ -49,20 +50,25 @@ def report_language(data):
         raise ValueError(f'Invalid duplicate language variant: {value}')
     if len(singletons) != len(set(singletons)):
         raise ValueError(f'Invalid duplicate language extension: {value}')
-    language = parts[0]
-    if language not in {'zh', 'en', 'fr', 'ar'}:
-        raise ValueError(f'Unsupported report_language: {value}; do not silently substitute another language')
-    return language
+    return parts[0]
+
+
+def ui_label_sources(data):
+    """One English source vocabulary; existing catalogs remain for old consumers."""
+    return set() if report_language(data) in LEGACY_LANGUAGES else {entry['en'] for entry in CATALOG.values()}
 
 
 def translator(data):
     """Return a translator for owned report strings in the validated UI locale."""
     language = report_language(data)
+    labels = presentation_translations(data) if language not in LEGACY_LANGUAGES else {}
     def translate(value):
         """Translate catalog entries and preserve creator text that is absent from the catalog."""
         if language == 'zh':
             return value
-        return CATALOG[value][language] if value in CATALOG else value
+        if value not in CATALOG:
+            return value
+        return CATALOG[value][language] if language in LEGACY_LANGUAGES else labels[CATALOG[value]['en']]
     return translate
 
 
@@ -89,7 +95,8 @@ def presentation_translations(data):
     report_language(data)
     gaps = (data.get('evidence_summary') or {}).get('data_gaps') or []
     values = rendered_report_values(data)
-    allowed = set(gaps) | values
+    labels = ui_label_sources(data)
+    allowed = set(gaps) | values | labels
     translations = data.get('evidence_gap_translations', [])
     if not isinstance(translations, list):
         raise ValueError('evidence_gap_translations must be an array')
@@ -99,11 +106,16 @@ def presentation_translations(data):
             raise ValueError('Each presentation translation requires source_text and report_text')
         source, report = item['source_text'], item['report_text']
         if not isinstance(source, str) or source not in allowed or source in mapped:
-            reason = 'repeats an earlier entry' if isinstance(source, str) and source in mapped else 'is neither an evidence_summary.data_gaps string nor a rendered canonical value'
+            reason = 'repeats an earlier entry' if isinstance(source, str) and source in mapped else 'is neither an evidence_summary.data_gaps string nor a rendered canonical value or required UI label'
             raise ValueError(f'Presentation translation must name one unique original gap or rendered canonical value: source_text {source!r} {reason}; '
                              f'remove it. Rendered canonical values: {sorted(values, key=repr)}; data_gaps strings are matched exactly')
         if not isinstance(report, str) or not report.strip():
             raise ValueError('Presentation translation must preserve a nonempty report_text')
+        if source in labels:
+            prefix = re.match(r'^[#>*` \-]+', source)
+            suffix = re.search(r'[*` ]+$', source)
+            if '\n' in report or '\r' in report or (prefix and not report.startswith(prefix[0])) or (suffix and not report.endswith(suffix[0])):
+                raise ValueError(f'UI label translation must preserve Markdown markers and boundary spacing: {source!r}')
         mapped[source] = report
     if 'report_language' in data:
         if any(value not in mapped for value in gaps):
@@ -111,6 +123,9 @@ def presentation_translations(data):
             raise ValueError(f'Explicit report languages require evidence_gap_translations for every original gap; missing: {missing}')
         if values - mapped.keys():
             raise ValueError(f'Explicit report languages require evidence_gap_translations for every rendered canonical value; missing: {sorted(values - mapped.keys(), key=repr)}')
+        if labels - mapped.keys():
+            raise ValueError(f'Missing UI label translations for report_language {data["report_language"]}; do not substitute another language. '
+                             f'Use report_language.py with --labels for the English source vocabulary; missing: {sorted(labels - mapped.keys())}')
     return mapped
 
 
@@ -131,5 +146,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('language')
+    parser.add_argument('--labels', action='store_true', help='list required English UI label sources for this report language')
     args = parser.parse_args()
-    print(report_language({'report_language': args.language}))
+    data = {'report_language': args.language}
+    print(json.dumps(sorted(ui_label_sources(data)), ensure_ascii=False) if args.labels else report_language(data))

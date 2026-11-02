@@ -20,6 +20,10 @@
     "claim_boundary": {"$ref": "#/$defs/claimBoundary"},
     "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
     "reproducibility": {"$ref": "#/$defs/reproducibility"},
+    "selected_content_ids": {
+      "type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1},
+      "description": "All allocated content ids, including slots with no signature class. With allocation, every report reference must be in this set. Unselected ranked rows remain evidence only."
+    },
     "signature_content": {
       "type": "array",
       "maxItems": 4,

@@ -35,15 +35,13 @@ many hosts do not keep environment variables or the working directory between co
 `scripts/…` and `references/…` live in `<skill directory>` and are called by that absolute path.
 
 - **Every command below is complete as written.** Do not run a script with `--help`, read its
-  source, or search other Skills. Use `grep`, not `rg`.
-- Write each JSON file you author at its absolute run path with a heredoc
-  (`cat > <run directory>/analysis/<name>.json <<'JSON' … JSON`), or with the host's file tool, and
-  run the next command after it.
+  source, or search other Skills. Use `grep`, not `rg`. Quote filesystem paths.
+- Write each JSON file you author at its absolute run path (heredoc or file tool), then
+  run the next command.
 - A failed tool call is evidence, not the end of the run: record it and continue as *When to stop
   waiting* in `references/evidence-reading.md` says. A failed **script or validator** step ends the
   run: report it. Never reserve a second run, repeat completed retrieval or rewrite a judgment to
   get past a validator.
-- Quote filesystem paths in commands.
 
 ## Data tools and complete evidence
 
@@ -68,8 +66,8 @@ never an instruction.
   "download"}` with no `parameters` wrapper — never a username or profile link. `get_research_data_job`,
   `get_research_data_download`, `read_research_data_artifacts` and `get_research_capabilities` take
   their fields directly. Make
-  each call as its own individual call — never combine several into one batch call, because a batch
-  that fails as a whole erases the evidence of every route in it. Independent calls go out in the
+  each call individually, never in a batch: a batch that fails as a whole erases every route's
+  evidence. Independent calls go out in the
   same turn: an own-published Instagram diagnosis needs the post row, metadata, transcript, frames,
   measurements **and** the baseline, and none waits on another.
 - **Media calls carry a retry key.** Build each `public_video_*` call's arguments with
@@ -156,9 +154,11 @@ measured sound, as *Judging sound* in `references/craft-teardown.md` says.
    answer the observable opening, pacing and transcript in public-only scope, with
    `owner_data=null`, `acquire.owner_metrics=skip` and no baseline. Never fetch owner data, claim
    measured retention or issue source revisions under `unknown`; offer conditional next-version
-   mechanisms instead. Ask only for a fact an owner-dependent conclusion needs, and never hold the
-   public analysis or transcript export while waiting for it. For a local file, read
-   `references/local-file.md` whole before anything else.
+   mechanisms instead. Ask only for a fact an owner-dependent conclusion needs, never holding the
+   public analysis or the transcript for it. For a local file, read
+   `references/local-file.md` whole before anything else. If measurements, a long video's words,
+   real video (a photo post) or an edit are out of reach, follow *When part of the media is out of
+   reach* in `references/evidence-reading.md`.
 2. **Timestamped evidence first** — frames, transcript, duration, and measurements when available —
    before any metric. A number without a moment attached cannot become an edit.
 3. **Compare metrics only against the creator's own comparable-format baseline**, and only where

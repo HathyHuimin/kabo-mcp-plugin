@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import math
 import sys
@@ -32,6 +33,37 @@ def load(path: Path) -> dict[str, Any]:
 
 def nonempty(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
+
+
+def reference_fallback():
+    sys.dont_write_bytecode = True
+    path = Path(__file__).with_name("reference_fallback.py")
+    spec = importlib.util.spec_from_file_location(f"{path.parent.parent.name}:reference_fallback", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def selection_errors(analysis: dict[str, Any], refs: set[str]) -> list[str]:
+    """Validate allocation membership independently of signature-class membership."""
+    if "signature_content" not in analysis and "selected_content_ids" not in analysis:
+        return []
+    selected = analysis.get("selected_content_ids")
+    if (not isinstance(selected, list)
+            or any(not isinstance(value, str) or not value for value in selected)
+            or len(set(selected)) != len(selected)):
+        return ["analysis.selected_content_ids must list the allocated content ids; regenerate analysis "
+                "from the original allocation before composing this report"]
+    ranked = {str(row["content_id"]): row for row in analysis.get("ranked_content") or []
+              if isinstance(row, dict) and "content_id" in row}
+    errors = []
+    unknown = set(selected) - ranked.keys()
+    if unknown:
+        errors.append(f"analysis selection contains unranked content: {sorted(unknown)}")
+    unselected = refs - set(selected)
+    if unselected:
+        errors.append(f"report cites content outside the allocation: {sorted(unselected)}")
+    return errors
 
 
 def signature_coverage_errors(
@@ -74,6 +106,8 @@ def validate(
     report: dict[str, Any],
     request: dict[str, Any] | None = None,
     analysis: dict[str, Any] | None = None,
+    reference_candidates: list[dict[str, Any]] | None = None,
+    reference_gates: list[dict[str, Any]] | None = None,
 ) -> list[str]:
     errors: list[str] = []
     missing = sorted(REQUIRED - report.keys())
@@ -83,6 +117,8 @@ def validate(
         errors.append("schema_version must be trend-research-report.v3")
     if report.get("status") not in {"complete", "partial", "blocked"}:
         errors.append("status must be complete, partial, or blocked")
+    if reference_candidates is not None or "reference_videos" in report:
+        errors.extend(reference_fallback().errors(report, request, reference_candidates, reference_gates or []))
     scope, coverage = report.get("scope", {}), report.get("coverage", {})
     if request:
         if request.get("schema_version") != "trend-research-request.v3":
@@ -135,6 +171,7 @@ def validate(
     analysis_rank_by_id: dict[str, int] = {}
     ranked_population = 0
     if analysis is not None:
+        errors.extend(selection_errors(analysis, {str(ref) for ref in content_ids}))
         analysis_ranking = analysis.get("ranked_content") or []
         if isinstance(analysis_ranking, list):
             ranked_population = len(analysis_ranking)
@@ -246,12 +283,16 @@ def main() -> int:
     parser.add_argument("report", type=Path)
     parser.add_argument("--request", type=Path)
     parser.add_argument("--analysis", type=Path)
+    parser.add_argument("--reference-candidates", type=Path, action="append")
+    parser.add_argument("--reference-gate", type=Path, action="append", default=[])
     args = parser.parse_args()
     try:
         errors = validate(
             load(args.report),
             load(args.request) if args.request else None,
             load(args.analysis) if args.analysis else None,
+            [load(path) for path in args.reference_candidates] if args.reference_candidates is not None else None,
+            [load(path) for path in args.reference_gate],
         )
     except (OSError, ValueError, TypeError, json.JSONDecodeError) as error:
         errors = [str(error)]

@@ -1,9 +1,9 @@
 ---
 name: review-creator-account-deep
-description: "Deep-review a named public Instagram, TikTok or YouTube account: walk the standard account-analysis steps and watch a bounded set of its videos (frames and transcript) to say which practices to keep or stop and what to change in the next shoot. Requires a finished, validated review-creator-account review of the same account and question. Use when the creator asks for a deep review that actually watches videos. Not for a catalog-only review, a single-video teardown, competitors or trends."
+description: "Deep-review a named public Instagram, TikTok or YouTube account: walk the standard account-analysis steps and watch a bounded set of its videos (frames and transcript) to say which practices to keep or stop and what to change in the next shoot. Reuses a finished review-creator-account review, else fetches a one-page catalog itself. Use when the creator asks for a deep review that actually watches videos. Not for a catalog-only review, a single-video teardown, competitors or trends."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Viewing frames needs a host that can display images to the model. Kabo permission: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts instagram_resolve_profile instagram_list_posts instagram_list_reels youtube_get_channel youtube_list_channel_uploads tiktok_list_account_posts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream
 ---
 
 # Deep account review
@@ -39,8 +39,8 @@ It prints the run directory. Many hosts keep neither environment variables nor t
 directory between commands, so every later command that touches the run starts with
 `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>'`, exactly as written below.
 Relative file names below are in this run; `scripts/…` and `references/…` live in
-`<skill directory>` and are called by that absolute path. `<standard run>` is the run directory of
-the finished standard review (step 1).
+`<skill directory>` and are called by that absolute path. `<analysis>` is the catalog analysis
+step 1 settles on.
 
 - **Every command below is complete as written.** Do not run a script with `--help`, read its
   source, or search other Skills. Use `grep`, not `rg`. Quote filesystem paths in commands.
@@ -73,6 +73,8 @@ something to retry.
 | `fetch_transcript` | `public_video_fetch_transcript` |
 | `extract_keyframes` | `public_video_extract_keyframes` (its result may name `extract_keyframes_hosted_media` or `extract_keyframes_hosted_stream`) |
 
+The catalog tools are used only by step 1's `fetch_catalog.py`, which prints their calls.
+
 - **One call per request.** The data tools take `{"parameters": {…}, "delivery": "download"}` plus
   an `idempotency_key`, all built by `static_host.py job-call` as `references/watch-and-persist.md`
   says; `get_research_data_job`, `get_research_data_download`, `read_research_data_artifacts` and
@@ -100,7 +102,8 @@ something to retry.
 
 ## Caps
 
-Deep never pages beyond the catalog the standard review already fetched.
+Deep never pages beyond the standard catalog sample. Without a standard review, step 1 fetches one
+page per format, at most `CATALOG_CALL_CAP` (4) catalog calls per run.
 
 - Instagram: Feed + Reels combined, at most 100 rows. TikTok: at most 100 posts.
 - YouTube: the latest 100 uploads, not the whole channel. Say that window in the report; a channel
@@ -112,26 +115,28 @@ Deep never pages beyond the catalog the standard review already fetched.
 
 ## Workflow
 
-1. **Standard inputs.** Start from the finished `account_analysis.json` **and the complete
-   validated report** that `review-creator-account` produced for this same platform, handle and
-   original question: `<standard run>/account_analysis.json`, `<standard run>/report/ACCOUNT_REVIEW.md`
-   (`output/` for a review that wrote there) and the original question in
-   `<standard run>/question.txt`. Use only a standard run whose final step printed
-   `creator_report: <path>` in this conversation (`drive.py report` when it said the report is
-   final, otherwise `drive.py verify-report`): the report file exists before its validators run,
-   so its presence alone proves nothing. An earlier session, a host transcript or session log, or the
-   creator saying the review is done does not count, and you must not read host records to find
-   one; if you cannot see that line in this conversation, stop and ask the creator to run (or
-   re-run) `review-creator-account` in this same conversation. Otherwise the next step is `review-creator-account`. Use
-   those exact files as data; do not copy, rebuild or search other runs for them. Read the complete report before expanding its findings, freeze the original
-   question, and keep the standard report's evidence limits. If either input or its successful
-   validation is missing, stop and say the standard review must be completed first with
-   `review-creator-account`; this Skill never runs it or its scripts. Reused files are reuse of
-   validated inputs, not a fresh fetch or watch. Then compute the catalog-only numbers, which watch
-   nothing and do not change the standard review:
+1. **Catalog inputs.** Freeze the user's original question, platform and handle.
+
+   - **A finished standard review may exist:** read `references/standard-inputs.md` whole and reuse
+     it as it says; `<analysis>` is `<standard run>/account_analysis.json`.
+   - **Otherwise** fetch a one-page catalog sample in this run (YouTube may pass
+     `--channel-id "<UC…>"` instead of `--account`):
+
+     ```sh
+     cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/fetch_catalog.py' --platform <instagram|youtube|tiktok> --account "<named account>"
+     ```
+
+     Each run prints one JSON. `needs_calls`: follow its `next_action` exactly, then run its
+     `rerun`. Never write or edit `catalog/` files. `ok`: `<analysis>` is this run's
+     `account_analysis.json`; this path has no standard report and a smaller sample, so quote only
+     the scripted catalog numbers and put its `sample_note` verbatim in `other_limitations`.
+     `stopped`: tell the user its `message` and stop; never review another account in its place.
+
+   Then compute the catalog-only numbers, which watch nothing and do not change the standard
+   review (a later step run before step 1 exits 2 and names both entries):
 
    ```sh
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/build_catalog_stability.py' "<standard run>/account_analysis.json" --output catalog_stability.json
+   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/build_catalog_stability.py' '<analysis>' --output catalog_stability.json
    ```
 
    Quote only these scripted numbers for public scale (`median_views / followers`), concentration
@@ -150,13 +155,13 @@ Deep never pages beyond the catalog the standard review already fetched.
    watched.
 
    ```sh
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/compose_catalog_plus.py' "<standard run>/account_analysis.json" --stability catalog_stability.json --markdown catalog_plus.md
+   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/compose_catalog_plus.py' '<analysis>' --stability catalog_stability.json --markdown catalog_plus.md
    ```
 
 3. **Select and plan.** Named `content_id`s take seats first:
 
    ```sh
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/select_watch_set.py' "<standard run>/account_analysis.json" --output watch_set.json --cap 10 [--named-content-id "<id>"]
+   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/select_watch_set.py' '<analysis>' --output watch_set.json --cap 10 [--named-content-id "<id>"]
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/plan_media_jobs.py' watch_set.json --output media_job_plan.json
    ```
 
@@ -197,7 +202,7 @@ Deep never pages beyond the catalog the standard review already fetched.
    already viewed `--frame-object-ref` values):
 
    ```sh
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/build_deep_synthesis_input.py' watched_evidence.json --watch-set watch_set.json --account-analysis "<standard run>/account_analysis.json" --authoring-basis --stability catalog_stability.json --output deep_synthesis_input.json
+   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/build_deep_synthesis_input.py' watched_evidence.json --watch-set watch_set.json --account-analysis '<analysis>' --authoring-basis --stability catalog_stability.json --output deep_synthesis_input.json
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/read_deep_synthesis_packet.py' deep_synthesis_input.json --schema --authoring-seed account_deep_authoring.json --output-language <en|zh-CN> --stability catalog_stability.json [--frame-object-ref "<original-object-ref>"]
    ```
 
@@ -227,7 +232,7 @@ viewing and make no case pass; do not run or export them by default.
   sample's distribution and concentration, not what made the account rise. Watching supports craft
   observations and next-shoot hypotheses; it never turns cumulative views or cohort share into a
   historical growth explanation. Keep the title, `question_answer`, insight and pattern
-  explanations within the standard review's boundary, and state that boundary in the answer itself;
+  explanations within the standard review's (or catalog sample's) boundary, and state it in the answer;
   a later data-gap note cannot repair a causal headline.
 - Watched means frames or a transcript arrived; metadata alone is not watched. Never narrate hooks,
   cuts or spoken lines for an unwatched `content_id`.

@@ -14,6 +14,7 @@
     "coverage": {"$ref": "#/$defs/coverage"},
     "overview": {"$ref": "#/$defs/overview"},
     "top_content": {"type": "array", "description": "Evidence cited by the concise report in reading order. It may be a representative subset of Analyzer-eligible content.", "items": {"$ref": "#/$defs/topContent"}},
+    "reference_videos": {"type": "array", "minItems": 1, "maxItems": 3, "description": "Source-backed video references when no selected recommendation survives; always shown as uncertain, never as passed Gate evidence.", "items": {"$ref": "#/$defs/referenceVideo"}},
     "patterns": {"type": "array", "items": {"$ref": "#/$defs/pattern"}},
     "emerging_creators": {"type": "array", "items": {"$ref": "#/$defs/emergingCreator"}},
     "data_gaps": {"type": "array", "items": {"type": "string", "minLength": 1}}
@@ -58,6 +59,17 @@
         "value": {"type": "number", "minimum": 0},
         "sample_size": {"type": "integer", "minimum": 5},
         "cohort": {"type": "string", "minLength": 1}
+      }
+    },
+    "referenceVideo": {
+      "type": "object", "additionalProperties": false,
+      "required": ["content_key", "platform", "url", "title", "published_at"],
+      "properties": {
+        "content_key": {"type": "string", "minLength": 1},
+        "platform": {"enum": ["instagram", "youtube", "tiktok"]},
+        "url": {"type": "string", "format": "uri"},
+        "title": {"type": "string"},
+        "published_at": {"type": ["string", "null"]}
       }
     },
     "topContent": {

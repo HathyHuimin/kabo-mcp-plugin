@@ -13,6 +13,22 @@
 - `verify-platform-rule` 依赖 `/mcp-pub` 恢复的 `official_page_render_page`（kabo#1817，未合入）；`contracts/directory-mcp/`
   暂时固定到该 PR 的 head `9ed1ec61a`（已合入 kabo main；64 个工具，相对 main 只增这一个），kabo 合入后须按合入 commit 重新固定。
   四个新 Skill 在本机 Codex 连生产 /mcp-pub 实测：发布时间、变现已交付；平台规则核对待 kabo#1817 部署。
+- `analyze-content-video` 同步到 creator-skills 0.14.29、`create-script-and-packaging` 同步到 0.2.27（冻结提交 `a9514ba30`）：本地视频抽帧改用哈希文件名、720px、限 90 帧 / 12 MiB 且先写开头和结尾，`--measure-signals` 测剪辑点与停顿进 `media.probed`，宿主机器转写用 `--origin speech_recognition` 记为「听到的」；健康的 job 在本轮内等约 3 分钟；测量、长视频文字、图文帖、剪辑请求拿不到时的处理写进 `references/evidence-reading.md`；脚本的 `video_analysis_sources` 只认 `video_analysis.json`；续集先核实上一集。两个 SKILL.md 正文不增长。
+- review-creator-account-deep 同步上游 0.3.52：没有标准版分析时，在本次运行里用 `fetch_catalog.py` 取一页作品目录（每次运行最多 4 次目录调用，失败调用用 `--failed` 记账，Feed 失败不重试）；后续步骤缺输入时退出码 2 并给出第 1 步的两个入口；标准版复用说明移到 `references/standard-inputs.md`。
+- `develop-content-ideas` 同步 creator-skills 0.1.31（`a9514ba30`）：prep 对各类输入问题（非 JSON / 非 UTF-8 / 缺失文件、非原文主题、错误语言标签）统一返回 `needs_correction`，首轮合并所有可独立核实的问题、限纠正一次；支持「再来 10 个同风格」续轮（`--previous-ideas` 绑定上一轮 `idea_set.json`）；zh/en/fr/ar 之外的报告语言改用 `report_language.py --labels` 列出的 UI 标签译文并逐项校验。`remake-viral-video` 对照上游 0.1.34 无需改动（TikTok 链接由 #20 处理，Wan 3.0 不在当前 `/mcp-pub` 合约中，固定补间数值已在 #40 合入），只更新溯源记录。
+- `review-creator-account` 同步 creator-skills 0.5.53：TikTok 图文（photo）与视频分开建基线，`build_public_snapshot.py` 按原帖 URL 或平台声明的媒体类型识别 `tiktok_photo`/`tiktok_video`，无法判定的记为 unknown 并不进同格式对比；重复记录合并时保留原始帖子 URL。
+- `analyze-creator-competitors` 同步 creator-skills 0.5.89：`report` 先把 synthesis 的 `status` 同义词（completed/done/ok/success、incomplete、failed）规整为 complete/partial/blocked，其它非法值在 compose 入口给出可改提示，不再到校验才失败。`review-creator-account` 锁定上游 0.5.50，其改动（`--export-report` 与 handoff 只认 `.json`）属 Web 宿主交付机制，插件版没有 handoff 导出、`ACCOUNT_REVIEW.md` 本就是本地交付文件，不搬。
+- 三个 trends Skill：逐项核对 creator-skills `92824da5b` 到 `a9514ba30`（冻结点）之间的账号画像系列（#914、#915、#918、#920，15 个提交），脚本与 references 已由 #32、#33 和 1.0.6 全部覆盖，无需补移植；`skills.lock.json` 的来源改记为 IG 0.3.115 / TT 0.1.105 / YT 0.1.103（`a9514ba30`）。
+
+## 1.0.6（2026-11-02；GitHub Release）
+
+- 推荐交付增加统一兜底：已有入选视频不会因 synthesis 留空而丢失；正常推荐为空时，最多展示三个本轮采到的视频参考，明确标注匹配或资料不足，不填造指标。原 Gate 和名额不改写，也不追加数据或模型调用。YouTube 一次重搜后仍覆盖不足时继续利用已有候选，不再直接中止报告。
+
+- 三个 trends Skill 修复 #1866 复测发现的偏题规则与边界漏洞：查询不再强制历史画像 seed，
+  Gate 始终按本次 Request.niche 判断相关性；零主打分类仍保留可靠基础画像。
+  Analysis 显式记录全部入选视频（含未匹配主打分类者），写报告时只展示入选证据，Composer 和 Validator 共用入选范围检查。
+  删除历史 seed 配额检查及其无用参数；撤回无画像过滤扩展，作者去重仍由原有分配步骤负责。
+  查询语义仍由宿主判断；不新增目标文件、模型阶段或推荐策略，不改变搜索预算、阈值、后端 API。
 - 仓库规则进 CI：恢复 `scripts/repo-rules.test.mjs`（供应商名、宿主专属机制、用例编号、溯源文档、字节码），并新增两条：Skill 的 Markdown 不写版本代号与日期；带脚本的 Skill 在正文开头写明前台子 agent 执行（KS2.4）。`analyze-creator-competitors`、`research-instagram-trends`、`research-youtube-trends` 的 references 去掉测量 / 观察日期，结论与数字不变。CodeRabbit 补三条判断规则：description 不写执行规则、交付契约前置、能交给校验脚本的例外不再加进正文。
 - 规范清理（不改行为）：`create-script-and-packaging`、`develop-content-ideas` 的标题去掉 V3/V4 版本来历；`analyze-content-video` 版式说明与 `review-creator-account-deep` 等待说明去掉来历与日期，只留结论。
 - `analyze-creator-competitors` 同步到 creator-skills 0.5.88（`c414fac55`）：重复竞品保留第一条、不再整份报告失败，主页 tab 链接按账号接受；

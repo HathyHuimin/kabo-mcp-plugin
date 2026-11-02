@@ -131,9 +131,9 @@ ASK
 first collection fails, it names the failed intents and keeps the first result as
 `youtube-trend-candidate-set-first.json`. Shorten only the failed query to its 2–5 core topic
 terms, write the replacement plan (same `intent_id`s; do not rewrite the Request), and run
-`discover` again without `--placed`: it validates the replacement plan and recollects once. Never
-produce a Creator report from a second failed plan; `discover` stops the run if the recollection
-fails too. Never call or silently fall back to the standby outlier capability, expose page tokens
+`discover` again without `--placed`: it validates the replacement plan and recollects once. If the
+recollection is still incomplete, continue with the available candidates and disclose incomplete
+coverage; never collect a third time. Never call or silently fall back to the standby outlier capability, expose page tokens
 or hand-allocate route quotas.
 
 ## 3. The relevance Gate

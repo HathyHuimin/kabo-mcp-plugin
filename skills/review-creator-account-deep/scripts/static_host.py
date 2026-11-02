@@ -45,7 +45,14 @@ RESIGN_TOOL = "get_research_data_download"
 
 
 # 本 Skill 用到的数据操作与 /mcp-pub 工具名一一对应；只接受这些工具的结果作为证据。
+# 前六个是没有标准版运行时 fetch_catalog.py 取一页作品目录用的同步工具。
 CONNECTOR_TOOLS = {
+    "instagram-discovery/resolve_profile": "instagram_resolve_profile",
+    "instagram-discovery/list_posts": "instagram_list_posts",
+    "instagram-discovery/list_reels": "instagram_list_reels",
+    "youtube-public/get_channel": "youtube_get_channel",
+    "youtube-public/list_channel_uploads": "youtube_list_channel_uploads",
+    "tiktok-public/list_account_posts": "tiktok_list_account_posts",
     "public-video-media/collect_public_metadata": "public_video_collect_public_metadata",
     "public-video-media/fetch_transcript": "public_video_fetch_transcript",
     "public-video-media/extract_keyframes": "public_video_extract_keyframes",

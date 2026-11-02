@@ -172,7 +172,7 @@
           "type": "array",
           "minItems": 1,
           "maxItems": 4,
-          "description": "The Creator's signature content from the saved account profile, the Creator's main item first, then heaviest first: position + 1 is the number the relevance Gate shows for an item. Each intent of the query plan belongs to one item and carries one of its seed terms or hashtags verbatim. Written by the skill's driver from the profile file the host supplied, never by the model; leave it out when writing the Request.",
+          "description": "The Creator's signature content from the saved account profile, the Creator's main item first, then heaviest first: position + 1 is the number the relevance Gate shows for an item. Seeds are optional vocabulary for queries about Request.niche; historical classes never override the current goal or require query coverage. Written by the skill's driver from the profile file the host supplied, never by the model; leave it out when writing the Request.",
           "items": {
             "type": "object",
             "additionalProperties": false,

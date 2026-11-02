@@ -4,6 +4,7 @@ Apply this before asking for SelectedIdea, source script, assets or private perf
 
 | User needs | Route and minimum input | Completion evidence |
 | --- | --- | --- |
+| Sequel, part 2, or continuation of a prior post | Follow the continuation check in [source-adaptation.md](source-adaptation.md); establish the actual previous episode before drafting | New main beats and payoff grounded in the previous ending; if the source cannot be recovered, request its missing ending rather than inventing a continuation |
 | Platform rules, tags FAQ, repost/duplicate-content question | Answer it as an advisory question from current official rules, outside the package; no SelectedIdea or ScriptPackage required | Answer the question with dated official sources and scope; if no current official source is available, say the answer is not checked against current rules; do not guarantee reach or exemption from duplicate-content rules |
 | A generic editing or caption-animation workflow | Give an actionable method and name assumptions without a source clip | Steps and settings as a suggested workflow, not a rendered file or an exact reproduction of an unseen reference |
 | Adapt a specified video or a channel's latest upload into written clips, hooks or carousel copy | Packaging owns the final adaptation; follow [source-adaptation.md](source-adaptation.md) and obtain only missing source facts | Source-grounded adaptation in the requested format; timed evidence for clip boundaries; the video Skill's teardown or creative proposal cannot replace the main deliverable |
