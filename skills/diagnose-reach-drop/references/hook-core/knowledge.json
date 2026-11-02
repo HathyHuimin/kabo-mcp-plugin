@@ -1,0 +1,396 @@
+{
+  "contract_version": "hook-core.v1",
+  "core_version": "0.1.0",
+  "patterns": [
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Do not use decorative numbers or suggest the creator owns a reference asset."
+      ],
+      "id": "M01",
+      "joint_expression": "There is something concrete worth explaining.",
+      "material_requirements": [
+        "proof"
+      ],
+      "name": "Proof first",
+      "overlay": false,
+      "provenance_ref": "src-ca47a81154339bc007b8a41c9ea8c427606979f7556ca1a6c7b5b2c4d3a9dbf7",
+      "route": "A",
+      "sound": "State the result or explain the visible evidence; original sound is optional.",
+      "visual": "An owned or authorized result, screenshot or object is readable in the first frame."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Availability of a sample URL does not authorize reuse; the clip itself must communicate."
+      ],
+      "id": "M02",
+      "joint_expression": "Look at this, then understand why it matters.",
+      "material_requirements": [
+        "licensed_clip"
+      ],
+      "name": "Original clip first",
+      "overlay": false,
+      "provenance_ref": "src-bee99663ddffbb2f0b4e557f3fdfc8580518283d98325af27fa29b2e320fbe40",
+      "route": "A",
+      "sound": "Use relevant original sound, then enter with the explanation.",
+      "visual": "Start with an authorized original clip; identify its subject and purpose."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "A greeting without a relevant situation is not the same mechanism."
+      ],
+      "id": "M03",
+      "joint_expression": "A recognizable or real situation is already happening.",
+      "material_requirements": [
+        "licensed_audio"
+      ],
+      "name": "Borrowed sound",
+      "overlay": false,
+      "provenance_ref": "src-962375533e023c8f6515e957b555d462a6ee1ff2f281dc931623060e49c42e23",
+      "route": "A",
+      "sound": "Start with an authorized meaningful question, line, announcement or ambient event.",
+      "visual": "Show the speaker or a reaction paired with the source; identify who/what is being heard."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Keep comparison units and context comparable."
+      ],
+      "id": "M04",
+      "joint_expression": "These similar things produced different results.",
+      "material_requirements": [
+        "comparison_pair"
+      ],
+      "name": "Side-by-side comparison",
+      "overlay": false,
+      "provenance_ref": "src-b29e70c4b57b3576cb67a103da51327e36ce1d3b56b6e72f4e9f67783c8a99c6",
+      "route": "A",
+      "sound": "Name the difference or ask its cause.",
+      "visual": "Show two comparable states with readable, grounded labels."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Readable placement and contrast matter more than font imitation."
+      ],
+      "id": "M05",
+      "joint_expression": "This statement is the point.",
+      "material_requirements": [
+        "opening_text"
+      ],
+      "name": "Text as the visual",
+      "overlay": false,
+      "provenance_ref": "src-b4ff5663e6e3f8f2c37d7b607c58f95ecd7f0588e7b3d984cd519039f5b4ad8c",
+      "route": "A",
+      "sound": "Use clear speech or another intentional sound supporting the text.",
+      "visual": "Make readable typography the focal element; time any reveal to actual words."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Do not fill the whole diagram before it can be understood."
+      ],
+      "id": "M06",
+      "joint_expression": "Follow a prepared explanation through the diagram.",
+      "material_requirements": [
+        "diagram"
+      ],
+      "name": "Diagram above speaker",
+      "overlay": false,
+      "provenance_ref": "src-9f37f0e4be179caa82e258bc84e9e19a837f191ddd30ecfe24743581019e007b",
+      "route": "A",
+      "sound": "Explain the currently visible part at the creator’s natural pace.",
+      "visual": "Place the diagram or sequence above a small speaker window; reveal only the relevant part."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "A gesture added after the idea is gone does not establish first-frame alignment."
+      ],
+      "id": "M07",
+      "joint_expression": "The action and words emphasize one idea.",
+      "material_requirements": [
+        "performable_gesture"
+      ],
+      "name": "Body expresses the word",
+      "overlay": false,
+      "provenance_ref": "src-b856afbe1be27f2a9c2ff56b45b22f80bdbd4237749512bae11022cd22ca4ff1",
+      "route": "A",
+      "sound": "Use a matching line or precise sound cue.",
+      "visual": "Begin already making a gesture or expression that communicates the opening idea."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Do not invent assets or replace factual evidence with unrelated decoration."
+      ],
+      "id": "M08",
+      "joint_expression": "Each assertion has something concrete to see.",
+      "material_requirements": [
+        "visual_for_nouns"
+      ],
+      "name": "Show the spoken object",
+      "overlay": false,
+      "provenance_ref": "src-0e4f90c6a560b5c81eff0b8caab3e2f22815904fce964c6014a05f23566567dc",
+      "route": "A",
+      "sound": "Speak clearly enough for the corresponding visual to be recognized.",
+      "visual": "Display an available photo, object or screenshot when it is named."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Novel naming is a creative proposal, not proof of an unmet audience need."
+      ],
+      "id": "M09",
+      "joint_expression": "This gives a name to something I recognize.",
+      "material_requirements": [
+        "grounded_concept"
+      ],
+      "name": "Name a phenomenon",
+      "overlay": false,
+      "provenance_ref": "src-561f384f18409997e373baf81f8aef1fba382a9e4d7900d7407e2ae13d8d9dd3",
+      "route": "A",
+      "sound": "Explain it in a fitting calm or animated voice.",
+      "visual": "Use a short, legible name for a phenomenon familiar to the intended audience."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Okay/So and first person are not automatic failures when the action carries meaning."
+      ],
+      "id": "M10",
+      "joint_expression": "Someone is telling me something while doing it.",
+      "material_requirements": [
+        "performable_action"
+      ],
+      "name": "Speak mid-action",
+      "overlay": false,
+      "provenance_ref": "src-2e4ec6a7e3eb5dca6abaf05730e90529a1adcccadf660bf36cdb86956e12a3db",
+      "route": "A",
+      "sound": "State the point naturally; quiet, conversational delivery can work.",
+      "visual": "Start mid-gesture, movement or an everyday action relevant to the creator."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Specificity and clarity matter; a named entity alone does not prove a useful hook."
+      ],
+      "id": "M11",
+      "joint_expression": "There is a specific fact to learn.",
+      "material_requirements": [
+        "verified_fact"
+      ],
+      "name": "Concise factual opening",
+      "overlay": false,
+      "provenance_ref": "src-86a2cb0bb59b6e220194092e5a9c51a86d41564289f6a66565f32e463b017534",
+      "route": "A",
+      "sound": "Give a grounded fact or conclusion in a short first sentence.",
+      "visual": "Show the subject or a readable subject label in a simple composition."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Lack of text, face or speech is valid; whether suspense is understandable needs observation."
+      ],
+      "id": "M12",
+      "joint_expression": "What will happen next?",
+      "material_requirements": [
+        "visible_action"
+      ],
+      "name": "Action suspense",
+      "overlay": false,
+      "provenance_ref": "src-04bacbbdda8dacec45233e3bfc8439b5f7801c9694d4f7db73807853011b9781",
+      "route": "B",
+      "sound": "Use intentional environmental sound, music or silence; speech is optional.",
+      "visual": "Show an ongoing action whose possible outcome a viewer can understand."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Overlay on another mode; consistency requires a prior episode to compare."
+      ],
+      "id": "M13",
+      "joint_expression": "This is another installment of a familiar series.",
+      "material_requirements": [
+        "series_reference"
+      ],
+      "name": "Recognizable series layout",
+      "overlay": true,
+      "provenance_ref": "src-507a98e0f6a9f87052cfd8d87b79690a5338f356ab999153f9fb0d76c0c7a3be",
+      "route": "overlay",
+      "sound": "Use a recognizable voice or available recurring sound.",
+      "visual": "Reuse a purposeful first-frame layout while changing the current subject."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Packaging is not verification of expertise or authority."
+      ],
+      "id": "M14",
+      "joint_expression": "This has the recognizable form of a program.",
+      "material_requirements": [
+        "format_assets"
+      ],
+      "name": "Familiar media format",
+      "overlay": false,
+      "provenance_ref": "src-2069f7b4fba09815f101267b228001da113d105620ae2d7f81434d10fe1a5f6f",
+      "route": "A",
+      "sound": "Match the intended presentation without implying a false affiliation.",
+      "visual": "Use a purposeful news, documentary, podcast or editorial composition."
+    },
+    {
+      "applicability": {
+        "evidence_scope": "Source samples, not a platform-wide effectiveness claim.",
+        "form": "short_video",
+        "platforms": [
+          "instagram",
+          "youtube",
+          "tiktok"
+        ]
+      },
+      "evidence_level": "observational_reference",
+      "exceptions": [
+        "Overlay on another mode; transcript and loudness alone cannot establish heard tone."
+      ],
+      "id": "M15",
+      "joint_expression": "The delivery establishes how this should feel.",
+      "material_requirements": [
+        "sound_intention"
+      ],
+      "name": "Sound sets the emotion",
+      "overlay": true,
+      "provenance_ref": "src-159b14412653e097827a0866522cda201269f25e927c44eb01593f0d7c92239b",
+      "route": "overlay",
+      "sound": "Use deliberate emphasis, calm certainty, intimate quiet or conversational energy.",
+      "visual": "Let the first-frame visual support the intended emotional context."
+    }
+  ]
+}

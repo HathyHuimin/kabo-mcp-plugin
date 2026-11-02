@@ -1,0 +1,739 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creator-ai.local/schemas/monetization-rules.v1.json",
+  "title": "Platform Monetization Rule Library V1",
+  "description": "The versioned rule library this Skill compares account facts against. A rule is only usable for an eligibility decision when it is verified, currently effective, and applicable to the creator's region; everything else may still describe the program but must not decide eligibility.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "library_version",
+    "compiled_at",
+    "staleness_budget_days",
+    "metrics",
+    "programs",
+    "niche_rates"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "monetization-rules.v1"
+    },
+    "library_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "compiled_at": {
+      "type": "string",
+      "minLength": 10
+    },
+    "staleness_budget_days": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "How long a verified rule stays usable before it must be re-checked. A rule whose verified_at is older than this is downgraded to stale and stops deciding eligibility; official help pages have been observed lagging the rule they document, which is why verified_at exists separately from effective_from."
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Every metric a requirement can reference, with whether it can actually be obtained today. This is what turns an eligibility run into a data-gap list.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "metric_id",
+          "platform",
+          "display_name",
+          "unit",
+          "plane",
+          "availability"
+        ],
+        "properties": {
+          "metric_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "platform": {
+            "enum": [
+              "youtube",
+              "instagram",
+              "tiktok"
+            ]
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1
+          },
+          "plane": {
+            "enum": [
+              "public",
+              "owner"
+            ],
+            "description": "public = derivable from public account facts. owner = exists only behind the creator's own authorized analytics."
+          },
+          "availability": {
+            "enum": [
+              "available",
+              "available_with_caveat",
+              "partial",
+              "needs_authorization",
+              "unavailable",
+              "not_published"
+            ],
+            "description": "available_with_caveat = obtainable but with a known accuracy limit. partial = obtainable only over a bounded window. needs_authorization = owner plane, no authorized path today. unavailable = no path today but one could exist. not_published = the platform does not state this bar at all, so no data path would settle it."
+          },
+          "caveat": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "what_would_unblock": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bound": {
+            "enum": [
+              "exact",
+              "upper",
+              "lower"
+            ],
+            "default": "exact",
+            "description": "How a reading relates to the figure the rule actually names. upper = the obtainable number can only overstate the rule's metric (public Shorts view counts against the platform's qualified Shorts views). An upper-bound reading can prove a threshold is NOT met; it can never prove it is."
+          },
+          "rounded": {
+            "type": "boolean",
+            "default": false,
+            "description": "The platform publishes this count rounded, so a reading sitting on the threshold cannot resolve it either way."
+          },
+          "window_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "The period this metric is measured over. A revenue model priced monthly must scale a 90-day total down before multiplying by a rate; without this the figure comes out inflated by the ratio of the two windows, which is a silent and large error."
+          }
+        }
+      }
+    },
+    "programs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/program"
+      }
+    },
+    "benchmarks": {
+      "type": "array",
+      "description": "Sourced rates a revenue figure may be built from. A benchmark carries the same four elements a rule does, for the same reason: a money figure with no traceable rate behind it reads as a forecast. Where the platform publishes a rate this is a fact; where it does not, there is simply no benchmark and the figure stays unknown until the creator supplies one.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "benchmark_id",
+          "unit",
+          "low",
+          "high",
+          "provenance"
+        ],
+        "properties": {
+          "benchmark_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1
+          },
+          "low": {
+            "type": "number",
+            "minimum": 0
+          },
+          "high": {
+            "type": "number",
+            "minimum": 0
+          },
+          "provenance": {
+            "$ref": "#/$defs/provenance"
+          }
+        }
+      }
+    },
+    "niche_rates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "published",
+        "note",
+        "unchecked_note",
+        "checked"
+      ],
+      "description": "Whether a platform publishes a rate per content niche, recorded page by page. A platform with no checked page is reported as not checked, never as publishing none.",
+      "properties": {
+        "published": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "i18n": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "checked": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "platform",
+              "source_url",
+              "source_title",
+              "verified_at",
+              "quote"
+            ],
+            "properties": {
+              "source_url": {
+                "type": "string",
+                "pattern": "^https://"
+              },
+              "source_title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "verified_at": {
+                "type": "string",
+                "minLength": 10
+              },
+              "quote": {
+                "type": "string",
+                "minLength": 1
+              },
+              "platform": {
+                "enum": [
+                  "youtube",
+                  "instagram",
+                  "tiktok"
+                ]
+              }
+            }
+          }
+        },
+        "unchecked_note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unchecked_i18n": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What every rule must carry so a later run can re-check it without redoing the research: where it came from, how authoritative that source is, how to fetch it, when it was last read, what it said, which regions it covers and when it is in force.",
+      "required": [
+        "source_url",
+        "source_title",
+        "watch_urls",
+        "regions",
+        "effective_from",
+        "effective_until",
+        "verified_at",
+        "verification_status",
+        "source_authority"
+      ],
+      "properties": {
+        "source_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "watch_urls": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Every page that must be re-read to decide whether this rule still holds - the page it is written on plus wherever a change to it is announced. These differ: a platform can raise a threshold on its blog and on a dedicated changes page while the eligibility page cited here still states the old one, so a re-check that reads source_url alone comes back clean on a rule that has already moved. Required, and null is a real answer meaning nobody has worked out where this rule's changes surface. It is required precisely so that answer has to be given: an optional field makes 'not worked out' and 'nothing to watch' the same absence."
+        },
+        "regions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 2
+          },
+          "description": "ISO 3166-1 alpha-2 codes, or the single entry GLOBAL when the rule is not region-scoped."
+        },
+        "effective_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 10
+        },
+        "effective_until": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 10
+        },
+        "verified_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 10,
+          "description": "When a human last confirmed this rule against source_url. Required when verification_status is verified; must be null otherwise."
+        },
+        "verification_status": {
+          "enum": [
+            "verified",
+            "unverified_draft"
+          ],
+          "description": "unverified_draft describes a program that exists but whose numbers have not been confirmed against the source. It may populate the program map and must never decide eligibility."
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_authority": {
+          "enum": [
+            "official_help_page",
+            "official_secondary",
+            "creator_reported",
+            "unofficial"
+          ],
+          "description": "official_help_page = the platform's own help or support article for this product. official_secondary = the platform's own domain but not the product's eligibility article. creator_reported = a figure the platform does not publish, aggregated from what creators themselves report. Legitimate for a RATE and only ever as a range, never for an eligibility threshold, and it must be described as what creators report rather than as what the platform pays. unofficial = anywhere else, and never enough to back a verified rule or rate."
+        },
+        "retrieval": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "method",
+            "retrieved_at"
+          ],
+          "properties": {
+            "method": {
+              "enum": [
+                "browser_rendered",
+                "plain_fetch"
+              ],
+              "description": "How the page had to be read. Several of these help centres render client-side and return an empty body to a plain fetch, so a re-check scheduled without a browser would silently read nothing and could mistake that for an unchanged rule."
+            },
+            "retrieved_at": {
+              "type": "string",
+              "minLength": 10
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "description": "How and when the source was last actually fetched. Required for a verified rule - a re-check needs to know which tool can reach the page."
+        },
+        "regions_source_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where the country list was read, when that is a different page from the one stating the thresholds. Both YouTube tiers work this way, and the two pages change independently - a re-check that only revisited the eligibility article would miss a country being added or dropped. Null means the same page as source_url."
+        }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirement_id",
+        "metric_id",
+        "comparator",
+        "threshold",
+        "unit"
+      ],
+      "properties": {
+        "requirement_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "metric_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comparator": {
+          "enum": [
+            "gte",
+            "lte",
+            "eq"
+          ]
+        },
+        "threshold": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "window_days": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "The rolling window the threshold is measured over; null for a point-in-time metric such as a follower count."
+        },
+        "any_of_group": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Requirements sharing a group id satisfy the path when ANY one of them is met. Requirements with a null group must ALL be met."
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quote": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The sentence the threshold was read from, verbatim. This is what makes re-verification cheap and mechanical: a later run diffs this string against the page instead of re-deriving the rule, and a silent wording change becomes visible. Required on every requirement of a verified path."
+        },
+        "bound_override": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "enum": [
+                "exact",
+                "upper",
+                "lower"
+              ]
+            }
+          ],
+          "description": "Overrides the metric's bound for this requirement only. Two rules can read the same number and mean different things by it: one programme's terms count AUTHENTIC followers, which the platform filters and does not publish, while another states a plain follower count. The first can only be overstated by a public reading; the second is exact. Null uses the metric's own bound."
+        }
+      }
+    },
+    "eligibility_path": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One route into a program. A program can have several: a current bar, a future bar, and a grandfathered bar are three paths, not one rule with a footnote.",
+      "required": [
+        "path_id",
+        "applies_to",
+        "requirements",
+        "provenance"
+      ],
+      "properties": {
+        "path_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "applies_to": {
+          "enum": [
+            "new_applicant",
+            "existing_participant",
+            "any"
+          ]
+        },
+        "requirements": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/requirement"
+          }
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      }
+    },
+    "program": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program_id",
+        "platform",
+        "family",
+        "display_name",
+        "payout_model",
+        "what_it_pays_for",
+        "eligibility_paths",
+        "provenance"
+      ],
+      "properties": {
+        "program_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "platform": {
+          "enum": [
+            "youtube",
+            "instagram",
+            "tiktok"
+          ]
+        },
+        "family": {
+          "enum": [
+            "ad_share",
+            "memberships",
+            "fan_funding",
+            "subscriptions",
+            "gifts",
+            "bonuses",
+            "creator_rewards",
+            "paid_content",
+            "commerce"
+          ]
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payout_model": {
+          "enum": [
+            "revenue_share",
+            "fan_payment",
+            "platform_fund",
+            "commission"
+          ]
+        },
+        "what_it_pays_for": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Plain-language answer to 'how does this pay me'. This is the part of the library that is useful even when no account facts are available at all."
+        },
+        "revenue_basis": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "unit",
+            "note"
+          ],
+          "properties": {
+            "unit": {
+              "type": "string",
+              "minLength": 1
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "description": "What a revenue figure for this program would be a function of. It names the assumption a scenario needs; it never carries a rate itself."
+        },
+        "eligibility_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/eligibility_path"
+          }
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        },
+        "additional_requirements_not_assessed": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Further conditions the program imposes that this run cannot settle - either not yet verified against the source, or verified to exist but unreadable from any available data (account standing, linked payments, age). Their presence caps a verdict at partially_determined: reporting eligible while a known gate went unchecked is a false positive."
+        },
+        "i18n": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Creator-facing prose per language tag. Only the fields a creator reads are translated; ids, metrics and provenance stay in one language because they are contract, not copy. A missing tag falls back to the English text rather than to an empty section.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "what_it_pays_for": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additional_requirements_not_assessed": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "no_figure_reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "revenue_model": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "formula",
+            "period",
+            "inputs"
+          ],
+          "description": "How a figure for this programme would be computed, and where each input comes from. Its real job is to name the ONE input a run is missing: every programme here has exactly one side observable and one side not, so 'no figure' is never the useful answer - 'give me this number and I have the rest' is.",
+          "properties": {
+            "formula": {
+              "type": "string",
+              "minLength": 1
+            },
+            "period": {
+              "enum": [
+                "monthly",
+                "annual"
+              ]
+            },
+            "inputs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "from",
+                  "unit",
+                  "label"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "from": {
+                    "enum": [
+                      "observed_metric",
+                      "benchmark",
+                      "creator"
+                    ],
+                    "description": "observed_metric = a retrieved account fact, public or owner-authorized. benchmark = a rate the PLATFORM publishes. creator = only the creator can supply it. There is no 'our own estimate' source."
+                  },
+                  "metric_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "benchmark_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "where_to_find": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "For a creator input: where in their own dashboard the number lives. This is what turns a blocked figure into a next step."
+                  },
+                  "i18n": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Creator-facing sentence on what the figure is net of and what it covers. It travels with the scenario so the report cannot drop it."
+            },
+            "i18n": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "includes_programs": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true,
+              "description": "Programmes whose income this figure already contains. Their scenarios may appear beside it, but must never be added to it."
+            }
+          }
+        },
+        "no_figure_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why no amount can be produced for this programme, in words a creator can act on. Required whenever revenue_model is null and the programme is one a creator would expect a number for: silently omitting the biggest earner from the revenue section reads as an oversight, and the creator is left thinking we simply forgot the thing they asked about."
+        }
+      }
+    }
+  }
+}

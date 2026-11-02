@@ -63,6 +63,7 @@ OAuth 通过 `securitySchemes` 与 `_meta.securitySchemes` 同值声明。下表
 | public_video_extract_keyframes_hosted_media | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
 | public_video_extract_keyframes_hosted_stream | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
 | public_video_measure_media_signals | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
+| official_page_render_page | data | true | false | true | 读取第三方公开数据；不占账号额度、不创建账号记录（服务端调用审计与证据副本不算）。 |
 | lookup_instagram_post | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
 | lookup_tiktok_video | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
 | get_research_data_job | data | true | false | false | 只读当前用户且属于公开取数允许面的已有任务；不提交、重试或取消。 |

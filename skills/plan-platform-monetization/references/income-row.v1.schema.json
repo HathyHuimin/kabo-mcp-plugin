@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "income-row.v1",
+  "title": "Income row V1",
+  "description": "One Skill's own part of a 'what does my income add up to' answer. Shipped byte-identical in plan-platform-monetization and price-creator-brand-deals; scripts/income_rows.py enforces the rules a schema cannot express (rows with different rate origins are never summed, an amount needs a rate and a known volume, what a row lacks travels with it).",
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "row_id",
+        "stream_kind",
+        "stream",
+        "unit",
+        "volume_basis",
+        "rate_basis",
+        "period",
+        "cost_basis",
+        "already_counted_in",
+        "missing",
+        "amount",
+        "after_tax",
+        "source_ref"
+      ],
+      "properties": {
+        "row_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stream_kind": {
+          "enum": [
+            "platform_payout",
+            "brand_deal",
+            "ugc_production",
+            "digital_product"
+          ]
+        },
+        "stream": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The income stream, in words the creator uses."
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the rate is priced per: per 1,000 views, per member per month, per deliverable."
+        },
+        "volume_basis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "description",
+            "source"
+          ],
+          "properties": {
+            "description": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "enum": [
+                "retrieved",
+                "user_supplied",
+                "model_estimate",
+                "rule_library",
+                "unknown"
+              ]
+            }
+          },
+          "description": "How much of the thing is sold or seen, and where that number came from. unknown puts the row's gap in missing."
+        },
+        "rate_basis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "origin",
+            "description"
+          ],
+          "properties": {
+            "origin": {
+              "enum": [
+                "retrieved",
+                "user_supplied",
+                "model_estimate",
+                "rule_library",
+                "creator_reported",
+                "marketplace_observed",
+                null
+              ]
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "description": "The rate and the kind of evidence behind it. A null origin means no rate: the row gives the path to a figure, not the figure."
+        },
+        "period": {
+          "enum": [
+            "monthly",
+            "annual",
+            "one_off"
+          ]
+        },
+        "cost_basis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "platform_cut",
+            "tax"
+          ],
+          "properties": {
+            "platform_cut": {
+              "enum": [
+                "net_of_platform_share",
+                "before_platform_share",
+                "not_modelled"
+              ]
+            },
+            "tax": {
+              "enum": [
+                "pre_tax",
+                "after_tax",
+                "not_modelled"
+              ]
+            }
+          }
+        },
+        "already_counted_in": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "description": "Rows of the same output whose figure already contains this row's money. Never add a row to one named here."
+        },
+        "missing": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "description": "What this row still lacks. Anything listed here has to reach the final reply."
+        },
+        "amount": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "low",
+                "high",
+                "currency"
+              ],
+              "properties": {
+                "low": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "high": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "currency": {
+                  "type": "string",
+                  "minLength": 3
+                }
+              }
+            }
+          ]
+        },
+        "after_tax": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "low",
+                "high",
+                "rate_percent"
+              ],
+              "properties": {
+                "low": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "high": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "rate_percent": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              }
+            }
+          ]
+        },
+        "source_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The object in this Skill's own output the row was projected from."
+        }
+      }
+    },
+    "total": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "period",
+        "currency",
+        "row_ids",
+        "low",
+        "high"
+      ],
+      "description": "A sum over rows that share one rate origin, one period and one currency. There is no total across origins.",
+      "properties": {
+        "origin": {
+          "enum": [
+            "retrieved",
+            "user_supplied",
+            "model_estimate",
+            "rule_library",
+            "creator_reported",
+            "marketplace_observed"
+          ]
+        },
+        "period": {
+          "enum": [
+            "monthly",
+            "annual",
+            "one_off"
+          ]
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3
+        },
+        "row_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "low": {
+          "type": "number",
+          "minimum": 0
+        },
+        "high": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

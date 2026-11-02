@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creator-ai.local/schemas/monetization-request.v1.json",
+  "title": "MonetizationRequest V1",
+  "description": "What a monetization planning run is given. Account readings arrive already separated into observed facts and caller-supplied assumptions; the assessor never invents either.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "platform",
+    "account",
+    "region"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "monetization-request.v1"
+    },
+    "platform": {
+      "enum": [
+        "youtube",
+        "instagram",
+        "tiktok"
+      ]
+    },
+    "account": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "description": "The account being assessed. Null for a general question that names none - which programmes a platform runs, or which niche pays more, need no account; eligibility is then undetermined rather than guessed."
+    },
+    "region": {
+      "type": "string",
+      "minLength": 2,
+      "description": "The country THIS ACCOUNT is registered in - not where the person lives. One creator can hold accounts registered in different countries, and eligibility follows the account, so a US-registered channel and a CN-registered one belonging to the same person get different verdicts. ISO 3166-1 alpha-2, or UNKNOWN. Must be accompanied by region_source. YouTube declares it on the channel itself; Instagram and TikTok report it on no operation, so it has to be asked."
+    },
+    "participation": {
+      "enum": [
+        "new_applicant",
+        "existing_participant",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "as_of": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 10,
+      "description": "Evaluate eligibility as of this date. Defaults to today. Set it to check what a future rule change will require."
+    },
+    "programs": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Restrict the run to these program ids. Null assesses every program on the platform."
+    },
+    "observed_metrics": {
+      "type": "array",
+      "description": "Readings taken from retrieved account facts. Never a caller's guess: an unverified number belongs in assumptions.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "metric_id",
+          "value",
+          "unit",
+          "basis",
+          "retrieved_at"
+        ],
+        "properties": {
+          "metric_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1
+          },
+          "basis": {
+            "enum": [
+              "public_account_facts",
+              "owner_authorized_analytics",
+              "user_supplied"
+            ]
+          },
+          "retrieved_at": {
+            "type": "string",
+            "minLength": 10
+          },
+          "coverage_complete": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "sample_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "caveat": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "description": "Rates and growth figures the caller is willing to stand behind. Revenue scenarios and threshold projections exist only where one of these covers them.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "input_name": {
+                  "const": "tax_rate"
+                }
+              },
+              "required": [
+                "input_name"
+              ]
+            },
+            "then": {
+              "properties": {
+                "unit": {
+                  "const": "percent"
+                },
+                "value": {
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              }
+            }
+          }
+        ],
+        "required": [
+          "assumption_id",
+          "statement",
+          "value",
+          "unit",
+          "role",
+          "origin"
+        ],
+        "properties": {
+          "assumption_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "value": {
+            "type": "number"
+          },
+          "value_high": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Upper end when the caller models a range rather than one number, e.g. an RPM band. Never below value. The ledger keeps value; the statement should name the range."
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "applies_to_program": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "applies_to_metric": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Set for a rate assumption, in units per day, to project time-to-threshold for that metric's gate."
+          },
+          "role": {
+            "enum": [
+              "monthly_volume",
+              "rate_per_1000",
+              "growth_per_day",
+              "model_input",
+              "context"
+            ],
+            "default": "context",
+            "description": "What the assessor may do with this number. monthly_volume and rate_per_1000 together produce a revenue scenario; growth_per_day projects time-to-threshold for the metric named in applies_to_metric. context is recorded in the ledger and drives nothing."
+          },
+          "input_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The revenue-model input this value fills, e.g. `rpm` or `stars_received`. The plan lists exactly which inputs it is missing; supplying one back under its own name is how a figure gets computed. `tax_rate` (a percent) is the one input that is not a revenue factor: it turns each scenario it applies to into an after-tax figure as well."
+          },
+          "origin": {
+            "enum": [
+              "user_supplied",
+              "model_estimate"
+            ],
+            "description": "Who stands behind this number. user_supplied is a figure the creator gave. model_estimate is one the caller worked out to model a scenario. They are not interchangeable: an estimate recorded as user_supplied reads downstream as the creator's own rate."
+          }
+        }
+      }
+    },
+    "niche_question": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "niches",
+        "asks_competition"
+      ],
+      "properties": {
+        "niches": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "asks_competition": {
+          "type": "boolean"
+        }
+      },
+      "description": "Set when the creator asks which content niche pays better. The plan answers the rate half from the rule library and, when they also asked how crowded the niches are, hands that half back to trend research rather than dropping it."
+    },
+    "currency": {
+      "type": "string",
+      "minLength": 3,
+      "default": "USD"
+    },
+    "region_source": {
+      "enum": [
+        "account_declared",
+        "user_stated",
+        "unknown"
+      ],
+      "default": "unknown",
+      "description": "Where the account's country came from. account_declared = the platform reports it on the account. user_stated = the creator told us which country THIS account is registered in. unknown = we do not know, and no country-scoped rule may decide. Never infer it from bio text, links, post language or timezone: those describe what the account posts, not where it is registered, and a creator operating an account for another market is ordinary."
+    },
+    "income_breakdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Present when the ask is what the creator's income adds up to. The plan then prints its income rows as a table. List digital_products under streams_without_owner when the creator sells them: no Skill prices that income, so it becomes a row that says so instead of disappearing.",
+      "properties": {
+        "streams_without_owner": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "digital_products"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@
 - The repository root is the plugin root. Maintain one `skills/` directory, one `kabo` entry and one
   build entry point. Codex, Claude Code and Cursor add only host metadata; do not copy business content
   or remove features for a particular host.
-- The user selected eleven Skills in seven categories; see `skills.lock.json`. They were adapted from
+- The user selected fifteen Skills; see `skills.lock.json`. They were adapted from
   creator-skills and are now edited directly in this repository; do not overwrite them with a new
   creator-skills import. The lock file records only the starting point of the adaptation.
   Follow `docs/skills-spec.md` when changing a Skill. Enforcement stays off: keep `enforced` in

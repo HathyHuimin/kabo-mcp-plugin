@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "publish-request.v1",
+  "title": "PublishRequest",
+  "description": "The stable projection recommend-publish-timing consumes. It is deliberately independent of the Idea and Script workflows: a producer may build it from a SelectedIdea, a ScriptPackage, or direct user input, but this Skill never parses upstream free text to guess platform, format, duration, or timezone.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "request_id",
+    "content",
+    "creator",
+    "history"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "publish-request.v1"
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "content": {
+      "type": "object",
+      "required": [
+        "platform",
+        "format"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "platform": {
+          "enum": [
+            "instagram",
+            "youtube",
+            "tiktok"
+          ]
+        },
+        "format": {
+          "type": "string",
+          "description": "Platform-native product type the post will use."
+        },
+        "planned_duration_s": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "language": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "topic_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "audience_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_idea_ref": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/localArtifact"
+            }
+          ]
+        },
+        "source_script_ref": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/localArtifact"
+            }
+          ]
+        }
+      }
+    },
+    "creator": {
+      "type": "object",
+      "required": [
+        "account_ref",
+        "timezone",
+        "timezone_source"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"timezone_source": {"const": "not_supplied"}},
+            "required": ["timezone_source"]
+          },
+          "then": {"properties": {"timezone": {"maxLength": 0}}},
+          "else": {"properties": {"timezone": {"minLength": 1}}}
+        }
+      ],
+      "properties": {
+        "account_ref": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA zone. Supplied by the host, never read off the machine running the analysis. Empty only with timezone_source: not_supplied — an invented identifier is a wrong hour delivered as fact, while an unresolvable one degrades honestly to UTC."
+        },
+        "timezone_source": {
+          "enum": [
+            "creator_confirmed",
+            "profile_confirmed",
+            "assumed",
+            "not_supplied"
+          ],
+          "description": "An assumed zone must degrade the recommendation's confidence rather than be treated as fact; not_supplied is the honest value when the host offered none, and never a licence to substitute the operator's own zone."
+        },
+        "profile_ref": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/localArtifact"
+            }
+          ],
+          "description": "CreatorProfile artifact, when one exists."
+        }
+      }
+    },
+    "candidate_windows": {
+      "type": "array",
+      "description": "Optional. When absent the engine considers the whole week in the creator's local zone.",
+      "items": {
+        "type": "object",
+        "required": [
+          "start_local",
+          "end_local"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "start_local": {
+            "type": "string"
+          },
+          "end_local": {
+            "type": "string"
+          },
+          "weekdays": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 6
+            }
+          }
+        }
+      }
+    },
+    "history": {
+      "type": "object",
+      "description": "The personal history the recommendation must be built from. A request without usable history is still valid: the engine is expected to abstain rather than substitute generic advice.",
+      "required": [
+        "source_mode",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source_mode": {
+          "enum": [
+            "connector",
+            "provided_export",
+            "unavailable"
+          ]
+        },
+        "status": {
+          "enum": [
+            "available",
+            "partial",
+            "unavailable"
+          ]
+        },
+        "snapshot_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "window": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "since": {
+              "type": "string"
+            },
+            "until": {
+              "type": "string"
+            }
+          }
+        },
+        "metric": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Which performance metric the history is keyed on, e.g. views."
+        },
+        "maturity_days": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "post_count_total": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "post_count_usable": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Same format, mature, and carrying the metric."
+        },
+        "history_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Path or id of the PublishHistory carrying the per-post rows. The counts above describe the cohort; they cannot be bucketed. Optional so existing requests stay valid, but the engine abstains with 'no history' without it. The path is resolved relative to the run root and will not resolve in a different workspace — an isolation run caught exactly that. `snapshot_sha256` above is the authoritative identity: confirm the history matches it rather than trusting the path."
+        }
+      }
+    },
+    "peer_snapshot_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Optional. Path to a PublicContentSnapshot, or to any upstream result carrying one, whose comparable accounts this task may read publish hours from. Two things about it are contractual. First, **this Skill does not decide who counts as a peer** — that judgement belongs to whoever produced the snapshot, is read from `creators[].relationship` or an equivalent classification, and is honoured as given; re-deriving it here would put half a competitor Skill in the wrong place. Second, the snapshot must have been collected with a denominator (per-account recent-N, `bounded_collection`); an outlier-only sample answers 'when did the hits go out', which is not the question and cannot see the hours where everything flopped. Absent by default: a creator asking when to post has not necessarily run a competitor study, and the signal reports itself unavailable rather than degrading the answer silently."
+    }
+  },
+  "$defs": {
+    "localArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "artifact_id",
+        "schema_version"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

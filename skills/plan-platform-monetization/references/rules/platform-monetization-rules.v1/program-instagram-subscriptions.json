@@ -1,0 +1,44 @@
+{
+  "program_id": "instagram.subscriptions",
+  "platform": "instagram",
+  "family": "subscriptions",
+  "display_name": "Instagram Subscriptions",
+  "payout_model": "fan_payment",
+  "what_it_pays_for": "Followers pay a monthly price for subscriber-only stories, lives, reels and posts, plus a badge next to their comments. Recurring income from the audience you already have.",
+  "revenue_basis": {
+    "unit": "revenue per paying subscriber per month",
+    "note": "A function of how many followers convert and at what price point you set."
+  },
+  "additional_requirements_not_assessed": [
+    "Must be 18 years or older.",
+    "Must meet the Partner Monetization Policies and stay compliant with Community Standards and Content Monetization Policies.",
+    "Must accept the Instagram Subscriptions Terms of Use.",
+    "Accounts that primarily post content focused on children are not eligible."
+  ],
+  "provenance": {
+    "source_url": "https://help.instagram.com/478012211024479",
+    "source_title": "Eligibility requirements for Instagram Subscriptions",
+    "regions": ["AR", "AU", "AT", "BE", "BR", "BG", "CA", "CL", "CO", "HR", "CZ", "DK", "EE", "FI", "FR", "GE", "DE", "GH", "GR", "HU", "IN", "ID", "IE", "IT", "JP", "LV", "LT", "LU", "MY", "MX", "NL", "NZ", "PE", "PL", "PT", "RO", "SK", "SI", "ZA", "KR", "ES", "SE", "TW", "TZ", "TH", "TR", "UG", "GB", "US"],
+    "effective_from": null,
+    "effective_until": null,
+    "verified_at": "2026-08-27",
+    "verification_status": "verified",
+    "note": "Read in full 2026-08-27. The page enumerates 49 countries; that list is transcribed into regions.",
+    "source_authority": "official_help_page",
+    "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "The Instagram help centre renders client-side: a plain fetch returns the shell with no article body, so a re-check must drive a real browser."},
+    "regions_source_url": null,
+    "watch_urls": null
+  },
+  "eligibility_paths": [
+    {"path_id": "subscriptions.followers", "applies_to": "new_applicant", "requirements": [{"requirement_id": "professional_account", "metric_id": "instagram.professional_account", "comparator": "gte", "threshold": 1, "unit": "professional account", "window_days": null, "any_of_group": null, "note": "Visible on the public profile, so this one does not have to be left to the creator to check.", "quote": "Have a professional account on Instagram with at least 10,000 followers.", "bound_override": null}, {"requirement_id": "followers_10k", "metric_id": "instagram.followers", "comparator": "gte", "threshold": 10000, "unit": "followers", "window_days": null, "any_of_group": null, "note": "The page reads 'a professional account on Instagram with at least 10,000 followers'.", "quote": "Have a professional account on Instagram with at least 10,000 followers.", "bound_override": null}], "provenance": {"source_url": "https://help.instagram.com/478012211024479", "source_title": "Eligibility requirements for Instagram Subscriptions", "regions": ["AR", "AU", "AT", "BE", "BR", "BG", "CA", "CL", "CO", "HR", "CZ", "DK", "EE", "FI", "FR", "GE", "DE", "GH", "GR", "HU", "IN", "ID", "IE", "IT", "JP", "LV", "LT", "LU", "MY", "MX", "NL", "NZ", "PE", "PL", "PT", "RO", "SK", "SI", "ZA", "KR", "ES", "SE", "TW", "TZ", "TH", "TR", "UG", "GB", "US"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "note": null, "source_authority": "official_help_page", "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "The Instagram help centre renders client-side: a plain fetch returns the shell with no article body, so a re-check must drive a real browser."}, "regions_source_url": null, "watch_urls": null}}
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "Instagram 订阅", "what_it_pays_for": "粉丝按月付费，看只有订阅者能看的快拍、直播、Reels 和帖子，并在评论区带上专属标识。是来自现有粉丝的持续收入。", "additional_requirements_not_assessed": ["需年满 18 周岁。", "需符合合作变现政策，并持续遵守社区规范与内容变现政策。", "需接受 Instagram 订阅服务条款。", "主要发布以儿童为主题内容的账号不符合条件。"]}
+  },
+  "revenue_model": {
+    "formula": "paying subscribers x monthly price",
+    "period": "monthly",
+    "inputs": [{"name": "subscribers", "from": "observed_metric", "metric_id": "instagram.paying_subscribers", "benchmark_id": null, "unit": "subscribers", "label": "Paying subscribers", "where_to_find": "Connect your own account and this comes from your dashboard automatically.", "i18n": {"zh-CN": {"label": "付费订阅人数", "where_to_find": "连接你自己的账号后，这个数字会从你的后台直接读到。"}}}, {"name": "price", "from": "observed_metric", "metric_id": "instagram.subscription_price", "benchmark_id": null, "unit": "USD per subscriber per month", "label": "The monthly price you set", "where_to_find": "Connect your own account and this comes from your dashboard automatically.", "i18n": {"zh-CN": {"label": "你设定的月费", "where_to_find": "连接你自己的账号后，这个数字会从你的后台直接读到。"}}}]
+  },
+  "no_figure_reason": null
+}

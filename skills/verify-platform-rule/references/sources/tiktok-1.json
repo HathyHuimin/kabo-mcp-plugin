@@ -1,0 +1,269 @@
+{
+  "schema_version": "platform-policy-sources.v1",
+  "library_version": "2026.09.8",
+  "compiled_at": "2026-09-15",
+  "staleness_budget_days": 120,
+  "sources": [
+    {
+      "source_id": "tiktok.account_privacy",
+      "platform": "tiktok",
+      "domains": [
+        "product_help",
+        "recommendations"
+      ],
+      "role": "rule_source",
+      "title": "Choosing between a private or public account",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7543538137926998533",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-15",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The private/public account distinction, which profile and post surfaces each permits, the fact that public posts may be visible and shareable on or off TikTok and may appear in search engines, and the in-app path Profile > Menu > Settings and privacy > Privacy > Private account.",
+      "does_not_carry": "Any promise that switching to public increases For You ranking, or a complete list of every setting that affects distribution. It establishes visibility and reuse eligibility, not a recommendation boost.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.account_status",
+      "platform": "tiktok",
+      "domains": [
+        "product_help",
+        "recommendations",
+        "terms"
+      ],
+      "role": "rule_source",
+      "title": "Your account status",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7543604781319756294",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-15",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The issues Account check displays and both official entry paths: TikTok Studio > More tools > Account check, or Settings and privacy > Support > Safety Center > Account check. It also writes that a checkmark means no issue and a warning sign means an issue.",
+      "does_not_carry": "For You eligibility for every individual post, a shadowban verdict, a guaranteed recovery action or time, or evidence that low views by themselves mean an account-status issue.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.add_yours",
+      "platform": "tiktok",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Add Yours",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7605895638202636820",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The official name Add Yours: a prompt sticker others respond to with their own post. The page writes how to create a prompt from the side panel or Stickers, that prompts are visible to everyone, and that TikTok Studio has an Add Yours manager.",
+      "does_not_carry": "Any ranking boost for using Add Yours, or Comment Polls / Voice Comments. Those names are not on this page.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.ai_alive",
+      "platform": "tiktok",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "AI Alive",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7581820705977686539",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/en-us/introducing-tiktok-ai-alive"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The official name AI Alive: turn pictures into videos with a text prompt and upload them to Story. The page writes the Profile photo / Story camera entry, the AI Alive control, regenerate, and that drafts expire after 7 days.",
+      "does_not_carry": "AI cover images, AI-generated titles, AI Create, or Magic tool. Those live on the editing-help page or are still unlocated. That absence is a fact about THIS page.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.ai_alive_newsroom",
+      "platform": "tiktok",
+      "domains": [
+        "product_help",
+        "platform_changes"
+      ],
+      "role": "rule_source",
+      "title": "Introducing AI Alive: Bringing Your Photos to Life on TikTok Stories",
+      "url": "https://newsroom.tiktok.com/en-us/introducing-tiktok-ai-alive",
+      "source_authority": "official_secondary",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The 2025-05-13 announcement that AI Alive is TikTok's image-to-video feature for Stories, used from the Story Camera, and that generated Stories carry an AI-generated label and C2PA metadata.",
+      "does_not_carry": "The in-app tap path written on the Help Center AI Alive page, or anything about AI covers or generated titles.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.ai_cover_titles",
+      "platform": "tiktok",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "TikTok AI cover and generated titles (page not located)",
+      "url": null,
+      "source_authority": "official_help_page",
+      "status": "unverified_draft",
+      "verified_at": null,
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://support.tiktok.com/en/using-tiktok/creating-videos/editing-tiktok-videos-and-photos",
+        "https://support.tiktok.com/en/using-tiktok/creating-videos/ai-generated-content"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "Nothing about AI covers or generated titles yet. This row records a known hole so a run cannot treat the silence as 'TikTok has no such feature' or invent one. The nearby editing and AIGC pages are registered separately and may be quoted only for what they actually carry.",
+      "does_not_carry": "A URL. Until one is located this row cannot settle a claim (it is still unverified_draft).",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.ai_generated_content",
+      "platform": "tiktok",
+      "domains": [
+        "content_policy",
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "About AI-generated content",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7636670084747893268",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "What TikTok calls AI-generated content, when creators should apply the 'creator labeled as AI-generated' label, when TikTok may auto-label via C2PA Content Credentials or TikTok AI effects, that an auto label cannot be removed, and the in-app AI-generated content setting on the post screen. Also which AIGC is prohibited even when labeled.",
+      "does_not_carry": "AI cover images or AI-generated titles as a posting product. This page is about disclosure labels, not cover or title generation. That is a fact about THIS page.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.community_guidelines",
+      "platform": "tiktok",
+      "domains": [
+        "content_policy",
+        "originality",
+        "platform_changes"
+      ],
+      "role": "rule_source",
+      "title": "TikTok Community Guidelines",
+      "url": "https://www.tiktok.com/community-guidelines",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-06",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The content rules TikTok enforces, and - read in full on 2026-09-06 - the account-level half a per-video reading misses: an account posting a lot of FYF-ineligible content can itself be made ineligible and harder to find, ineligible content may also be restricted from monetization, and TikTok analytics is where a creator can see whether a video was made ineligible.",
+      "does_not_carry": "Any number behind the account-level rule. It says 'a lot of' and gives no count, no proportion and no window, and neither do the recommendation, account-standing or appeal sections. A run asked 'how many is too many' has to say the platform does not publish that, not estimate it.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.creator_rewards_calculation",
+      "platform": "tiktok",
+      "domains": [
+        "monetization"
+      ],
+      "role": "rule_source",
+      "title": "How rewards work (Creator Rewards Program)",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7543897461245450808",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "What RPM is built from, listed by the platform itself: 'RPM: The average rewards collected per 1,000 qualified views. RPM considers many factors, including:' - video performance, then 'Search value (the amount of search traffic that your content generates, including video views on the search page)', then location, video engagement and advertising value. This is the page that settles the circulating claim that search value entered the rewards split: it is written down, as one named RPM factor among five. It also carries the Additional Reward criteria (well-crafted, engaging, specialized), the 1,000 qualified For You view floor before a video earns at all, the USD 10 minimum payout, payment on the 15th, and which payout methods exist per country.",
+      "does_not_carry": "Any RPM figure, and any weighting between the five factors. It names what goes into the rate and never what the rate is, so 'how much will a million views pay' has to be answered as unpublished rather than with a creator-reported band. It gives no formula for Additional Reward either - the three adjectives are the whole published definition. And because rewards settle on qualified For You feed views, search-page views move the rate, not the billable view count.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.creator_rewards_help",
+      "platform": "tiktok",
+      "domains": [
+        "monetization"
+      ],
+      "role": "rule_source",
+      "title": "Creator Rewards Program (Help Center)",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7581821550694013452",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The entry bars in the platform's own words: 'Have at least 10,000 followers.' and 'Have at least 100,000 video views in the last 30 days.', plus being based in an available country, an account in good standing, a Personal Account, authentic account information, and being at least 18 (19 in South Korea). Also the per-video rules - original, at least one minute, posted after joining, at least 1,000 qualified For You feed views - and what is not original: Duets, Stitches, copied or lightly modified content, looping videos, photo-only posts, text-overlay-only posts, and lip syncs or copyrighted music running over a minute. Qualified views are defined here as unique For You feed views excluding fraudulent, paid, disliked, promoted, artificial and under-5-second views.",
+      "does_not_carry": "The country list. It requires being based in an available country and does not enumerate them, so 'does my country qualify' has no published answer on this page. No rate either: what a qualified view is worth lives on the rewards calculation page, and even there it is factors rather than a number.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.creator_rewards_newsroom",
+      "platform": "tiktok",
+      "domains": [
+        "monetization"
+      ],
+      "role": "rule_source",
+      "title": "Introducing the New Creator Rewards Program",
+      "url": "https://newsroom.tiktok.com/en-us/introducing-the-new-creator-rewards-program",
+      "source_authority": "official_secondary",
+      "status": "verified",
+      "verified_at": "2026-09-09",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The Creator Rewards formula as published: originality, play duration, search value and audience engagement, and that creators can use Creator Search Insights to see search demand.",
+      "does_not_carry": "A numeric definition of search value, a payout rate, or the in-app CSI entry path. Those are not on this announcement.",
+      "language": "en"
+    }
+  ]
+}

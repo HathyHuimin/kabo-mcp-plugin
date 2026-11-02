@@ -32,7 +32,17 @@
 - 合入 main（1.0.5 / 1.0.6 已由 main 发布，含旁白参考）：旁白与三类口播并存，参考上限统一 90 秒。
   合并后的包在生产上冒烟（画中画 TikTok，job `20964b79`，runner V2-r71，73.3 秒，$1.22）：读到画中画格式文件、`all_models` 取到
   `talking_model_choices`、默认出片用 Vivix、终审结论（framing）逐项转述，均通过。旁白参考本轮未测（随 main 的 1.0.5 / 1.0.6 已发布）。
-- `contracts/directory-mcp/` 重新固定到 kabo `f00ff9738`（63 个工具；`get_remake_video` 的 `all_models` 与 `talking_model_choices`、`render_remake_video` 的默认模型与说明，另含 `tiktok_list_account_posts` 的说明变化）。
+- `contracts/directory-mcp/` 重新固定到 kabo `d1dcf9b09`（64 个工具，含 `get_remake_video` 的 `all_models` / `talking_model_choices` 与 `start_remake_video` 的 `script`）。
+- 新增四个 Skill，均从 creator-skills `8fc3371e6` 按 KS1–KS8 改造搬运（固定这一版搬运，与上游后续版本的差异上线前再对齐）：
+  `diagnose-reach-drop` 0.4.10、`recommend-publish-timing` 0.5.15（`2947e5ea`，含证据侧量级词数字修复）、`plan-platform-monetization` 0.7.13、
+  `verify-platform-rule` 0.18.23。去掉 `manifest.json`、`agents/` 与读宿主会话记录的脚本，取数改为 `/mcp-pub`
+  工具名 + `delivery:"download"` + `static_host.py`；超过 KS3.2 上限的数据文件拆分或删去脚本与正文都不读的字段。
+  `recommend-publish-timing` 修正上游校验器与引擎对小时级推荐置信度判定不一致（校验器按指标一致率重算，引擎按同行佐证），
+  此前多数小时级推荐会在校验步失败。
+- `verify-platform-rule` 依赖 `/mcp-pub` 恢复的 `official_page_render_page`（kabo#1817，已合入并部署）；`contracts/directory-mcp/`
+  重新固定到 kabo main 的合入提交 `d1dcf9b09`（64 个工具；另含 kabo main 期间对复刻工具、`analyze_content_video` 与
+  `tiktok_list_account_posts` 的出入参更新）。
+  四个新 Skill 在本机 Codex 连生产 /mcp-pub 实测：发布时间、变现已交付；平台规则核对待 kabo#1817 部署。
 - `analyze-content-video` 同步到 creator-skills 0.14.29、`create-script-and-packaging` 同步到 0.2.27（冻结提交 `a9514ba30`）：本地视频抽帧改用哈希文件名、720px、限 90 帧 / 12 MiB 且先写开头和结尾，`--measure-signals` 测剪辑点与停顿进 `media.probed`，宿主机器转写用 `--origin speech_recognition` 记为「听到的」；健康的 job 在本轮内等约 3 分钟；测量、长视频文字、图文帖、剪辑请求拿不到时的处理写进 `references/evidence-reading.md`；脚本的 `video_analysis_sources` 只认 `video_analysis.json`；续集先核实上一集。两个 SKILL.md 正文不增长。
 - review-creator-account-deep 同步上游 0.3.52：没有标准版分析时，在本次运行里用 `fetch_catalog.py` 取一页作品目录（每次运行最多 4 次目录调用，失败调用用 `--failed` 记账，Feed 失败不重试）；后续步骤缺输入时退出码 2 并给出第 1 步的两个入口；标准版复用说明移到 `references/standard-inputs.md`。
 - `develop-content-ideas` 同步 creator-skills 0.1.31（`a9514ba30`）：prep 对各类输入问题（非 JSON / 非 UTF-8 / 缺失文件、非原文主题、错误语言标签）统一返回 `needs_correction`，首轮合并所有可独立核实的问题、限纠正一次；支持「再来 10 个同风格」续轮（`--previous-ideas` 绑定上一轮 `idea_set.json`）；zh/en/fr/ar 之外的报告语言改用 `report_language.py --labels` 列出的 UI 标签译文并逐项校验。`remake-viral-video` 对照上游 0.1.34 无需改动（TikTok 链接由 #20 处理，Wan 3.0 不在当前 `/mcp-pub` 合约中，固定补间数值已在 #40 合入），只更新溯源记录。

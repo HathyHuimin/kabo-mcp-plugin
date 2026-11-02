@@ -1,0 +1,242 @@
+{
+  "schema_version": "platform-policy-sources.v1",
+  "library_version": "2026.09.8",
+  "compiled_at": "2026-09-15",
+  "staleness_budget_days": 120,
+  "sources": [
+    {
+      "source_id": "tiktok.creator_search_insights",
+      "platform": "tiktok",
+      "domains": [
+        "product_help",
+        "monetization"
+      ],
+      "role": "rule_source",
+      "title": "Creator Search Insights",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7581820708318239243",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The official name Creator Search Insights; that it shows search analytics and topic filters; and the in-app entry the page writes (search for Creator Search Insights).",
+      "does_not_carry": "Whether search value is a Creator Rewards payout factor, or any number for how search changes rewards. That lives on the Rewards newsroom page.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.duets",
+      "platform": "tiktok",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Duets",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7636670084584512021",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The official name Duet: a split-screen post that plays the creator's video beside another creator's video. The page writes who can Duet (Everyone or Friends), that a public account is required to allow Duets, and the Share → Duet entry.",
+      "does_not_carry": "Any ranking or recommendation boost for posting a Duet. That absence is a fact about THIS page.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.editing_help",
+      "platform": "tiktok",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Editing TikTok videos and photos",
+      "url": "https://support.tiktok.com/en/using-tiktok/creating-videos/editing-tiktok-videos-and-photos",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The official editing-tool names on this page: Overlay, effects, multi-track, Magic tool (auto effects), and AI Create (AI Image or AI Video from a text prompt plus the creator's photo or video). It also carries the in-app names Edit, Add +, Sound, Text, Overlay, Magic, and AI Create, plus the session caps (up to 35 items, up to 8 overlays) and that AI Create is not available everywhere and has a daily regeneration limit.",
+      "does_not_carry": "AI cover images or AI-generated titles as a product. Those names are not on this page. That absence is a fact about THIS page, not about the corpus: the registered hole tiktok.ai_cover_titles records that no such official article has been located yet.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.how_recommends_content",
+      "platform": "tiktok",
+      "domains": [
+        "recommendations"
+      ],
+      "role": "rule_source",
+      "title": "How TikTok recommends content",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7655285288050104852",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "How TikTok's recommender systems work: interest categories at signup, then user interactions, content information and user information as ranking factors; how For You, Following, Friends, LIVE, Search, notifications, comments and account recommendations are described; For You feed eligibility versus Community Guidelines removals; and that turning off personalized feeds (EU and Kazakhstan only) also stops personalizing Comments, Stories and account recommendations.",
+      "does_not_carry": "Any sentence that Stories, text-only Stories, or resharing a post to Stories receive extra or additional recommendation. It names Stories only as something that is not personalized when that setting is off. That absence is a fact about THIS page.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.integrity_authenticity",
+      "platform": "tiktok",
+      "domains": [
+        "originality",
+        "content_policy"
+      ],
+      "role": "rule_source",
+      "title": "Integrity and Authenticity | TikTok Community Guidelines",
+      "url": "https://www.tiktok.com/safety/en/policies-and-engagement/integrity-authenticity",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-06",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The AI-labelling and unoriginal-content half. Read in full on 2026-09-06: generative AI is welcomed, the requirement is a label on realistic-looking AI or significantly edited content, and unlabelled content may be removed, restricted or labelled by TikTok. Separately, reused material with nothing new added is ineligible for the For You feed - a reach rule, not a removal rule. Automation used to run many accounts or post repetitive content is listed under spam.",
+      "does_not_carry": "Any threshold, quota or time window. Also nothing about the Creator Rewards originality or search-value formula, which live on the registered Creator Rewards newsroom page and the Creator Search Insights help page - so a run must not answer those from THIS page.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.post_privacy",
+      "platform": "tiktok",
+      "domains": [
+        "product_help",
+        "recommendations"
+      ],
+      "role": "rule_source",
+      "title": "Post privacy settings",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7611812700171262475",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-15",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The audience choices for new and existing posts on public and private accounts; the exact preview-screen and existing-post privacy paths; the fact that age and location may constrain defaults; that view count does not reset after changing privacy; and the Privacy > Reuse of content > Allow reuse of content from path for Story, Stitch, Duet and stickers.",
+      "does_not_carry": "A ranking boost for choosing Everyone or enabling reuse, or a universal best choice independent of the creator's audience goal, age, region and privacy needs. It establishes who may see or reuse a post, not extra recommendation weight.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.stitch",
+      "platform": "tiktok",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Stitch (reuse-of-content and who can Stitch)",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7636676986101864980",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "Who can Stitch a post (Everyone or Friends), that a public account is required to allow Stitch, the Allow reuse of content control, and that turning Stitch off also affects who can Duet, create stickers, or add the post to Story.",
+      "does_not_carry": "A standalone definition of Stitch as 'use a clip of another video'. This URL currently opens the privacy / reuse article. That is a fact about THIS page.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.stories_help",
+      "platform": "tiktok",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "TikTok Stories",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7605444292726905364",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The official name TikTok Stories; that Stories are photos and videos that stay visible for 24 hours; that they can be viewed from the profile, inbox, and the For You and Following feeds; how to post (Add post +, Story, Photo/Text/video time limit, Your Story); Highlights to keep Stories visible longer than 24 hours; and the in-app entry names the page writes.",
+      "does_not_carry": "Any claim that posting, resharing or forwarding to Stories, or posting a text-only Story, receives extra recommendation or distribution. That absence is a fact about THIS page, not about the corpus: the recommendation help page is also silent on that boost.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.suggested_accounts",
+      "platform": "tiktok",
+      "domains": [
+        "product_help",
+        "recommendations"
+      ],
+      "role": "rule_source",
+      "title": "Suggested accounts",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7636670084747991572",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-15",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "How TikTok may suggest an account to Contacts, Facebook friends and People who open or send links; that the controls can be changed at Privacy > Suggest your account to others; that defaults differ for adults and teens; and that turning all controls off does not prevent every suggestion.",
+      "does_not_carry": "A promise that enabling account suggestion increases video For You ranking or total reach. It concerns discovery of the account through connection signals, not a published video-distribution boost.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.studio",
+      "platform": "tiktok",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "TikTok Studio",
+      "url": "https://www.tiktok.com/support/faq_detail?id=7581820705491229240",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://newsroom.tiktok.com/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The official name TikTok Studio and that AutoCut applies templates with effects, music, transitions and more.",
+      "does_not_carry": "How to turn AutoCut off, any limit on how often it can be used, or a standalone AutoCut article. The /autocut support path is a topic index, not a definition page. That absence is a fact about THIS page.",
+      "language": "en"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Model judgments; evidence and run metadata are bound by drive.py",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claims"],
+  "properties": {
+    "claims": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["statement", "verdict"],
+        "properties": {
+          "statement": {"type": "string", "minLength": 1},
+          "verdict": {"enum": ["confirmed", "refuted", "partly_true", "no_official_text", "not_checked"]},
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object", "additionalProperties": false, "required": ["ref"],
+              "properties": {
+                "ref": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:P[1-9][0-9]*(-P[1-9][0-9]*)?$"},
+                "gloss": {"type": ["string", "null"], "description": "Translation required when the source language differs from the delivery language."},
+                "effective_from": {"type": ["string", "null"]}
+              }
+            }
+          },
+          "scope": {"type": ["string", "null"], "description": "Required only for partly_true: which part is supported and its limits."},
+          "inference": {"type": ["string", "null"], "description": "Required only for no_official_text or not_checked; distinguish interpretation from platform facts."},
+          "unreached_source": {"type": ["string", "null"], "description": "Required for not_checked: selected source_id or watch URL also recorded in unreachable_sources."},
+          "checked_sources": {"type": "array", "items": {"type": "string"}, "description": "Required for no_official_text: relevant selected source IDs actually read, not proof of platform-wide absence."}
+        }
+      }
+    },
+    "unreachable_sources": {
+      "type": "array",
+      "description": "Explain failed pages in the user's language; also mark navigation-only pages that could not answer the claim. Other failures remain automatically included.",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["reason"],
+        "oneOf": [{"required": ["source_id"], "not": {"required": ["url"]}}, {"required": ["url"], "not": {"required": ["source_id"]}}],
+        "properties": {"source_id": {"type": "string"}, "url": {"type": "string"}, "reason": {"type": "string", "minLength": 1}}
+      }
+    }
+  }
+}

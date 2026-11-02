@@ -6,7 +6,7 @@
 ## 已实现的代码条件
 
 - portable manifest、品牌资产与公开目录 MCP；生产 scopes 及 UserInfo 仍须按下文实测。
-- 十一个固定 Skills、源 commit/版本/文件哈希、逐项数据工具映射和报告单次交付说明。
+- 十五个固定 Skills、源 commit/版本/文件哈希、逐项数据工具映射和报告单次交付说明。
   其中 `remake-viral-video` 依赖的三个复刻工具已固定到 kabo#1777 的合入 commit。
 - 原生宿主 OAuth，无 lifecycle hooks；脚本执行需要实际宿主提供相应运行环境。
 - 固定工具/标准来源、静态 Skills 记录与证据隔离回归、确定性 ZIP 和逐文件摘要。
@@ -45,7 +45,7 @@ OpenAI 工作区域名限制需要 `openid`、`email` 与 UserInfo 的 `email`�
 未配置时返回 404 不等于代码缺少路由；必须检查生产配置。不得用占位 token 或其他
 插件的 token 冒充验证成功，不得覆盖正在使用的挑战。代码 PR 不部署配置或完成门户验证。
 
-十一个 Skills 需要 Python 3、可写工作区以及完整结果导出或证据下载（`remake-viral-video` 只走下载）；本地视频另需
+十五个 Skills 需要 Python 3、可写工作区以及完整结果导出或证据下载（`remake-viral-video` 只走下载）；本地视频另需
 ffmpeg/ffprobe。先证明目标宿主能完成完整流程，再声明支持；Codex 安装成功不能替代
 ChatGPT 网页端、移动端验收。无法提供所需执行能力时，在调用消耗额度的工具前停止
 对应工作流并说明缺失条件，不转发 Kabo 网页端 agent。若只能本机执行，按

@@ -1,0 +1,42 @@
+{
+  "program_id": "tiktok.paid_collections",
+  "platform": "tiktok",
+  "family": "paid_content",
+  "display_name": "Series",
+  "payout_model": "fan_payment",
+  "what_it_pays_for": "You put up to 80 videos behind a one-off paywall and viewers buy access. Unlike gifts and rewards this is paid for the content itself, so a small audience that really wants the material can outperform a large one that does not.",
+  "revenue_basis": null,
+  "additional_requirements_not_assessed": [
+    "Must be 18 years or older, or 19 in South Korea.",
+    "Must have a public Personal or Business Account; political and private accounts are not eligible.",
+    "Must post original content.",
+    "Account must be in good standing with no repeated Community Guidelines violations."
+  ],
+  "provenance": {
+    "source_url": "https://www.tiktok.com/support/faq_detail?id=7639210131833756180",
+    "source_title": "What is Series on TikTok?",
+    "source_authority": "official_help_page",
+    "regions": ["SOURCE_LISTS_COUNTRIES"],
+    "effective_from": null,
+    "effective_until": null,
+    "verified_at": "2026-08-27",
+    "verification_status": "verified",
+    "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "This support article renders client-side and the support.tiktok.com URL redirects to a www.tiktok.com faq_detail id; record the redirected id, not the pretty URL."},
+    "note": "Read in full 2026-08-27. Three of its bars are public numbers, which makes this the most assessable TikTok programme in the library.",
+    "regions_source_url": null,
+    "watch_urls": null
+  },
+  "eligibility_paths": [
+    {"path_id": "series.standard", "applies_to": "new_applicant", "requirements": [{"requirement_id": "followers_10k", "metric_id": "tiktok.followers", "comparator": "gte", "threshold": 10000, "unit": "followers", "window_days": null, "any_of_group": null, "note": null, "quote": "Have 10,000 or more followers.", "bound_override": null}, {"requirement_id": "posts_3_30d", "metric_id": "tiktok.public_posts_30d", "comparator": "gte", "threshold": 3, "unit": "public posts", "window_days": 30, "any_of_group": null, "note": null, "quote": "Post 3 or more public posts in the last 30 days.", "bound_override": null}, {"requirement_id": "views_1k_30d", "metric_id": "tiktok.views_30d", "comparator": "gte", "threshold": 1000, "unit": "views", "window_days": 30, "any_of_group": null, "note": null, "quote": "Reach 1,000 or more views in the last 30 days.", "bound_override": null}, {"requirement_id": "account_age_30d", "metric_id": "tiktok.account_age_days", "comparator": "gte", "threshold": 30, "unit": "days", "window_days": null, "any_of_group": null, "note": null, "quote": "Have an account that is at least 30 days old.", "bound_override": null}], "provenance": {"source_url": "https://www.tiktok.com/support/faq_detail?id=7639210131833756180", "source_title": "What is Series on TikTok?", "source_authority": "official_help_page", "regions": ["SOURCE_LISTS_COUNTRIES"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "This support article renders client-side and the support.tiktok.com URL redirects to a www.tiktok.com faq_detail id; record the redirected id, not the pretty URL."}, "note": null, "regions_source_url": null, "watch_urls": null}},
+    {"path_id": "series.under_10k_application", "applies_to": "new_applicant", "requirements": [{"requirement_id": "posts_3_30d", "metric_id": "tiktok.public_posts_30d", "comparator": "gte", "threshold": 3, "unit": "public posts", "window_days": 30, "any_of_group": null, "note": null, "quote": "Post 3 or more public posts in the last 30 days.", "bound_override": null}, {"requirement_id": "views_1k_30d", "metric_id": "tiktok.views_30d", "comparator": "gte", "threshold": 1000, "unit": "views", "window_days": 30, "any_of_group": null, "note": null, "quote": "Reach 1,000 or more views in the last 30 days.", "bound_override": null}, {"requirement_id": "account_age_30d", "metric_id": "tiktok.account_age_days", "comparator": "gte", "threshold": 30, "unit": "days", "window_days": null, "any_of_group": null, "note": null, "quote": "Have an account that is at least 30 days old.", "bound_override": null}, {"requirement_id": "prior_paid_content", "metric_id": "tiktok.program_invitation", "comparator": "gte", "threshold": 1, "unit": "invitation", "window_days": null, "any_of_group": null, "note": "A second route for creators under the follower bar. It replaces followers with a manual application, so it can never be settled from account data.", "quote": "Creators with fewer than 10,000 followers who meet our other eligibility requirements can apply for Series. To apply, provide a link to premium content previously sold on other platforms with your application on TikTok Studio.", "bound_override": null}], "provenance": {"source_url": "https://www.tiktok.com/support/faq_detail?id=7639210131833756180", "source_title": "What is Series on TikTok?", "source_authority": "official_help_page", "regions": ["SOURCE_LISTS_COUNTRIES"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "This support article renders client-side and the support.tiktok.com URL redirects to a www.tiktok.com faq_detail id; record the redirected id, not the pretty URL."}, "note": "The under-10k application route, stated on the same page as a Note.", "regions_source_url": null, "watch_urls": null}}
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "Series 付费合集", "what_it_pays_for": "你把最多 80 条视频放进一个一次性付费的合集，观众购买后才能看。和礼物、奖励不同，这里观众付的是内容本身的钱——一小群真的想要这些内容的人，可能比一大群随便刷刷的人更值钱。", "additional_requirements_not_assessed": ["需年满 18 周岁，韩国为 19 周岁。", "需要公开的个人号或企业号；政治类账号与私密账号不符合条件。", "需发布原创内容。", "账号需处于正常状态，没有反复违反社区规范。"]}
+  },
+  "revenue_model": {
+    "formula": "units sold x price",
+    "period": "monthly",
+    "inputs": [{"name": "units", "from": "observed_metric", "metric_id": "tiktok.series_purchases_30d", "benchmark_id": null, "unit": "purchases", "label": "Series purchases in a month", "where_to_find": "Connect your own account and this comes from your dashboard automatically.", "i18n": {"zh-CN": {"label": "每月售出份数", "where_to_find": "连接你自己的账号后，这个数字会从你的后台直接读到。"}}}, {"name": "price", "from": "observed_metric", "metric_id": "tiktok.series_price", "benchmark_id": null, "unit": "USD per purchase", "label": "The price you set", "where_to_find": "Connect your own account and this comes from your dashboard automatically.", "i18n": {"zh-CN": {"label": "你设定的价格", "where_to_find": "连接你自己的账号后，这个数字会从你的后台直接读到。"}}}]
+  },
+  "no_figure_reason": null
+}

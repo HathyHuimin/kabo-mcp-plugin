@@ -7,7 +7,7 @@ import test from "node:test";
 import { packageFiles, checkPackage } from "./package-check.mjs";
 import { deterministicZip, validatePackage } from "./openai-plugin-package.mjs";
 
-const ids = ["analyze-content-video", "review-creator-account", "review-creator-account-deep", "create-script-and-packaging", "develop-content-ideas", "research-instagram-trends", "research-tiktok-trends", "research-youtube-trends", "analyze-creator-competitors", "analyze-tiktok-competitors", "remake-viral-video"];
+const ids = ["analyze-content-video", "review-creator-account", "review-creator-account-deep", "create-script-and-packaging", "develop-content-ideas", "research-instagram-trends", "research-tiktok-trends", "research-youtube-trends", "analyze-creator-competitors", "analyze-tiktok-competitors", "remake-viral-video", "diagnose-reach-drop", "recommend-publish-timing", "plan-platform-monetization", "verify-platform-rule"];
 
 async function installed(t) {
   const temp = await mkdtemp(path.join(os.tmpdir(), "kabo-static-installed-"));
@@ -21,7 +21,7 @@ async function installed(t) {
   return { temp, root, files };
 }
 
-test("十一个固定 Skills 完整解包；根目录、宿主身份与唯一 MCP 一致", async t => {
+test("十五个固定 Skills 完整解包；根目录、宿主身份与唯一 MCP 一致", async t => {
   const { root, files } = await installed(t);
   const result = await checkPackage(root);
   assert.equal(result.version, JSON.parse(await readFile(new URL("../plugin.json", import.meta.url))).version);
@@ -30,7 +30,7 @@ test("十一个固定 Skills 完整解包；根目录、宿主身份与唯一 MC
   assert.deepEqual(runtime.skills, ids);
   // 目录面已收敛到插件在用的工具：必需与可选两组恰好覆盖本仓钉住的 tools/list（契约不进包），不多不少。
   const pinnedNames = JSON.parse(await readFile(new URL("../contracts/directory-mcp/tools-list.json", import.meta.url))).tools.map(tool => tool.name).sort();
-  assert.equal(pinnedNames.length, 63);
+  assert.equal(pinnedNames.length, 64);
   assert.deepEqual([...runtime.requiredTools, ...runtime.optionalTools].sort(), pinnedNames);
   assert.ok(runtime.optionalTools.includes("public_video_measure_media_signals"));
   assert.equal(files.some(file => /^(plugin|bin|hooks)\//.test(file.name)), false);

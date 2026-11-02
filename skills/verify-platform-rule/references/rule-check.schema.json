@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "rule-check.v1",
+  "description": "One run of this Skill: a set of claims about a platform's rules, each settled against a registered page or explicitly marked as having no official text. The native contract - the Creator-facing report is rendered from this and nothing is parsed back out of it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "platform",
+    "region",
+    "region_source",
+    "delivery_language",
+    "checked_at",
+    "claims"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rule-check.v1"
+    },
+    "platform": {
+      "enum": [
+        "youtube",
+        "instagram",
+        "tiktok",
+        "bilibili",
+        "twitch",
+        "other"
+      ]
+    },
+    "region": {
+      "type": "string",
+      "minLength": 2,
+      "description": "ISO 3166-1 alpha-2, or UNKNOWN. Never guessed: help pages are region-scoped and several serve different text by country, so an unstated region is recorded as unstated."
+    },
+    "region_source": {
+      "enum": [
+        "user_stated",
+        "account_declared",
+        "unknown"
+      ]
+    },
+    "checked_at": {
+      "type": "string",
+      "minLength": 10
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/claim"
+      }
+    },
+    "unreachable_sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/unreachable"
+      },
+      "description": "Pages this run was meant to read and could not. Kept separate from claims because 'we could not look' and 'we looked and found nothing' are different answers, and collapsing them is how a fetch failure becomes a finding. A watch page counts: it is where a change would have surfaced, so failing to read one is exactly the silence this Skill exists to refuse to read as stability."
+    },
+    "delivery_language": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+      "description": "BCP-47 tag of the language the creator reads this report in, such as en, zh-CN or pt-BR. It lives in the document because the contract turns on it: quotes stay in the page's language, so a quote from a page whose registered language has a different primary subtag owes a gloss, and that is checkable only if the run says which language it is."
+    }
+  },
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "statement",
+        "verdict",
+        "evidence"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The claim being graded, in the creator's own words wherever they gave them. It has to read as an assertion, because the verdict grades it: 'not true' against a question is ambiguous in a way the reader has to resolve by guessing. A creator who asks 'is X real?' gets 'X is real' as the statement. One sentence carrying two testable propositions becomes two claims, each keeping the half the creator actually wrote."
+        },
+        "verdict": {
+          "enum": [
+            "confirmed",
+            "refuted",
+            "partly_true",
+            "no_official_text",
+            "not_checked"
+          ],
+          "description": "partly_true is not a hedge, it is the common case: a rumour usually gets the direction right and the scope wrong, and flattening it to true or false loses the half the creator needs. no_official_text and not_checked are the two that are easiest to confuse and most expensive to confuse: the first says pages were read and none covers this, the second says no page that would answer it could be read at all. Reporting the second as the first tells a creator the platform has published nothing when nobody managed to look - which is exactly the failure unreachable_sources exists to keep separate."
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "description": "Empty exactly when the verdict is no_official_text or not_checked."
+        },
+        "inference": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Required when the verdict is no_official_text or not_checked, forbidden otherwise. This is where a mechanism with no published rule - or none this run could reach - gets explained: separately, labelled, and never in the same list as a quote."
+        },
+        "scope": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Which half is true, and what limits it - required when the verdict is partly_true. It restates what the quoted sentences already establish (who the rule applies to, from when, what it leaves untouched) and introduces nothing they do not carry; that is what separates it from inference, which is reasoning with no page behind it. Without this field a half-right rumour renders as a verdict word and a block of the platform's own language, leaving the reader to do the very reasoning they asked for."
+        },
+        "unreached_source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Required when the verdict is not_checked: the `source_id` or `url` of the page that would have settled THIS claim, and it must appear in unreachable_sources. A non-empty unreachable list is not enough - with several not_checked claims, one unrelated failed page would otherwise vouch for all of them, and 'we could not look' would again be doing work it has not earned."
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "url",
+        "fetched_url",
+        "quote",
+        "quote_source",
+        "retrieved_at",
+        "source_authority"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Must name a row in the source registry whose role is rule_source. A change_signal can send a run to a page; it can never be the page."
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The page as registered. Locale/region parameters hl, gl, lang, language, locale and region, and URL fragments, do not change page identity. Content parameters such as id and every unrecognized parameter remain significant: two articles on the same path are not the same source."
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The platform's own words, verbatim. A paraphrase is this Skill's sentence wearing the platform's authority. Line breaks are preserved: the renderer quotes multi-line passages intact, so a bulleted threshold list never has to be flattened into something that is no longer a substring of the page."
+        },
+        "gloss": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "A translation of the quote into the report's language. Required when the registered page language and delivery_language differ in their primary subtag; optional otherwise. It sits under the quote and never replaces it: the verbatim words are what makes the claim checkable, and the translation is this Skill's, not the platform's."
+        },
+        "quote_source": {
+          "enum": [
+            "raw_document",
+            "host_extract"
+          ],
+          "description": "Where the quoted characters came from. raw_document means the page's own bytes. host_extract means the host's retrieval returned a model-written extract rather than the document - still usable, but the quote can only be as verbatim as that extract was, so it is recorded rather than assumed."
+        },
+        "retrieved_at": {
+          "type": "string",
+          "minLength": 10
+        },
+        "source_authority": {
+          "enum": [
+            "official_help_page",
+            "official_secondary",
+            "creator_reported",
+            "unofficial"
+          ]
+        },
+        "effective_from": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fetched_url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The URL actually retrieved, after any redirect. Equal to `url` when nothing redirected. It exists because SKILL.md allows following a platform's own redirect while still citing the registered form - which, with nothing recording where the bytes came from, would let an unapproved host supply content published under an official platform's name. Its host must match the registered one."
+        }
+      }
+    },
+    "unreachable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason"
+      ],
+      "description": "Carries a source_id when a registered page could not be read, or a url when the unreadable page was one of a source's watch_urls - those are plain strings in the registry with no id of their own, and requiring an id here left a failed watch fetch with nowhere to go but the floor.",
+      "properties": {
+        "source_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

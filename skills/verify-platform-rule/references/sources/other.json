@@ -1,0 +1,30 @@
+{
+  "schema_version": "platform-policy-sources.v1",
+  "library_version": "2026.09.8",
+  "compiled_at": "2026-09-15",
+  "staleness_budget_days": 120,
+  "sources": [
+    {
+      "source_id": "ota.pga_versions",
+      "platform": "other",
+      "domains": [
+        "platform_changes",
+        "terms"
+      ],
+      "role": "change_signal",
+      "title": "Open Terms Archive - Platform Governance Archive versions",
+      "url": "https://github.com/OpenTermsArchive/pga-versions",
+      "source_authority": "unofficial",
+      "status": "verified",
+      "verified_at": "2026-09-06",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": null,
+      "watch_urls_absent_reason": "The archive is itself a change feed; watching it is the point, and it has no announcement page of its own.",
+      "carries": "Evidence that a tracked document changed, and when. Nothing else.",
+      "does_not_carry": "Anything quotable. Its role is change_signal: it can send a run to an official page, and it can never stand in for one. Coverage also skews to community guidelines, terms and privacy policies rather than the monetization help pages, so a silent archive is not evidence that a monetization rule held still. Measured 2026-09-10 against its own listing: it tracks no Bilibili documents at all, so it is not a change feed for that platform and a quiet archive says nothing about a Bilibili rule holding still. A Bilibili-specific change feed is still a registry gap.",
+      "language": "en"
+    }
+  ]
+}

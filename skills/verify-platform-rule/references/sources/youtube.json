@@ -1,0 +1,127 @@
+{
+  "schema_version": "platform-policy-sources.v1",
+  "library_version": "2026.09.8",
+  "compiled_at": "2026-09-15",
+  "staleness_budget_days": 120,
+  "sources": [
+    {
+      "source_id": "youtube.creator_insider",
+      "platform": "youtube",
+      "domains": [
+        "recommendations",
+        "platform_changes"
+      ],
+      "role": "rule_source",
+      "title": "YouTube Creator Insider (official channel account)",
+      "url": "https://x.com/YouTubeInsider",
+      "source_authority": "official_secondary",
+      "status": "unverified_draft",
+      "verified_at": null,
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": null,
+      "watch_urls_absent_reason": "A running account is its own change feed; there is no separate page where its updates are announced.",
+      "carries": "On-the-record replies about mechanics with no help-page equivalent - reported to include that deleting or private-ing a video removes it from viewers' watch history, and that watch history feeds future recommendations.",
+      "does_not_carry": "Anything binding. Posts here are statements by the platform, not policy pages, and carry no effective date.",
+      "language": "en"
+    },
+    {
+      "source_id": "youtube.monetization_policies",
+      "platform": "youtube",
+      "domains": [
+        "content_policy",
+        "originality"
+      ],
+      "role": "rule_source",
+      "title": "YouTube channel monetization policies",
+      "url": "https://support.google.com/youtube/answer/1311392",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-06",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://blog.youtube/news-and-events/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The inauthentic content policy, renamed from 'repetitious content' on 2025-07-15, covering mass-produced, generic, repetitive or templated material including AI-generated content with no creator perspective. A separate Reused content section distinguishes reaction videos, critical reviews and edited footage with added narrative from minimal-change reuploads and commentary-free compilations.",
+      "does_not_carry": "Whether deleting or unlisting your own videos harms a channel - this page is silent on it. That is a fact about THIS page and not about the corpus: the eligibility page says deleted and unlisted videos' watch hours and Shorts views do not count toward YPP thresholds, and that deleting a video may affect a pending application. An earlier version of this field claimed the question had no help-page answer anywhere, which sent a run toward reporting no_official_text on a question the platform has in fact answered in writing. Scope a does_not_carry to the page it describes.",
+      "language": "en"
+    },
+    {
+      "source_id": "youtube.ypp_announcement_2027",
+      "platform": "youtube",
+      "domains": [
+        "monetization",
+        "platform_changes"
+      ],
+      "role": "rule_source",
+      "title": "New opportunities to earn and changes to the YouTube Partner Program",
+      "url": "https://blog.youtube/news-and-events/youtube-partner-program-updates-2027-new-opportunities-earn/",
+      "source_authority": "official_secondary",
+      "status": "verified",
+      "verified_at": "2026-09-06",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://blog.youtube/news-and-events/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The announcement that made the 2027 numbers public, seventeen days before the rule library first recorded them and while the eligibility help page still said nothing. Quotes the new-applicant bars, states 'This update won't impact creators already in YPP', and describes Shorts revenue sharing resuming automatically once a channel is back above 10 million qualified Shorts views.",
+      "does_not_carry": "The requirements for staying active in the programme, and the 90-day recovery window. Those are on the changes page only.",
+      "language": "en"
+    },
+    {
+      "source_id": "youtube.ypp_changes",
+      "platform": "youtube",
+      "domains": [
+        "monetization",
+        "platform_changes"
+      ],
+      "role": "rule_source",
+      "title": "Changes to the YouTube Partner Program",
+      "url": "https://support.google.com/youtube/answer/12843009",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-06",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://support.google.com/youtube/answer/72851",
+        "https://blog.youtube/news-and-events/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The 2027-02-01 numbers the eligibility page omits. New applicants: 8,000 qualified watch hours in the last 365 days, or 20M qualified Shorts views in the last 90 days, in addition to still needing 1k subscribers. Staying active takes any one of 1,000 qualified watch hours in the past 365 days, 1 million qualified Shorts views in the last 90 days, or 2 long-form videos or 5 Shorts uploaded every 90 days, with an extended 90-day window to recover. The Shorts Creator Pool needs 10M qualified Shorts views maintained over the last 90 days. And the sentence that settles the clear-out rumour: 'If you are already in YPP, your status is not impacted by this update'.",
+      "does_not_carry": null,
+      "language": "en"
+    },
+    {
+      "source_id": "youtube.ypp_eligibility",
+      "platform": "youtube",
+      "domains": [
+        "monetization"
+      ],
+      "role": "rule_source",
+      "title": "YouTube Partner Program overview & eligibility",
+      "url": "https://support.google.com/youtube/answer/72851",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-06",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://support.google.com/youtube/answer/12843009",
+        "https://blog.youtube/news-and-events/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The bars in force today: 1,000 subscribers with 4,000 qualified watch hours in the last 12 months, or 1,000 subscribers with 10 million qualified Shorts views in the last 90 days. It also carries what does NOT count toward those bars - private, unlisted and deleted videos, ad campaigns, and unconverted livestreams - which is where the published answer to 'does deleting my videos cost me anything' actually lives.",
+      "does_not_carry": "Any number for the 2027-02-01 raise. It announces that an update takes effect then, and that updated terms must be accepted by 2027-01-31, and states no threshold - still true when read on the verified_at date, about four weeks after the numbers were public elsewhere. A check that reads only this page concludes the raise has no numbers yet, which is wrong.",
+      "language": "en"
+    }
+  ]
+}
