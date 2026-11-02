@@ -14,7 +14,7 @@ the history carries an hour: a six-hour block is a third of a working day, with 
 grid rather than the creator's audience.
 
 **Delivery.** The final step, `validate_creator_report.py report/PUBLISH_TIMING.md`, must pass
-before anything is delivered. Deliver `report/PUBLISH_TIMING.md` once, in the user's language:
+before anything is delivered; it prints the report and a `creator_report:` line. Deliver `report/PUBLISH_TIMING.md` once, in the user's language:
 localize every heading, label, unit and conclusion, keep the time, its support, what it is worth and
 the caveats, and never summarize, retype numbers or append a second report. No file paths, validator
 status, tool calls, credits, cost, provider names or separate limitations section; timezone

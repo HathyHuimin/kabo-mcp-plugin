@@ -62,7 +62,10 @@ def main() -> int:
         for error in errors:
             print(f"ERROR: Creator-facing report contains {error}")
         return 1
-    print("OK: Creator-facing timing report contains no internal audit/runtime details")
+    # 最终步直接打印报告全文与交付方式：实测里模型读文件后只回了两句话。
+    print(args.report.read_text(encoding="utf-8").rstrip())
+    print(f"creator_report: {args.report.resolve()}")
+    print('Your reply is this report, even when the question was short: at most one short sentence of your own, then the report above complete and unchanged (translated only where the Skill says), then this creator_report line.')
     return 0
 
 
