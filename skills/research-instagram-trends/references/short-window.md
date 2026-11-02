@@ -111,4 +111,4 @@ The final check recomputes the original strict validation and requires the exist
 to match exactly; it never creates or rewrites a report. Its deliverable is `creator-report.md` in
 the run directory. No tool call, new run or extra evidence is needed. Do not emit, return or claim
 success from the rendered file until this final step succeeds; then deliver `creator-report.md`
-after the whole-report language check in `SKILL.md`.
+after the whole-report language check (*Delivery* in `SKILL.md`).

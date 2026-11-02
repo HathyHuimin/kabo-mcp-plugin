@@ -28,7 +28,7 @@ the inline `items` form.
   `enrich_instagram_shortlist` exactly once with that JSON verbatim as the tool arguments, fetch (or
   stage) the result, then run `rank --placed`, which persists it and goes on; do not open the file again.
 - An enrichment call that fails before returning a result (an MCP error without one, which `stage`
-  refuses and prints) follows the failed-call rule in `SKILL.md`. If no result can be staged after
+  refuses and prints) follows `references/data-calls.md`. If no result can be staged after
   that, `rank --placed` stops and says the enrichment result was not recorded: this stage cannot
   complete in this run, so report that the evidence enrichment could not be completed, with the
   tool's own message, and stop. Never write or reconstruct the result yourself.

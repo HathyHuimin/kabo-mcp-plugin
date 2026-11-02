@@ -13,7 +13,7 @@ calls go out in the same response, as separate individual calls — fetch each c
 it when `fetch` reports no ready download), and run `discover` again with the same arguments plus `--placed`.
 
 A collector call that fails before returning a candidate set (an MCP error without one, which
-`stage` refuses and prints) follows the failed-call rule in `SKILL.md`: one retry for a rate limit,
+`stage` refuses and prints) follows `references/data-calls.md`: one retry for a rate limit,
 server error or empty answer, made before staging the other lane's result; never an unchanged retry
 of an invalid input. A collector answer that is itself a failed or partial candidate set is staged
 and placed like any other.
