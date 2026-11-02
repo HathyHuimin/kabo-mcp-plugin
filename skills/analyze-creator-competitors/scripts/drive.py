@@ -17,6 +17,7 @@ deterministic steps, and prints exactly what the next judgment reads.
     start     --platform P [--query N]   identity search            -> subject candidates
     start     --platform instagram --post URL   seed post + its author's subject stage
     subject   --handle H | --channel-id | --platform youtube --handle @H   subject profile + history  -> caption phrases, schemas
+              (an Instagram handle that does not resolve comes back with account-search candidates: a stop to ask the user)
     discover                             collect + profile search   -> Gate author table
     select                               Gate -> roster -> profiles -> eligibility projection
     content [--comments]                 finalize -> pages -> Assemble/Analyze -> synthesis input
@@ -30,12 +31,19 @@ stage`, and the same stage run again with `--placed` picks those responses up.
 
 The hand-over, the retry of a briefly failed round, the run directory, the stage lock and the state
 file are `connector_driver.py`, the same file every other driver package ships.
+
+Two options save host round trips without changing what is fetched or judged. `--workspace W` on a
+first stage (`start`, `subject`) reserves the run directory itself when none is reserved yet, so the
+run needs no separate `static_host.py init` command. `--result <tool>=<file>` on any stage fetches
+(or, with no ready download, stages) each saved result of the last hand-over before the stage
+resumes as with `--placed`, so a hand-over costs the calls and one command.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -334,7 +342,8 @@ def account_ref(platform: str, account: str) -> dict[str, str]:
 
 
 def history_call(platform: str, accounts: list[str], *, profile: bool = True, max_pages: int = 1,
-                 window: tuple[str, str] | None = None, reserves: list[str] | None = None) -> dict[str, Any]:
+                 window: tuple[str, str] | None = None, reserves: list[str] | None = None,
+                 identity_candidates: bool = False) -> dict[str, Any]:
     """The `collect_account_history` call for these accounts.
 
     Instagram reads Reels only (`list_posts` is never called: Requests on Instagram are Reels).
@@ -342,7 +351,9 @@ def history_call(platform: str, accounts: list[str], *, profile: bool = True, ma
     budget exactly — the second page while the window is not yet covered or fewer than
     MIN_WINDOW_REELS in-window Reels came back, a third only while both still hold
     (`next_reel_page`). With reserves, each account whose profile came back unavailable is
-    replaced once, in order, up to as many usable accounts as were asked for.
+    replaced once, in order, up to as many usable accounts as were asked for. With
+    `identity_candidates`, an account that does not resolve comes back as `needs_identity` with the
+    account search's candidates for that name, in the same call.
     """
     history: dict[str, Any] = {"max_pages": max_pages}
     if platform == "instagram":
@@ -356,6 +367,8 @@ def history_call(platform: str, accounts: list[str], *, profile: bool = True, ma
     if reserves:
         arguments["reserves"] = [account_ref(platform, r) for r in reserves]
         arguments["target_count"] = len(accounts)
+    if identity_candidates:
+        arguments["on_identity_miss"] = "candidates"
     return {"tool": HISTORY_TOOL, "arguments": arguments}
 
 
@@ -384,12 +397,12 @@ def copy_evidence(source: str | Path, target: Path) -> None:
     normalize_response_file(target)
 
 
-def place_history(call: dict[str, Any], targets) -> dict[str, list[Path]]:
+def place_history(call: dict[str, Any], targets, record: dict[str, Any] | None = None) -> dict[str, list[Path]]:
     """Copy each call of the composite to the file `targets(group, operation, page)` names (None: not kept).
 
     Returns the files written per group. Page numbers count each account's history pages from 1.
     """
-    record = history_record(call)
+    record = record or history_record(call)
     labels = group_accounts(call)
     written: dict[str, list[Path]] = {}
     pages: dict[str, int] = {}
@@ -504,16 +517,31 @@ def stage_subject(args: argparse.Namespace) -> None:
             # The handle is the identity asked for, whatever `start` searched: the profile must prove it.
             save_state(subject_handle="@" + account)
         save_state(platform="youtube")
-    call = history_call(platform, [account])
+    # On Instagram the same call answers a handle that does not resolve with the account search's
+    # candidates for it, so a run that starts from a named handle needs no separate identity-search
+    # round first (plugins and Web, 2026-11-02: that round cost three model steps on every run).
+    call = history_call(platform, [account], identity_candidates=platform == "instagram")
 
     def place_subject(call: dict[str, Any]) -> None:
         def targets(group: str, operation: str, page: int) -> Path | None:
             if group != "acct-0" or page > 1:
                 return None
             return Path("subject-profile.json" if operation in PROFILE_OPERATIONS else "subject-history.json")
-        place_history(call, targets)
+        record = history_record(call)
+        place_history(call, targets, record)
+        accounts = ((record.get("summary") or {}).get("accounts")) or []
+        subject = next((a for a in accounts if isinstance(a, dict) and a.get("group") == "acct-0"), {})
+        search = next((item for item in record.get("calls") or []
+                       if item.get("tool") == "instagram_search_accounts" and item.get("group") == "acct-0"), None)
+        if search is not None:
+            copy_evidence(search["path"], Path("subject-search.json"))
+        save_state(subject_identity={"status": subject.get("status"), "searched": search is not None,
+                                     "candidates": subject.get("candidates") or []})
 
     fetch_histories(call, args, place_subject)
+    if (state().get("subject_identity") or {}).get("status") == "needs_identity":
+        ask_for_identity(account)
+        return
     if not Path("subject-profile.json").is_file() or not usable(Path("subject-profile.json")):
         status = load("subject-profile.json").get("status") if Path("subject-profile.json").is_file() else "not fetched"
         if platform == "youtube" and not args.channel_id:
@@ -566,6 +594,30 @@ def stage_subject(args: argparse.Namespace) -> None:
         for text in texts[:SUBJECT_CAPTIONS]:
             say("- " + " ".join(str(text).split())[:SUBJECT_CAPTION_CHARS])
     show_schema("competitor-research-request.schema.json", "competitor-discovery-intents.schema.json")
+
+
+def ask_for_identity(handle: str) -> None:
+    """The named handle did not resolve: print the accounts its search returned and stop for the user.
+
+    The subject is the user's to confirm here, not the model's to pick: the handle the user gave
+    names no public account, so any candidate is a guess at what they meant.
+    """
+    identity = state().get("subject_identity") or {}
+    say(f"@{handle} did not resolve to a public Instagram profile.")
+    if Path("subject-search.json").is_file():
+        say("An account search for that name returned:")
+        script("project_subject_candidates.py", "subject-search.json", show=True)
+    elif identity.get("candidates"):
+        say("An account search for that name returned:")
+        for number, candidate in enumerate(identity["candidates"], start=1):
+            name = f" | {candidate['full_name']}" if candidate.get("full_name") else ""
+            verified = " verified" if candidate.get("is_verified") else ""
+            say(f"{number}. [@{candidate.get('handle')}{name}]{verified}")
+    else:
+        say("No candidate account came back for that name.")
+    say("Stop here and ask the user which public account they mean — one of these, or the exact handle — "
+        "without choosing one yourself and without starting discovery. Their answer is a new request: "
+        "start a new run for it.")
 
 
 def complete_request() -> dict[str, Any]:
@@ -1183,6 +1235,100 @@ def stage_report(args: argparse.Namespace) -> None:
     say('Your reply is this report, even when the question was short: at most one short sentence of your own, then the report above complete and unchanged (translated only where the Skill says), then this creator_report line.')
 
 
+# --------------------------------------------------------------------------- fewer host commands
+
+
+def reserve_from_workspace(args: argparse.Namespace) -> None:
+    """`--workspace` on a first stage: reserve the run directory, as `static_host.py init` would.
+
+    Only when no run is reserved yet — neither KABO_STATIC_RUN_DIR nor a run directory around the
+    current one — so the printed resume command, which runs inside the run, never reserves another.
+    """
+    workspace, args.workspace = args.workspace, None  # not part of what the request asked
+    if not workspace:
+        return
+    import static_host
+
+    try:
+        static_host.run_dir()
+        return
+    except (ValueError, OSError):
+        pass
+    try:
+        run = static_host.init(workspace)
+    except (ValueError, OSError) as error:
+        raise StageError(f"could not reserve a run directory in {workspace}: {error}") from None
+    os.environ["KABO_STATIC_RUN_DIR"] = str(run)
+    say(f"run directory: {run}")
+    say("Run every later command of this request from that directory, as the printed commands do.")
+
+
+def take_results(items: list[str]) -> None:
+    """`--result <tool>=<file>`: fetch each saved result (stage it when it holds no ready download).
+
+    The same two `static_host.py` commands the hand-over prints under each call, run here in the
+    printed order before the stage resumes, so a hand-over costs the calls and one command. Every
+    file is checked to exist before any is taken.
+    """
+    import static_host
+
+    pairs: list[tuple[str, Path]] = []
+    for item in items:
+        tool, sep, name = item.partition("=")
+        if not sep or not tool.strip() or not name.strip():
+            raise StageError(f"--result takes <tool>=<saved result file>, not {item!r}")
+        pairs.append((tool.strip(), Path(name.strip())))
+    missing = [str(path) for _, path in pairs if not path.is_file()]
+    if missing:
+        raise StageError(f"no saved result at {', '.join(missing)}: save each call's complete result to the file "
+                         "named under it (or name the file where the host saved it), then run this command again")
+    for tool, path in pairs:
+        with path.open("rb") as stream:
+            raw = stream.read(static_host.MAX_BYTES + 1)
+        try:
+            result = static_host.fetch(tool, raw)
+            how = "fetched"
+            if result.get("fetched") == 0:
+                result = static_host.stage(tool, raw)
+                how = "staged"
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            raise StageError(f"{path} ({tool}): {error}") from None
+        held = result.get("duplicate")
+        say(f"[drive] {path.name}: {how} {tool}" + (" (already held)" if held is True or (held and not result.get("staged"))
+                                                   else ""))
+
+
+def hand_over_in_one(calls: list[dict[str, Any]], why: str = "") -> None:
+    """The shared hand-over, plus the same resume as one command that takes every saved result itself."""
+    from static_host import public_calls
+
+    public = [mapped for call in calls for mapped in public_calls(call)]
+    results = Path("host-results")
+    first = len(list(results.glob("*.json"))) + 1 if results.is_dir() else 1
+    names = [f"host-results/{number:02d}-{mapped['tool']}.json" for number, mapped in enumerate(public, first)]
+    try:
+        shared_hand_over(calls, why)
+    except SystemExit:
+        say("Or, once every result above is saved, resume in one command instead (it fetches or stages each saved "
+            "result itself, in this order): " + cd.resume_command() + "".join(
+                f" --result {mapped['tool']}={name}" for mapped, name in zip(public, names)))
+        raise
+
+
+shared_hand_over = cd.hand_over
+cd.hand_over = hand_over_in_one
+
+
+def with_results(stage):
+    def run(args: argparse.Namespace) -> None:
+        items, args.result = list(getattr(args, "result", None) or []), None
+        if items:
+            take_results(items)
+            args.placed = True
+        stage(args)
+    return run
+
+
 STAGES = {
     "start": stage_start,
     "subject": stage_subject,
@@ -1212,10 +1358,29 @@ def main() -> int:
     sub.choices["content"].add_argument(
         "--comments", action="store_true",
         help="also fetch audience comments before the synthesis evidence is printed")
+    for name in ("start", "subject"):
+        sub.choices[name].add_argument(
+            "--workspace", help="reserve the run directory in this workspace when none is reserved yet")
     for command in sub.choices.values():
         command.add_argument("--placed", action="store_true",
                              help="the connector calls were already made by hand; place their responses")
-    return cd.run_stage(STAGES, parser.parse_args(), first=("start", "subject"),
+        command.add_argument("--result", action="append", metavar="TOOL=FILE",
+                             help="a saved result of the last hand-over to fetch or stage first (implies --placed)")
+    args = parser.parse_args()
+    # The printed resume command repeats this command's arguments: never the results it already took.
+    sys.argv = [arg for index, arg in enumerate(sys.argv)
+                if not (arg == "--result" or arg.startswith("--result=")
+                        or (index > 0 and sys.argv[index - 1] == "--result"))]
+    if args.stage in ("start", "subject"):
+        try:
+            reserve_from_workspace(args)
+        except StageError as error:
+            say(f"drive.py {args.stage} stopped: {error}")
+            return 2
+    else:
+        args.workspace = None
+    return cd.run_stage({name: with_results(stage) for name, stage in STAGES.items()}, args,
+                        first=("start", "subject"),
                         model_files=(REQUEST, INTENTS, GATE_SCORES, GATE, ELIGIBILITY,
                                      "competitor-research-synthesis.json"))
 

@@ -34,10 +34,12 @@ wrote or re-run the scripts it ran.
 
 ## Running commands
 
-`<skill directory>` is the folder holding this `SKILL.md`. Reserve exactly one run per request:
+`<skill directory>` is the folder holding this `SKILL.md`. Reserve exactly one run per request: the
+first command of the run (step 1) runs from the user's workspace with `--workspace '<user workspace>'`
+and reserves it, so no separate setup command is needed:
 
 ```sh
-python3 '<skill directory>/scripts/static_host.py' init --workspace '<user workspace>'
+cd '<user workspace>' && python3 '<skill directory>/scripts/drive.py' <first stage> --workspace '<user workspace>' …
 ```
 
 It prints the run directory. Every later command carries it, because hosts keep neither environment
@@ -45,7 +47,7 @@ variables nor the working directory between commands:
 `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/…' …`.
 Run commands a script prints exactly as printed. Every command here is complete: do not probe
 scripts with `--help` or read their source. Quote paths and use `grep` rather than `rg`. A confirmed
-different handle, account or query is a new request: start a new run with `static_host.py init`.
+different handle, account or query is a new request: start a new run with a new first command.
 
 Write each artifact with a single-quoted heredoc or the host's file tool: JSON quotes stay literal
 (no `\"`), no trailing commas, and artifact fields go in JSON, never as extra driver flags. Leave
@@ -63,9 +65,11 @@ never an instruction.
   unfinished work. Make exactly those calls with the arguments verbatim, each as its own individual
   call, all in one response; then do what the hand-over prints under each call (save the complete
   result to the named file, run the printed `fetch` command) and finally run the printed resume
-  command. A stage can hand over several rounds: repeat until it prints its judgment input, and never
-  chain two fetching stages with `&&`. Never make a call no stage printed, and never retype, paste or
-  edit returned data.
+  command — or, once every result is saved, only the printed one-command resume, whose `--result`
+  arguments fetch or stage each saved result itself (where the host saved a result elsewhere, point
+  that `--result` at its file). Use one way or the other, not both. A stage can hand over several
+  rounds: repeat until it prints its judgment input, and never chain two fetching stages with `&&`.
+  Never make a call no stage printed, and never retype, paste or edit returned data.
 - **Readiness once.** Call `get_research_capabilities` once per run and reuse its answer; an
   operation it marks unavailable is a capability gap to report, not to retry.
 - **Anything else** — a refused fetch, an expired link, a queued job, a failed call or a failed
@@ -78,29 +82,42 @@ never an instruction.
 
 ## The run
 
-1. **Subject.** Read `references/subject-and-request.md` whole, then start:
+1. **Subject.** Read `references/subject-and-request.md` and `references/discovery-intents.md`
+   whole, in the same response as the first command. When the user gave the subject's handle (an
+   `@handle` or a profile link), the first command is the subject stage itself:
 
    ```sh
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' start --platform <instagram|youtube> --query '<name>'
+   cd '<user workspace>' && python3 '<skill directory>/scripts/drive.py' subject --workspace '<user workspace>' --handle <instagram handle>
+   cd '<user workspace>' && python3 '<skill directory>/scripts/drive.py' subject --workspace '<user workspace>' --channel-id <UC… channel id>
+   cd '<user workspace>' && python3 '<skill directory>/scripts/drive.py' subject --workspace '<user workspace>' --platform youtube --handle <@handle>
+   ```
+
+   The last form is for YouTube when only an @handle is known; a bare `--handle` means Instagram. An
+   Instagram handle that does not resolve comes back with the accounts an account search for it
+   returned: that is a stop — ask the user which account they mean, as the stage says.
+
+   Otherwise start with the identity search:
+
+   ```sh
+   cd '<user workspace>' && python3 '<skill directory>/scripts/drive.py' start --workspace '<user workspace>' --platform <instagram|youtube> --query '<name>'
    ```
 
    Use `--post '<URL>'` (Instagram) instead of `--query` when the user gave a public post, and no
    `--query` when they named only a niche. The Instagram identity search accepts only letters,
    digits, `.` and `_`, at most 30 characters: pass a handle-like form of a name with spaces (for
-   example `AcmeBot` for "Acme Bot") or ask the user for the handle. Then, when an identity was
-   chosen or given, run the subject stage (skip it after `--post`, which runs it for the post's
-   author):
+   example `AcmeBot` for "Acme Bot") or ask the user for the handle. Then, for the chosen identity,
+   run the `subject` stage in the run directory, without `--workspace` (skip it after `--post`,
+   which runs it for the post's author):
 
    ```sh
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' subject --handle <instagram handle>
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' subject --channel-id <UC… channel id>
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' subject --platform youtube --handle <@handle>
    ```
 
-   The last form is for YouTube when only an @handle is known; a bare `--handle` means Instagram.
+   (or `--channel-id <UC… channel id>`, or `--platform youtube --handle <@handle>`).
 
-2. **Request and intents.** Read `references/discovery-intents.md` whole. Write both artifacts and
-   start discovery in one command:
+2. **Request and intents.** Write both artifacts and start discovery in one command, and read
+   `references/gate-and-eligibility.md` whole in the same response (its rules are the next two
+   judgments):
 
    ```sh
    cd '<run directory>' && cat > competitor-research-request.json <<'JSON' &&
@@ -114,18 +131,19 @@ never an instruction.
 
    With `discovery_mode: provided`, `discover` needs only the Request and goes straight to the
    eligibility projection (skip step 3).
-3. **Gate.** Read `references/gate-and-eligibility.md` whole. Write `competitor-discovery-gate.tsv`
-   from the printed table, then run `drive.py select` exactly that way (`comparable-v2` is a Request
-   value, never a `--strategy` flag).
-4. **Eligibility.** If you skipped step 3, read the Profile Eligibility section of
-   `references/gate-and-eligibility.md` first. Write `competitor-eligibility.json` from the printed
-   projection, then run `drive.py content`. If `content` stops on one reserve, classify only that
-   handle and run `content` again without `--placed`.
+3. **Gate.** Judge by `references/gate-and-eligibility.md` (read with step 2; read it now only if you
+   have not). Write `competitor-discovery-gate.tsv` from the printed table, then run `drive.py
+   select` exactly that way (`comparable-v2` is a Request value, never a `--strategy` flag).
+4. **Eligibility.** Judge by the Profile Eligibility section of `references/gate-and-eligibility.md`.
+   Write `competitor-eligibility.json` from the printed projection, then run `drive.py content`, and
+   read `references/synthesis.md` whole in the same response (it is the last judgment's guide). If
+   `content` stops on one reserve, classify only that handle and run `content` again without
+   `--placed`.
 5. **Comments (optional).** Only when the user asks what the selected accounts have not done or what
-   the audience wants: read `references/synthesis.md` whole first and run `content --comments` in
-   place of `content`; it hands over the histories, then the comments. If you decide only after
-   `content` finished, run `drive.py comments` as its own command.
-6. **Synthesis.** Read `references/synthesis.md` whole (if not already), write
+   the audience wants: run `content --comments` in place of `content`; it hands over the histories,
+   then the comments. If you decide only after `content` finished, run `drive.py comments` as its
+   own command.
+6. **Synthesis.** With `references/synthesis.md` read (read it now only if you have not), write
    `competitor-research-synthesis.json` once and run the final step:
 
    ```sh
