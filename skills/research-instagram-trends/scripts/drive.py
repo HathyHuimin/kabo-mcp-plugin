@@ -827,10 +827,11 @@ def hand_over_lean(call: dict[str, Any]) -> None:
     saved = f"host-results/{(len(list(results.glob('*.json'))) if results.is_dir() else 0) + 1:02d}-enrich_instagram_shortlist.json"
     cd.say(f"This host does not fetch the enrichment for scripts. Call `enrich_instagram_shortlist` exactly once "
            f"with the JSON printed above (also in {ENRICH_CALL}) verbatim as the tool arguments — every item and "
-           "every top-level field, `window` included; do not add, drop or reorder items. Save its complete result "
-           "unchanged (the host's result export, or the result text as returned written with a single-quoted "
-           "heredoc) and run the command below; when fetch reports no ready download, run it with stage in place "
-           "of fetch.")
+           "every top-level field, `window` included; do not add, drop or reorder items. Its result holds a download "
+           "link: never download it yourself with a shell command or a browser. Save the result itself, link "
+           "included and unchanged (the host's result export, or the result text as returned written with a "
+           "single-quoted heredoc), and run the command below, which downloads and checks the data; when fetch "
+           "reports no ready download, run it with stage in place of fetch.")
     cd.say(f"  save: {saved}")
     cd.say(f"  then: cd '{Path.cwd()}' && KABO_STATIC_RUN_DIR='{Path.cwd()}' python3 "
            f"'{cd.SCRIPTS / 'static_host.py'}' fetch --tool enrich_instagram_shortlist --input '{saved}'")

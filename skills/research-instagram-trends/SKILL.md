@@ -75,8 +75,9 @@ into one batch call. Never retype, paste or edit returned data.
 - **Other paths** make the calls their reference names. Data tools take
   `{"parameters": {…}, "delivery": "download"}`; `lookup_instagram_post` takes `{"post": …,
   "include": […], "delivery": "download"}`. Save each complete result as
-  `host-results/<NN>-<tool-name>.json` (numbered in call order across the run), fetch it at once, and
-  place it with the `persist_envelope.py` command the reference names:
+  `host-results/<NN>-<tool-name>.json` (numbered in call order across the run; the result itself,
+  link included: never download the link yourself), fetch it at once, and place it with the
+  `persist_envelope.py` command the reference names:
 
   ```sh
   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --input 'host-results/<NN>-<tool-name>.json'
