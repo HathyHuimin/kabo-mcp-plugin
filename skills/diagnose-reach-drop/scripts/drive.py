@@ -18,9 +18,8 @@ import connector_driver as cd  # noqa: E402
 from correction import CONTENT_KIND, PLATFORM, Correction, Parser, language, read_file  # noqa: E402
 from persist_envelope import USABLE_STATUSES, account_of, row_count, unwrap_envelope  # noqa: E402
 
-IG = "instagram-discovery"
-YT = "youtube-public"
-TT = "tiktok-public"
+# The backend composite tool that runs the whole public retrieval in one call (docs: KS9).
+HISTORY_TOOL = "collect_account_history"
 PUBLIC_SAMPLE_CAP = 30
 INSTAGRAM_FORMAT_CAP = 15
 SNAPSHOT_DIR = Path("snapshot")
@@ -111,34 +110,16 @@ def envelopes() -> list[dict[str, Any]]:
     return list(cd.state().get("envelopes") or [])
 
 
-def take(requests: list[dict[str, Any]], handle: str | None) -> list[tuple[dict[str, Any], Path, dict[str, Any]]]:
-    # persist_many.py uses the shared persist_envelope.py contract for every host-staged response.
-    records = cd.LAST_RECORDS
-    paired = records is not None and len(records) == len(requests)
-    result = []
-    for index, request in enumerate(requests):
-        operation = str(request["operation"])
-        holding = (Path.cwd() / f".incoming-{index}-{operation}.json").resolve()
-        record = records[index][1] if paired else None
-        if record is not None:
-            holding.write_bytes(record.read_bytes())
-            holding.chmod(0o600)
-        else:
-            identity = ["--handle", handle] if handle else []
-            cd.script(
-                "persist_many.py", "--connector", str(request["connector_id"]),
-                "--operation", operation, "--any-status", "--dest", str(holding),
-                *identity,
-            )
-        envelope = unwrap_envelope(holding.read_text(encoding="utf-8"))
-        if envelope is None:
-            raise cd.StageError(f"the {operation} response is not a connector Envelope")
-        owner = account_of(envelope)
-        if owner and handle and owner != bare(handle).lower():
-            holding.unlink(missing_ok=True)
-            raise cd.StageError(f"the {operation} response belongs to @{owner}, not @{bare(handle)}")
-        result.append((request, holding, envelope))
-    return result
+def holding_copy(call: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
+    """A byte copy of one composite call's staged envelope, ready to move into its slot."""
+    holding = (Path.cwd() / f".incoming-{call['evidence_id']}.json").resolve()
+    holding.write_bytes(Path(str(call["path"])).read_bytes())
+    holding.chmod(0o600)
+    envelope = unwrap_envelope(holding.read_text(encoding="utf-8"))
+    if envelope is None:
+        holding.unlink(missing_ok=True)
+        raise cd.StageError(f"the staged {call.get('tool')} response is not a connector Envelope")
+    return holding, envelope
 
 
 def keep(holding: Path, operation: str) -> str:
@@ -182,80 +163,85 @@ def failure_guidance(code: str) -> str:
     return "Tell the user this public-data source failed; do not substitute another source."
 
 
-def place_pages(requests: list[dict[str, Any]], handle: str | None) -> None:
-    for request, holding, envelope in take(requests, handle):
-        operation = str(request["operation"])
-        require_usable(holding, operation, envelope, "@" + handle if handle else "the channel")
-        keep(holding, operation)
-
-
 def remember_identity(handle: str, account_id: str | None = None) -> None:
     cd.save_state(identity={"handle": handle, "account_id": account_id})
 
 
-def resolve_instagram(handle: str, args: argparse.Namespace) -> None:
-    params = {"handle": handle, "include_post_count": True}
-    request = {"connector_id": IG, "operation": "resolve_profile", "params": params}
+def history_arguments(platform: str, handle: str, channel_id: str | None, content_kind: str) -> dict[str, Any]:
+    """The one `collect_account_history` call for this diagnosis: a profile and one bounded page per format.
 
-    def place() -> None:
-        ((_, holding, envelope),) = take([request], handle)
-        require_usable(holding, "resolve_profile", envelope, "@" + handle)
-        profile = (envelope.get("data") or {}).get("profile") if isinstance(envelope.get("data"), dict) else None
-        if not isinstance(profile, dict) or not (profile.get("username") or profile.get("id")):
-            reject(holding, "resolve_profile", envelope)
-            raise cd.StageError(f"@{handle} did not resolve to a public Instagram profile; confirm the exact "
-                                "handle with the user (not a display name); the account may be private or renamed")
-        keep(holding, "resolve_profile")
-        account_id = profile.get("id") or profile.get("pk") or profile.get("user_id")
-        remember_identity(str(profile.get("username") or handle), str(account_id) if account_id else None)
-
-    cd.fetch_round([cd.run_call(IG, "resolve_profile", params)], args, place)
-
-
-def resolve_youtube(handle: str | None, channel_id: str | None, args: argparse.Namespace) -> None:
-    params = {"channel_id": channel_id} if channel_id else {"handle": "@" + bare(handle)}
-    request = {"connector_id": YT, "operation": "get_channel", "params": params}
-
-    def place() -> None:
-        ((_, holding, envelope),) = take([request], None)
-        require_usable(holding, "get_channel", envelope, channel_id or "@" + bare(handle))
-        rows = (envelope.get("data") or {}).get("rows") if isinstance(envelope.get("data"), dict) else None
-        channel = rows[0] if isinstance(rows, list) and rows and isinstance(rows[0], dict) else None
-        if not isinstance(channel, dict) or not channel.get("id"):
-            reject(holding, "get_channel", envelope)
-            raise cd.StageError("the supplied YouTube identity did not resolve to a public channel; confirm the "
-                                "exact @handle or channel id (UC…) with the user")
-        keep(holding, "get_channel")
-        remember_identity(str(channel.get("custom_url") or bare(handle) or channel["id"]), str(channel["id"]))
-
-    cd.fetch_round([cd.run_call(YT, "get_channel", params)], args, place)
-
-
-def fetch_history(platform: str, handle: str, content_kind: str, args: argparse.Namespace) -> None:
+    TikTok: account posts once with `limit` 30. YouTube: the channel, then one uploads page of 30.
+    Instagram: the profile, then one Feed and/or one Reels page (`max_pages` = the formats asked for, so
+    the first round is the only one). The 30-item and 15-per-format trims stay in `cap_public_snapshot.py`.
+    """
+    account: dict[str, Any] = {"channel_id": channel_id} if channel_id else {"handle": handle}
     if platform == "tiktok":
-        params = {"handle": "@" + handle, "limit": PUBLIC_SAMPLE_CAP}
-        request = {"connector_id": TT, "operation": "list_account_posts", "params": params}
-        cd.fetch_round([cd.run_call(TT, "list_account_posts", params)], args,
-                       lambda: place_pages([request], handle))
+        history: dict[str, Any] = {"max_items": PUBLIC_SAMPLE_CAP}
+    elif platform == "youtube":
+        history = {"max_items": PUBLIC_SAMPLE_CAP, "max_pages": 1, "page_size": PUBLIC_SAMPLE_CAP}
+    else:
+        posts, reels = content_kind in {"auto", "feed"}, content_kind in {"auto", "reels"}
+        history = {"max_items": PUBLIC_SAMPLE_CAP, "max_pages": int(posts) + int(reels),
+                   "instagram_formats": {"posts": posts, "reels": reels, "balance": "fewer_rows_first"}}
+    return {"platform": platform, "accounts": [account], "profile": platform != "tiktok", "history": history,
+            "on_identity_miss": "gap"}
+
+
+def place_history(platform: str, handle: str, channel_id: str | None, record: dict[str, Any]) -> None:
+    """Place each call of the composite in order; any failed call stops the diagnosis with its guidance."""
+    label = channel_id or "@" + handle
+    calls = list(record.get("calls") or [])
+    profile = {"instagram": "resolve_profile", "youtube": "get_channel"}.get(platform)
+    if profile and not calls:
+        raise cd.StageError(f"the public-data call {profile} was not made for {label} (the data service ran out of "
+                            "time); no account conclusion was produced. " + failure_guidance("unavailable"))
+    for call in calls:
+        holding, envelope = holding_copy(call)
+        operation = str(envelope.get("operation"))
+        owner = account_of(envelope)
+        if handle and owner and owner != bare(handle).lower():
+            holding.unlink(missing_ok=True)
+            raise cd.StageError(f"the {operation} response belongs to @{owner}, not @{bare(handle)}")
+        require_usable(holding, operation, envelope, label)
+        if operation == "resolve_profile":
+            found = (envelope.get("data") or {}).get("profile") if isinstance(envelope.get("data"), dict) else None
+            if not isinstance(found, dict) or not (found.get("username") or found.get("id")):
+                reject(holding, operation, envelope)
+                raise cd.StageError(f"@{handle} did not resolve to a public Instagram profile; confirm the exact "
+                                    "handle with the user (not a display name); the account may be private or renamed")
+            keep(holding, operation)
+            account_id = found.get("id") or found.get("pk") or found.get("user_id")
+            remember_identity(str(found.get("username") or handle), str(account_id) if account_id else None)
+        elif operation == "get_channel":
+            rows = (envelope.get("data") or {}).get("rows") if isinstance(envelope.get("data"), dict) else None
+            channel = rows[0] if isinstance(rows, list) and rows and isinstance(rows[0], dict) else None
+            if not isinstance(channel, dict) or not channel.get("id"):
+                reject(holding, operation, envelope)
+                raise cd.StageError("the supplied YouTube identity did not resolve to a public channel; confirm the "
+                                    "exact @handle or channel id (UC…) with the user")
+            keep(holding, operation)
+            remember_identity(str(channel.get("custom_url") or bare(handle) or channel["id"]), str(channel["id"]))
+        else:
+            keep(holding, operation)
+    if platform == "tiktok":
         remember_identity(handle)
-        return
-    if platform == "youtube":
-        channel_id = str((cd.state().get("identity") or {}).get("account_id"))
-        params = {"channel_id": channel_id, "max_results": PUBLIC_SAMPLE_CAP}
-        request = {"connector_id": YT, "operation": "list_channel_uploads", "params": params}
-        cd.fetch_round([cd.run_call(YT, "list_channel_uploads", params)], args,
-                       lambda: place_pages([request], None))
-        return
-    user_id = (cd.state().get("identity") or {}).get("account_id")
-    requests = []
-    if content_kind in {"auto", "feed"}:
-        requests.append({"connector_id": IG, "operation": "list_posts", "params": {"handle": handle}})
-    if content_kind in {"auto", "reels"}:
-        params = {"handle": handle}
-        if user_id:
-            params["user_id"] = user_id
-        requests.append({"connector_id": IG, "operation": "list_reels", "params": params})
-    cd.fetch_round(cd.batch_calls(requests), args, lambda: place_pages(requests, handle))
+
+
+def fetch_history(platform: str, handle: str, channel_id: str | None, content_kind: str,
+                  args: argparse.Namespace) -> None:
+    """The whole public retrieval as one backend call; its responses are placed in call order."""
+    arguments = history_arguments(platform, handle, channel_id, content_kind)
+    expected = {key: bare(str(value)).lower() for key, value in arguments["accounts"][0].items()}
+
+    def matches(record: dict[str, Any]) -> bool:
+        summary = record.get("summary") if isinstance(record.get("summary"), dict) else {}
+        accounts = summary.get("accounts") if isinstance(summary.get("accounts"), list) else []
+        given = accounts[0].get("input") if accounts and isinstance(accounts[0], dict) else None
+        return isinstance(given, dict) and {key: bare(str(value)).lower() for key, value in given.items()} == expected
+
+    call = cd.composite_call(HISTORY_TOOL, arguments)
+    cd.fetch_round([call], args, cd.composite_placement(
+        call, lambda record: place_history(platform, handle, channel_id, record), matches))
 
 
 def focus_handle(requested: str) -> str:
@@ -360,13 +346,7 @@ def stage_fetch(args: argparse.Namespace) -> None:
                          "--handle/--channel-id as the first fetch, plus --placed")
     cd.save_state(platform=platform, requested=requested, question=question,
                   content_kind=args.content_kind, analysis_plan=plan, analysis_language=language)
-    if platform == "instagram":
-        resolve_instagram(handle, args)
-    elif platform == "youtube":
-        resolve_youtube(handle or None, channel_id, args)
-    else:
-        remember_identity(handle)
-    fetch_history(platform, handle, args.content_kind, args)
+    fetch_history(platform, handle, channel_id, args.content_kind, args)
     assemble(platform, channel_id or handle, args.content_kind)
     if plan:
         execute_analysis(plan, language)

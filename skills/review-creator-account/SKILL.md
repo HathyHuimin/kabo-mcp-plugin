@@ -3,7 +3,7 @@ name: review-creator-account
 description: "Review an Instagram, TikTok or YouTube account: what works, what hurts, what to continue, stop or test, benchmarks, content patterns, follower loss and own-account wording audits. Also calculates engagement rate, conditional growth estimates and owner follower-contribution rankings from public data, an owner export or supplied numbers. Not for diagnosing a reach drop or shadowban, Insights UI help, trends, ideas, cadence plans, drafts, one-video edits or monetization."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read for saved account context and workspace:write only to connect a public account or save the user's profile edits on request."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download instagram_resolve_profile instagram_search_accounts instagram_list_posts instagram_list_reels youtube_get_channel youtube_list_channel_uploads tiktok_list_account_posts get_kabo_info list_connected_accounts get_creator_profile get_social_connection connect_public_account update_content_preferences
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_account_history instagram_resolve_profile instagram_list_posts instagram_list_reels get_kabo_info list_connected_accounts get_creator_profile get_social_connection connect_public_account update_content_preferences
 ---
 
 # Review Creator Account
@@ -56,16 +56,15 @@ not possible here before claiming anything.
 All data comes from the Kabo MCP tools in `allowed-tools`. A missing or unavailable operation is a
 capability gap to report, not something to work around.
 
-| Data | Instagram | YouTube | TikTok |
-|---|---|---|---|
-| Account identity | `instagram_resolve_profile` (`instagram_search_accounts` when it does not resolve) | `youtube_get_channel` | — |
-| Public history | `instagram_list_posts`, `instagram_list_reels` | `youtube_list_channel_uploads` | `tiktok_list_account_posts` |
+A complete review retrieves everything with one `collect_account_history` call that `drive.py`
+hands over: the backend resolves the account and pages its public history under the sample rules.
+Narrow operations call `instagram_resolve_profile`, `instagram_list_posts` and
+`instagram_list_reels` themselves, as `references/narrow-operations.md` says.
 
-- **Hand-over.** `drive.py` exits 0 after printing a `call:` line per call. That pause is unfinished
-  work. Make exactly those calls with the arguments verbatim, each as its own individual call, all
-  in one response; then do what it prints under each call (save the complete result to the named
-  file, run the printed `fetch` command) and finally run the printed resume command. Paging can hand
-  over more than once. Never retype, paste or edit returned data.
+- **Hand-over.** `drive.py` exits 0 after printing a `call:` line. That pause is unfinished work.
+  Make exactly that call with the arguments verbatim; then do what it prints under the call (save
+  the complete result to the named file, run the printed `fetch` command) and finally run the
+  printed resume command. Never retype, paste or edit returned data.
 - **Calls you make yourself** (narrow operations) take `{"parameters": {…}, "delivery": "download"}`;
   save each complete result as `host-results/<NN>-<tool-name>.json`, run
   `static_host.py fetch --tool <tool-name> --input '<that file>'`, then persist it as

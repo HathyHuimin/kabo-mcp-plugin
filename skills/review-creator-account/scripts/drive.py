@@ -13,18 +13,14 @@ hand after a new run directory had been reserved mid-run.
     fetch  --platform youtube --channel-id UC…   the same, from a channel id
     report                              Compose -> validate_artifacts -> validate_creator_report -> report
 
-Retrieval follows SKILL.md exactly. Instagram: `resolve_profile`, then the first `list_posts` and
-`list_reels` pages together; after that one page at a time from the format with fewer persisted
-rows while both still have a next page and the combined count is under 100, the remaining format
-alone once the other has none, and nothing more once the combined count reaches 100. YouTube:
-`get_channel`, `list_channel_uploads` with 50 results and at most one cursor follow-up. TikTok:
-`list_account_posts` once with `limit: 100`. Each response is placed as `snapshot/envelope-NN.json`
-in fetch order with `persist_many.py`, from the complete copy `static_host.py stage` saved, so the
-files are the bytes the manual workflow placed.
-
-Connector calls are printed as `call:` lines naming public MCP tools (`connector_driver.py`) for the
-model to make; the same command run again with `--placed` places those responses and goes on to the
-next page.
+Retrieval is one backend call, `collect_account_history`, printed as a single `call:` line for the
+model to make (`connector_driver.py`); its parameters carry the sample rules in
+`references/complete-review.md`. Instagram: `resolve_profile`, then the first `list_posts` and
+`list_reels` pages together; after that one page at a time from the format with fewer rows until the
+combined count reaches 100. YouTube: `get_channel`, `list_channel_uploads` with 50 results and at most
+one cursor follow-up. TikTok: `list_account_posts` once with `limit: 100`. The same command run again
+with `--placed` places each call's response as `snapshot/envelope-NN.json` in fetch order, byte for
+byte from the copy `static_host.py fetch` (or `stage`) saved when it split the composite result.
 """
 
 from __future__ import annotations
@@ -44,16 +40,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import connector_driver as cd  # noqa: E402
 from linked_post_snapshot import apply_link, bound_handle  # noqa: E402
-from persist_envelope import (
-    USABLE_STATUSES, account_of, drained_candidates, identity, in_order, nested_envelopes, row_count,
-    truncated, unwrap_envelope,
-)  # noqa: E402
+from persist_envelope import USABLE_STATUSES, account_of, row_count, unwrap_envelope  # noqa: E402
 from profile_contract import synthesis_schema  # noqa: E402
 from synthesis_authoring import AuthoringError, validate_authoring  # noqa: E402
 
-IG = "instagram-discovery"
-YT = "youtube-public"
-TT = "tiktok-public"
+# The backend composite tool that runs the whole public retrieval in one call (docs: KS9).
+HISTORY_TOOL = "collect_account_history"
 CONTENT_OPERATIONS = {
     "instagram": ("list_posts", "list_reels"),
     "youtube": ("list_channel_uploads",),
@@ -82,7 +74,7 @@ COMBINED_CAP = 100
 YOUTUBE_PAGE = 50
 YOUTUBE_PAGES = 2
 TIKTOK_LIMIT = 100
-# A guard against a provider that repeats a cursor; the cap ends a real run long before this.
+# Pages of one account across Feed and Reels; the combined cap ends a real run long before this.
 MAX_PAGES = 40
 SEARCH_SHOWN = 10
 # How a failed lookup is read, by the platform's error_code (kabo contracts `apiErrorCodeSchema`):
@@ -97,7 +89,6 @@ NOT_FOUND_CODES = {"not_found", "validation_error"}
 CAPABILITY_STATUSES = {"unsupported", "setup_blocked", "not_implemented", "blocked"}
 CAPABILITY_CODES = {"not_implemented", "forbidden", "authentication_required", "invalid_session",
                     "subscription_required", "quota_exceeded"}
-SEARCH_QUERY = re.compile(r"^[A-Za-z0-9._]{2,30}$")
 
 
 def say(text: str = "") -> None:
@@ -115,238 +106,17 @@ def safe(text: str) -> str:
 # --------------------------------------------------------------------------- placement
 
 
-DRAINED_DIR = Path("snapshot/.drained")
-
-
-def isolate_drained() -> None:
-    """Move host records a runner drained into `snapshot/` aside, keeping this run's placements put.
-
-    `--drained <dir>` makes every file under that directory count as a source rather than as a
-    placement. This Skill places into `snapshot/envelope-NN.json`, the very names a runner drains
-    into, so pointing the flag at `snapshot/` hands this run its own output back as a fresh host
-    record. Moving the drained set into its own directory keeps the two apart.
-
-    Two earlier attempts got the separator wrong:
-
-    - 0.4.33 gated the flag on "this run has placed nothing yet". One round places several responses
-      before that state is written, so later calls of the same round still carried it and re-read
-      what the round had just written — `envelope-02.json` and `envelope-04.json` came back
-      byte-identical and the Instagram cursor stopped advancing.
-    - 0.4.34 moved the set aside once per run. But `drive.py fetch` runs first with `snapshot/` still
-      empty (nothing is fetched yet) and only the `--placed` rerun goes through
-      `kabo-run-pipeline --staging`, which drains *before* running its step. The one-shot marker was
-      therefore set while there was nothing to move, and the real drained set never got isolated.
-
-    Neither timing nor a one-shot flag separates the two. What does is whether **this run placed the
-    file**, which `state["envelopes"]` records exactly. So this runs on every stage and moves only
-    what this run did not place; a name that repeats across rounds is kept beside the earlier one
-    rather than overwriting it.
-    """
-    placed = {str(entry.get("file")) for entry in (cd.state().get("envelopes") or [])}
-    moved = []
-    for path in sorted(Path("snapshot").glob("envelope-*.json")):
-        if path.as_posix() in placed:
-            continue
-        DRAINED_DIR.mkdir(parents=True, exist_ok=True)
-        # The shared placement reader excludes source records from its "already placed"
-        # tally only for canonical envelope-NN.json names. A -2 collision suffix makes
-        # the continuation page count as a placement of itself and disappear.
-        match = re.fullmatch(r"envelope-(\d+)\.json", path.name)
-        serial = int(match.group(1)) if match else 1
-        target = DRAINED_DIR / f"envelope-{serial:02d}.json"
-        while target.exists():
-            serial += 1
-            target = DRAINED_DIR / f"envelope-{serial:02d}.json"
-        path.replace(target)
-        moved.append(target.as_posix())
-    if moved:
-        cd.save_state(drained=[*(cd.state().get("drained") or []), *moved])
-    archive_equivalent_drained()
-
-
-def archive_equivalent_drained() -> None:
-    """Keep equivalent host copies as evidence without presenting them as another response.
-
-    The shared reader counts placements against responses, not physical source copies. A repeated
-    host record would consume that count once and then offer the same page again. Only a complete
-    Envelope with both the same existing identity and the same full JSON value is equivalent;
-    batch responses sharing a request id, or changed response metadata, remain independent.
-    """
-    representatives: dict[tuple[str, str], Path] = {}
-    archived: list[dict[str, str]] = []
-    state = cd.state()
-    previous = state.get("drained_equivalent_copies") or []
-    restored = 0
-    # The shared placement tally walks JSON objects, so a content.text wrapper's Envelope is
-    # invisible after placement. Use only this driver's recorded, byte-preserved Snapshot files
-    # as representatives for that shape; ordinary Envelopes keep the shared tally unchanged.
-    for entry in state.get("envelopes") or []:
-        if not isinstance(entry, dict) or not isinstance(entry.get("file"), str):
-            continue
-        placed = Path(entry.get("file") or "")
-        if (placed.parent != SNAPSHOT_DIR or placed.is_symlink()
-                or placed.resolve().parent != Path.cwd().resolve() / SNAPSHOT_DIR
-                or not re.fullmatch(r"envelope-\d+\.json", placed.name)):
-            continue
-        try:
-            complete = json.loads(placed.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-            continue
-        envelope = unwrap_envelope(complete)
-        if (envelope is None or envelope.get("operation") != entry.get("operation")
-                or truncated(envelope) is not None or any(nested_envelopes(complete))):
-            continue
-        representatives[(identity(envelope), json.dumps(complete, sort_keys=True,
-                                                        ensure_ascii=False))] = placed
-    candidates = in_order(drained_candidates(DRAINED_DIR, None, None, [], None))
-    # A re-mounted pathname can acquire an earlier mtime than its representative. Preserve the
-    # representative already recorded for that response; this only orders copy comparison.
-    preferred = {entry.get("representative") for entry in previous if isinstance(entry, dict)}
-    candidates.sort(key=lambda candidate: candidate.source.removeprefix("drained:") not in preferred)
-    for candidate in candidates:
-        envelope = candidate.envelope
-        if truncated(envelope) is not None:
-            continue
-        path = Path(candidate.source.removeprefix("drained:"))
-        try:
-            complete = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-            continue
-        if unwrap_envelope(complete) != envelope:
-            continue
-        key = (identity(envelope), json.dumps(complete, sort_keys=True, ensure_ascii=False))
-        representative = representatives.get(key)
-        if representative is None:
-            representatives[key] = path
-            continue
-        directory = DRAINED_DIR / "equivalent-copies"
-        body = path.read_bytes()
-        digest = hashlib.sha256(body).hexdigest()
-        # Some hosts re-mount the old pathname after absorbing a renamed run file. Remove only
-        # that already archived view: the ledger, original archive bytes and current representative
-        # must all agree. A new or changed response still gets its own preserved archive.
-        restored_copy = False
-        for entry in previous:
-            if not isinstance(entry, dict) or entry.get("from") != path.as_posix():
-                continue
-            saved = Path(entry.get("to") or "")
-            if (entry.get("sha256") != digest
-                    or entry.get("representative") != representative.as_posix()
-                    or saved.parent != directory
-                    or not re.fullmatch(r"envelope-\d+\.json", saved.name)
-                    or path.is_symlink() or saved.is_symlink()):
-                continue
-            try:
-                restored_copy = saved.is_file() and saved.read_bytes() == body
-            except OSError:
-                restored_copy = False
-            if restored_copy:
-                path.unlink()
-                restored += 1
-                break
-        if restored_copy:
-            continue
-        directory.mkdir(exist_ok=True)
-        # Canonical names keep these archived bodies excluded from the shared reader's placement
-        # tally, just like all source records under --drained. Never overwrite an earlier copy.
-        match = re.fullmatch(r"envelope-(\d+)\.json", path.name)
-        serial = int(match.group(1)) if match else 1
-        target = directory / f"envelope-{serial:02d}.json"
-        while target.exists() or target.is_symlink():
-            serial += 1
-            target = directory / f"envelope-{serial:02d}.json"
-        path.replace(target)
-        archived.append({"from": path.as_posix(), "to": target.as_posix(),
-                         "representative": representative.as_posix(), "sha256": digest})
-    if archived or restored:
-        moved = {entry["from"]: entry["to"] for entry in archived}
-        cd.save_state(
-            drained=[moved.get(path, path) for path in (state.get("drained") or [])],
-            drained_equivalent_copies=[*previous, *archived],
-            drained_restored_aliases_removed=(state.get("drained_restored_aliases_removed") or 0) + restored,
-        )
-
-
-def drained_source() -> list[str]:
-    """`--drained snapshot/.drained` while that set still holds a response this run has not placed.
-
-    Safe on every call: the directory only ever holds what a runner drained, and
-    `persist_envelope.py` skips a response this run already persisted, so each drained Envelope
-    fills exactly one slot. On a host that stages nothing the directory never exists.
-    """
-    return ["--drained", DRAINED_DIR.as_posix()] if any(DRAINED_DIR.glob("*.json")) else []
-
-
-def trace_placement(operation: str, output: str) -> None:
-    """Name the host record this placement actually consumed.
-
-    Which staged response a round takes is the one fact that decides whether pagination advances,
-    and nothing used to record it: a round that silently re-took an earlier page looked exactly like
-    one that advanced, until the cursor stopped moving several rounds later and the run died with
-    "the provider is repeating a cursor" — pointing at the provider, which was fine. 2026-09-21 that
-    cost a full investigation across the connector, the model's calls and the staging area before the
-    placement itself came into view. One line per placement makes the next one a glance.
-    """
-    try:
-        result = json.loads(output)
-        placed = (result.get("results") or [{}])[0]
-    except (json.JSONDecodeError, AttributeError, IndexError, TypeError):
-        return
-    source = str(placed.get("source") or "")
-    say(f"[drive] {operation} placed from {source.rsplit('/', 1)[-1] or '(unnamed)'}"
-        f" request_id={placed.get('request_id') or '(none)'} rows={placed.get('rows')}")
-
-
-def take(requests: list[dict[str, Any]], handle: str | None) -> list[tuple[dict[str, Any], Path, dict[str, Any]]]:
-    """Place each response of the round just fetched into a holding file; return it with its Envelope.
-
-    From the host's record of that request when the host named it — the file it staged, byte for
-    byte, which is also what `persist_envelope.py` copies. Otherwise (the model made the calls,
-    `--placed`) by `persist_many.py`, which takes the earliest unplaced response of that operation.
-    """
-    records = cd.LAST_RECORDS
-    paired = records is not None and len(records) == len(requests)
-    taken = []
-    for index, request in enumerate(requests):
-        operation = str(request["operation"])
-        # Absolute: `persist_envelope.py` finds this run's tree by walking up from `--dest`, and a
-        # relative path makes that answer depend on the caller's working directory. Resolved
-        # elsewhere it sees no `snapshot/`, counts nothing as already persisted, and hands back the
-        # page this run placed a round ago — pagination then repeats a cursor and the run dies
-        # blaming the provider. Verified 2026-09-21: same staging, same run tree, a relative --dest
-        # resolved outside the run directory returned page one, an absolute one returned page two.
-        # The name carries the request, not just its position: a later page of the same operation
-        # must not reuse the file the previous page is sitting in. `persist_many.py --dest` skips
-        # the destination when it tallies what this run already placed — that is what makes
-        # re-running one stage idempotent — so a holding file reused across rounds hides the page
-        # it holds, and the next round takes that same page again. The run then sees a repeated
-        # cursor and stops, blaming the provider. Verified 2026-09-22 on @vinny_creative: five
-        # distinct staged responses, and the second `list_posts` round took page one a second time
-        # because both pages were written to `.incoming-0-list_posts.json`. Same request, same
-        # name — so running a stage again still lands on its own file and stays idempotent.
-        page = hashlib.sha256(
-            json.dumps(request.get("params") or {}, sort_keys=True, ensure_ascii=False).encode("utf-8")
-        ).hexdigest()[:12]
-        holding = (Path.cwd() / f".incoming-{index}-{operation}-{page}.json").resolve()
-        record = records[index][1] if paired else None
-        if record is not None:
-            holding.write_bytes(record.read_bytes())
-            holding.chmod(0o600)
-        else:
-            identity = ["--handle", handle] if handle else []
-            out = cd.script("persist_many.py", "--connector", str(request["connector_id"]), "--operation", operation,
-                            "--any-status", "--dest", str(holding), *identity, *drained_source())
-            trace_placement(operation, out)
-        envelope = unwrap_envelope(holding.read_text(encoding="utf-8"))
-        if envelope is None:
-            raise cd.StageError(f"the {operation} response is not a connector Envelope; nothing was placed")
-        owner = account_of(envelope)
-        if record is not None and owner and handle and owner != bare(handle).lower():
-            holding.unlink(missing_ok=True)
-            raise cd.StageError(f"the {operation} response belongs to @{owner}, not @{bare(handle)}; "
-                                "confirm the account with the user before running this again")
-        taken.append((request, holding, envelope))
-    return taken
+def holding_copy(call: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
+    """A byte copy of one composite call's staged envelope, ready to move into its slot."""
+    source = Path(str(call["path"]))
+    holding = (Path.cwd() / f".incoming-{call['evidence_id']}.json").resolve()
+    holding.write_bytes(source.read_bytes())
+    holding.chmod(0o600)
+    envelope = unwrap_envelope(holding.read_text(encoding="utf-8"))
+    if envelope is None:
+        holding.unlink(missing_ok=True)
+        raise cd.StageError(f"the staged {call.get('tool')} response is not a connector Envelope; nothing was placed")
+    return holding, envelope
 
 
 def envelopes() -> list[dict[str, Any]]:
@@ -363,16 +133,22 @@ def keep(holding: Path, operation: str) -> str:
     return target.as_posix()
 
 
-def reject(holding: Path, request: dict[str, Any], envelope: dict[str, Any]) -> None:
+def reject(holding: Path, call: dict[str, Any], envelope: dict[str, Any]) -> None:
     """Keep an unusable response out of the Snapshot, but in the run, so it is never placed again."""
     REJECTED_DIR.mkdir(exist_ok=True)
     failed = list(cd.state().get("failed") or [])
-    holding.replace(REJECTED_DIR / f"{request['operation']}-{len(failed) + 1:02d}.json")
-    cd.save_state(failed=[*failed, {"operation": request["operation"], "params": request.get("params") or {},
+    operation = str(envelope.get("operation"))
+    holding.replace(REJECTED_DIR / f"{operation}-{len(failed) + 1:02d}.json")
+    cd.save_state(failed=[*failed, {"operation": operation, "group": call.get("group"),
                                     "status": envelope.get("status"), "error_code": envelope.get("error_code")}])
-    say(f"[drive] {request['operation']} returned status={envelope.get('status')}"
+    say(f"[drive] {operation} returned status={envelope.get('status')}"
         f"{' (' + str(envelope.get('error_code')) + ')' if envelope.get('error_code') else ''}; "
         "it is left out of the Snapshot and its history counts as incomplete")
+
+
+def unresolved(holding: Path, label: str) -> None:
+    holding.replace(Path(f"unresolved-{safe(label)}.json"))
+    cd.save_state(unresolved=[*(cd.state().get("unresolved") or []), label.lower()])
 
 
 def usable(envelope: dict[str, Any]) -> bool:
@@ -384,17 +160,18 @@ def not_found(envelope: dict[str, Any]) -> bool:
     return not usable(envelope) and str(envelope.get("error_code") or "") in NOT_FOUND_CODES
 
 
-def service_failed(holding: Path, operation: str, envelope: dict[str, Any], label: str) -> None:
+def service_failed(holding: Path | None, operation: str, envelope: dict[str, Any], label: str) -> None:
     """A lookup that failed is no answer about the account: stop, and keep this round open.
 
     Only a completed response without the account, or a `not_found` answer, says it does not exist.
-    A timed-out or upstream-error response used to be read that way too — the user was asked whether the handle was
-    misspelled, and the round was recorded as done, so a rerun in the same run never asked again.
-    The response is kept in the run (so no placement takes it again) and the round is not recorded.
+    A timed-out or upstream-error response used to be read that way too — the user was asked whether the
+    handle was misspelled. The response is kept in the run (so no placement takes it again) and the round
+    is not recorded, so the same command run again hands the call over once more.
     """
-    REJECTED_DIR.mkdir(exist_ok=True)
-    number = len(list(REJECTED_DIR.glob(f"{operation}-service-*.json"))) + 1
-    holding.replace(REJECTED_DIR / f"{operation}-service-{number:02d}.json")
+    if holding is not None:
+        REJECTED_DIR.mkdir(exist_ok=True)
+        number = len(list(REJECTED_DIR.glob(f"{operation}-service-*.json"))) + 1
+        holding.replace(REJECTED_DIR / f"{operation}-service-{number:02d}.json")
     code = f", error_code={envelope.get('error_code')}" if envelope.get("error_code") else ""
     if (str(envelope.get("status") or "") in CAPABILITY_STATUSES
             or str(envelope.get("error_code") or "") in CAPABILITY_CODES):
@@ -402,19 +179,12 @@ def service_failed(holding: Path, operation: str, envelope: dict[str, Any], labe
                             "the capability is missing, which says nothing about whether the account exists. Tell the "
                             f"user {label} cannot be reviewed here right now and stop; do not run this again, do not ask "
                             "whether the handle is misspelled and do not review another account in its place.")
-    raise cd.StageError(f"the data service failed on {operation} for {label} (status={envelope.get('status')}{code}); "
+    raise cd.RetryRound(f"the data service failed on {operation} for {label} (status={envelope.get('status')}{code}); "
                         "that says nothing about whether the account exists, and nothing was recorded for this call. "
-                        "Run this same command again once, without --placed. If it fails the same way again, tell the "
-                        f"user the data service could not retrieve {label} right now and stop; do not ask whether the "
-                        "handle is misspelled and do not review another account in its place.")
-
-
-def place_pages(requests: list[dict[str, Any]], handle: str | None) -> None:
-    for request, holding, envelope in take(requests, handle):
-        if usable(envelope):
-            keep(holding, str(request["operation"]))
-        else:
-            reject(holding, request, envelope)
+                        "Run this same command again once, without --placed, and make the call it hands over. If it "
+                        f"fails the same way again, tell the user the data service could not retrieve {label} right "
+                        "now and stop; do not ask whether the handle is misspelled and do not review another account "
+                        "in its place.")
 
 
 # --------------------------------------------------------------------------- pagination facts
@@ -460,51 +230,48 @@ def chain(operation: str) -> dict[str, Any]:
     }
 
 
-# --------------------------------------------------------------------------- identity
+# --------------------------------------------------------------------------- retrieval
 
 
 def remember_identity(handle: str, account_id: str | None, profile: str | None) -> None:
     cd.save_state(identity={"handle": handle, "account_id": account_id, "profile_envelope": profile})
 
 
-def resolve_instagram(handle: str, args: argparse.Namespace) -> bool:
-    """`resolve_profile` for the requested handle; False when it names no public profile."""
-    params = {"handle": handle, "include_post_count": True}
-    request = {"connector_id": IG, "operation": "resolve_profile", "params": params}
+def history_arguments(platform: str, handle: str, channel_id: str | None) -> dict[str, Any]:
+    """The one `collect_account_history` call that runs this review's retrieval rules in the backend.
 
-    def place() -> None:
-        ((_, holding, envelope),) = take([request], handle)
-        profile = (envelope.get("data") or {}).get("profile") if isinstance(envelope.get("data"), dict) else None
-        if not usable(envelope) and not not_found(envelope):
-            service_failed(holding, "resolve_profile", envelope, "@" + handle)
-        if usable(envelope) and isinstance(profile, dict) and (profile.get("username") or profile.get("id")):
-            target = keep(holding, "resolve_profile")
-            account_id = profile.get("id") or profile.get("pk") or profile.get("user_id")
-            remember_identity(str(profile.get("username") or handle), str(account_id) if account_id else None, target)
-        else:
-            holding.replace(Path(f"unresolved-{safe(handle)}.json"))
-            cd.save_state(unresolved=[*(cd.state().get("unresolved") or []), handle.lower()])
+    Instagram: profile, then the first Feed and Reels pages together, then one page at a time from the
+    format with fewer rows until 100 combined (`fewer_rows_first`, Feed on a tie). YouTube: channel,
+    then uploads 50 per page, at most two pages. TikTok: account posts once with `limit: 100`. Only an
+    Instagram handle that does not resolve brings back account-search candidates.
+    """
+    account: dict[str, Any] = {"channel_id": channel_id} if channel_id else {"handle": handle}
+    if platform == "instagram":
+        history: dict[str, Any] = {"max_items": COMBINED_CAP, "max_pages": MAX_PAGES,
+                                   "instagram_formats": {"posts": True, "reels": True,
+                                                         "balance": "fewer_rows_first"}}
+    elif platform == "youtube":
+        history = {"max_items": YOUTUBE_PAGE * YOUTUBE_PAGES, "max_pages": YOUTUBE_PAGES, "page_size": YOUTUBE_PAGE}
+    else:
+        history = {"max_items": TIKTOK_LIMIT}
+    return {"platform": platform, "accounts": [account], "profile": True, "history": history,
+            "on_identity_miss": "candidates" if platform == "instagram" else "gap"}
 
-    cd.fetch_round([cd.run_call(IG, "resolve_profile", params)], args, place)
-    return handle.lower() not in (cd.state().get("unresolved") or [])
+
+def account_summary(record: dict[str, Any]) -> dict[str, Any]:
+    accounts = (record.get("summary") or {}).get("accounts") if isinstance(record.get("summary"), dict) else None
+    first = accounts[0] if isinstance(accounts, list) and accounts and isinstance(accounts[0], dict) else {}
+    return first
 
 
-def search_instagram(handle: str, args: argparse.Namespace) -> None:
+def show_candidates(handle: str, envelope: dict[str, Any] | None) -> None:
     """The requested handle named no profile: list who it could be, then stop for the model to choose."""
-    if not SEARCH_QUERY.match(handle):
+    if envelope is None:
         say(f"@{handle} did not resolve to a public Instagram profile. Confirm the exact handle with the user, then run "
             "this fetch again with --handle <that handle>. Do not review any other account in its place.")
         return
-    dest = Path(f"subject-search-{safe(handle)}.json")
-    request = {"connector_id": IG, "operation": "search_accounts", "params": {"query": handle}}
-
-    def place() -> None:
-        ((_, holding, _),) = take([request], None)
-        holding.replace(dest)
-
-    cd.fetch_round([cd.run_call(IG, "search_accounts", {"query": handle})], args, place)
-    envelope = cd.load(dest)
-    rows = [row for row in ((envelope.get("data") or {}).get("rows") or []) if isinstance(row, dict)]
+    data = envelope.get("data") if isinstance(envelope.get("data"), dict) else {}
+    rows = [row for row in (data.get("rows") or []) if isinstance(row, dict)]
     say(f"@{handle} did not resolve to a public Instagram profile. Account search for {handle!r} "
         f"returned {len(rows)} account(s); the first {min(len(rows), SEARCH_SHOWN)}:")
     for row in rows[:SEARCH_SHOWN]:
@@ -512,129 +279,113 @@ def search_instagram(handle: str, args: argparse.Namespace) -> None:
         verified = " verified" if row.get("is_verified") else ""
         say(f"- @{row.get('username') or row.get('author') or '?'}{' | ' + name if name else ''}{verified}")
     say("Choose the account the user asked about only when one candidate clearly is that account (same name, "
-        "an obvious spelling of the requested handle), then run this same fetch command again with --handle "
-        "<that handle>. If none clearly is, tell the user @" + handle + " could not be found and ask for the exact "
-        "handle; do not review a different account in its place.")
+        "an obvious spelling of the requested handle), then start a new run and fetch with --handle <that handle>. "
+        "If none clearly is, tell the user @" + handle + " could not be found and ask for the exact handle; do not "
+        "review a different account in its place.")
 
 
-def resolve_youtube(handle: str | None, channel_id: str | None, args: argparse.Namespace) -> bool:
-    # `get_channel` takes exactly one identity parameter.
-    params = {"channel_id": channel_id} if channel_id else {"handle": "@" + bare(handle)}
-    request = {"connector_id": YT, "operation": "get_channel", "params": params}
-    label = channel_id or bare(handle)
-
-    def place() -> None:
-        ((_, holding, envelope),) = take([request], None)
-        rows = (envelope.get("data") or {}).get("rows") if isinstance(envelope.get("data"), dict) else None
-        channel = rows[0] if isinstance(rows, list) and rows and isinstance(rows[0], dict) else {}
-        if not usable(envelope) and not not_found(envelope):
-            service_failed(holding, "get_channel", envelope, label)
-        if usable(envelope) and channel.get("id"):
-            target = keep(holding, "get_channel")
-            remember_identity(str(channel.get("custom_url") or bare(handle) or channel["id"]), str(channel["id"]), target)
+def place_history(platform: str, handle: str, channel_id: str | None, record: dict[str, Any]) -> None:
+    """Place every call of the composite in order: profile, history pages, or the identity answer."""
+    label = channel_id or ("@" + handle)
+    summary = account_summary(record)
+    calls = [call for call in record.get("calls") or [] if call.get("group") in (None, summary.get("group", "acct-0"))]
+    say(f"[drive] collect_account_history: status={record.get('status')}, account status={summary.get('status')}, "
+        f"{summary.get('pages', 0)} history page(s), {summary.get('items_total', 0)} row(s)")
+    profile_tool = {"instagram": "instagram_resolve_profile", "youtube": "youtube_get_channel"}.get(platform)
+    if profile_tool and not any(call.get("tool") == profile_tool for call in calls):
+        # The backend ran out of time before the profile call: no answer about the account at all.
+        service_failed(None, profile_tool.split("_", 1)[1], {"status": record.get("status")}, label)
+    for call in calls:
+        holding, envelope = holding_copy(call)
+        operation = str(envelope.get("operation"))
+        if operation == "resolve_profile":
+            data = envelope.get("data") if isinstance(envelope.get("data"), dict) else {}
+            profile = data.get("profile")
+            if not usable(envelope) and not not_found(envelope):
+                service_failed(holding, operation, envelope, label)
+            if usable(envelope) and isinstance(profile, dict) and (profile.get("username") or profile.get("id")):
+                target = keep(holding, operation)
+                account_id = profile.get("id") or profile.get("pk") or profile.get("user_id")
+                remember_identity(str(profile.get("username") or handle), str(account_id) if account_id else None,
+                                  target)
+            else:
+                unresolved(holding, handle)
+        elif operation == "search_accounts":
+            dest = Path(f"subject-search-{safe(handle)}.json")
+            holding.replace(dest)
+        elif operation == "get_channel":
+            rows = (envelope.get("data") or {}).get("rows") if isinstance(envelope.get("data"), dict) else None
+            channel = rows[0] if isinstance(rows, list) and rows and isinstance(rows[0], dict) else {}
+            if not usable(envelope) and not not_found(envelope):
+                service_failed(holding, operation, envelope, label)
+            if usable(envelope) and channel.get("id"):
+                target = keep(holding, operation)
+                remember_identity(str(channel.get("custom_url") or handle or channel["id"]), str(channel["id"]), target)
+            else:
+                if envelope.get("error_code") == "validation_error" and not channel_id:
+                    cd.save_state(handle_refused=True)
+                unresolved(holding, channel_id or handle)
+        elif operation == "list_account_posts":
+            if not_found(envelope):
+                unresolved(holding, handle)
+                continue
+            if not usable(envelope):
+                service_failed(holding, operation, envelope, label)
+            owner = account_of(envelope)
+            if owner and owner != bare(handle).lower():
+                holding.unlink(missing_ok=True)
+                raise cd.StageError(f"the {operation} response belongs to @{owner}, not @{bare(handle)}; "
+                                    "confirm the account with the user before running this again")
+            keep(holding, operation)
+            data = envelope.get("data") if isinstance(envelope.get("data"), dict) else {}
+            remember_identity(str(data.get("handle") or handle).lstrip("@"), None, None)
+        elif operation in CONTENT_OPERATIONS[platform]:
+            owner = account_of(envelope)
+            if owner and handle and owner != bare(handle).lower():
+                holding.unlink(missing_ok=True)
+                raise cd.StageError(f"the {operation} response belongs to @{owner}, not @{bare(handle)}; "
+                                    "confirm the account with the user before running this again")
+            if usable(envelope):
+                keep(holding, operation)
+            else:
+                reject(holding, call, envelope)
         else:
-            holding.replace(Path(f"unresolved-{safe(label)}.json"))
-            cd.save_state(unresolved=[*(cd.state().get("unresolved") or []), label.lower()])
-
-    try:
-        cd.fetch_round([cd.run_call(YT, "get_channel", params)], args, place)
-    except cd.StageError as error:
-        # 数据源拒绝的 handle 每次重试都会同样失败：改为指向 channel id，而不是停在拒绝上。
-        if channel_id or not str(error).startswith("connector call refused:"):
-            raise
-        cd.save_state(unresolved=[*(cd.state().get("unresolved") or []), label.lower()])
-        say(f"YouTube refused the handle {label!r} ({str(error)[:200]}). Do not send this --handle again: take the "
-            "channel's UC… id from its channel URL or a channel search, then run this fetch again with "
-            "--channel-id <UC… id>.")
-        return False
-    if label.lower() in (cd.state().get("unresolved") or []):
-        say(f"{label} did not resolve to a public YouTube channel. Confirm the channel with the user (its @handle or "
-            "its channel URL), then run this fetch again with --handle <@handle> or --channel-id <UC… id>. Do not "
-            "review any other channel in its place.")
-        return False
-    return True
+            holding.unlink(missing_ok=True)
+            raise cd.StageError(f"collect_account_history returned an unexpected {call.get('tool')} call; nothing "
+                                "more was placed")
 
 
-# --------------------------------------------------------------------------- history
+def retrieve(platform: str, handle: str, channel_id: str | None, args: argparse.Namespace) -> bool:
+    """The whole public retrieval as one backend call. False when the account did not resolve."""
+    arguments = history_arguments(platform, handle, channel_id)
+    expected = arguments["accounts"][0]
 
+    def matches(record: dict[str, Any]) -> bool:
+        summary = account_summary(record)
+        given = summary.get("input") if isinstance(summary.get("input"), dict) else {}
+        return {key: bare(str(value)).lower() for key, value in given.items()} == \
+            {key: bare(str(value)).lower() for key, value in expected.items()}
 
-def instagram_history(handle: str, args: argparse.Namespace) -> None:
-    user_id = (cd.state().get("identity") or {}).get("account_id")
-
-    def posts(cursor: str | None = None) -> dict[str, Any]:
-        params: dict[str, Any] = {"handle": handle}
-        if cursor:
-            params["max_id"] = cursor
-        return {"connector_id": IG, "operation": "list_posts", "params": params}
-
-    def reels(cursor: str | None = None) -> dict[str, Any]:
-        params: dict[str, Any] = {"handle": handle}
-        if user_id:
-            params["user_id"] = user_id
-        if cursor:
-            params["max_id"] = cursor
-        return {"connector_id": IG, "operation": "list_reels", "params": params}
-
-    first = [posts(), reels()]
-    cd.fetch_round(cd.batch_calls(first), args, lambda: place_pages(first, handle))
-    for _ in range(MAX_PAGES):
-        feed, clips = chain("list_posts"), chain("list_reels")
-        combined = feed["rows"] + clips["rows"]
-        if combined >= COMBINED_CAP:
-            break
-        if feed["next"] and clips["next"]:
-            # Both still have a page: the format with fewer persisted rows goes next (Feed on a tie,
-            # the order the first round fetched them in). Never both at once — that spends the cap
-            # on whichever format pages faster and changes the Feed/Reels mix of the sample.
-            request = posts(feed["next"]) if feed["rows"] <= clips["rows"] else reels(clips["next"])
-        elif feed["next"]:
-            request = posts(feed["next"])
-        elif clips["next"]:
-            request = reels(clips["next"])
-        else:
-            break
-        page = [request]
-        cd.fetch_round(cd.batch_calls(page), args, lambda: place_pages(page, handle))
+    call = cd.composite_call(HISTORY_TOOL, arguments)
+    cd.fetch_round([call], args, cd.composite_placement(
+        call, lambda record: place_history(platform, handle, channel_id, record), matches))
+    label = (channel_id or handle).lower()
+    if label not in (cd.state().get("unresolved") or []):
+        return True
+    if platform == "instagram":
+        search = Path(f"subject-search-{safe(handle)}.json")
+        show_candidates(handle, cd.load(search) if search.is_file() else None)
+    elif platform == "youtube" and cd.state().get("handle_refused"):
+        say(f"YouTube refused the handle {handle!r}. Do not send this --handle again: take the channel's UC… id from "
+            "its channel URL or a channel search, then start a new run and fetch with --channel-id <UC… id>.")
+    elif platform == "youtube":
+        say(f"{channel_id or handle} did not resolve to a public YouTube channel. Confirm the channel with the user (its "
+            "@handle or its channel URL), then start a new run and fetch with --handle <@handle> or --channel-id "
+            "<UC… id>. Do not review any other channel in its place.")
     else:
-        raise cd.StageError(f"Instagram pagination did not end after {MAX_PAGES} pages; the provider is repeating "
-                            "a cursor. Tell the user the history could not be retrieved completely.")
-
-
-def youtube_history(args: argparse.Namespace) -> None:
-    channel_id = str((cd.state().get("identity") or {}).get("account_id"))
-    params: dict[str, Any] = {"channel_id": channel_id, "max_results": YOUTUBE_PAGE}
-    first = [{"connector_id": YT, "operation": "list_channel_uploads", "params": params}]
-    cd.fetch_round(cd.batch_calls(first), args, lambda: place_pages(first, None))
-    uploads = chain("list_channel_uploads")
-    if uploads["next"] and uploads["pages"] < YOUTUBE_PAGES:
-        follow = [{"connector_id": YT, "operation": "list_channel_uploads",
-                   "params": {**params, "cursor": uploads["next"]}}]
-        cd.fetch_round(cd.batch_calls(follow), args, lambda: place_pages(follow, None))
-
-
-def tiktok_history(handle: str, args: argparse.Namespace) -> bool:
-    """`list_account_posts` once; the Connector pages internally. False when the account did not resolve."""
-    params = {"handle": "@" + handle, "limit": TIKTOK_LIMIT}
-    request = {"connector_id": TT, "operation": "list_account_posts", "params": params}
-
-    def place() -> None:
-        ((_, holding, envelope),) = take([request], handle)
-        if not_found(envelope):
-            holding.replace(Path(f"unresolved-{safe(handle)}.json"))
-            cd.save_state(unresolved=[*(cd.state().get("unresolved") or []), handle.lower()])
-            return
-        if not usable(envelope):
-            service_failed(holding, "list_account_posts", envelope, "@" + handle)
-        keep(holding, "list_account_posts")
-        data = envelope.get("data") if isinstance(envelope.get("data"), dict) else {}
-        remember_identity(str(data.get("handle") or handle), None, None)
-
-    cd.fetch_round([cd.run_call(TT, "list_account_posts", params)], args, place)
-    if handle.lower() in (cd.state().get("unresolved") or []):
-        say(f"@{handle} is not a public TikTok account. Confirm the exact handle with the user, then run this "
-            "fetch again with --handle <that handle>. Do not review any other account in its place.")
-        return False
-    return True
+        say(f"@{handle} is not a public TikTok account. Confirm the exact handle with the user, then start a new run "
+            "and fetch with --handle <that handle>. Do not review any other account in its place.")
+    return False
 
 
 # --------------------------------------------------------------------------- assemble
@@ -806,7 +557,6 @@ def stage_fetch(args: argparse.Namespace) -> None:
     reserve_review_directory(bool(args.placed), args=args, question=question)
     if Path.cwd() != before:
         say("a --placed rerun and drive.py report run from that directory too: cd into it first")
-    isolate_drained()
     current = cd.state()
     # Only a --placed rerun reaches a run directory that holds a review: it must be the same request.
     if current.get("question") is not None and current["question"] != question:
@@ -845,18 +595,8 @@ def stage_fetch(args: argparse.Namespace) -> None:
             linked_path.write_bytes(linked_bytes)
         cd.save_state(linked_evidence=linked_path.as_posix(), linked_evidence_origin=linked_origin)
     cd.save_state(platform=platform, requested=requested, question=question, window=window)
-    if platform == "instagram":
-        if not resolve_instagram(handle, args):
-            search_instagram(handle, args)
-            return
-        instagram_history(handle, args)
-    elif platform == "youtube":
-        if not resolve_youtube(handle or None, channel_id, args):
-            return
-        youtube_history(args)
-    else:
-        if not tiktok_history(handle, args):
-            return
+    if not retrieve(platform, handle, channel_id, args):
+        return
     assemble(platform, channel_id or handle, question, args.window)
 
 

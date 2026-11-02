@@ -1,6 +1,6 @@
 # Complete review: retrieval, composition and recovery
 
-`drive.py` applies every rule in this file exactly as written. It is here so you know what each
+`drive.py` and the backend call it hands over apply every rule in this file exactly as written. It is here so you know what each
 printed call and placement means, and so the same rules hold for any Envelope you fetch and place
 yourself. Commands use `<skill directory>` (the folder holding `SKILL.md`) and run from the run
 directory, with `KABO_STATIC_RUN_DIR` set to it on the same command line.
@@ -10,37 +10,48 @@ directory, with `KABO_STATIC_RUN_DIR` set to it on the same command line.
 Keep public and owner modes explicit. Retain the canonical handle verified for the user's
 requested account.
 
-**Instagram.** Call `instagram_resolve_profile`, then retrieve Feed and Reels through
-`instagram_list_posts` and `instagram_list_reels`. Persist every page and keep Feed and Reels as
-separate comparable formats.
+`fetch` hands over one `collect_account_history` call. The backend applies the rules below inside
+that call and returns every underlying response in fetch order; `fetch --placed` places each one as
+`snapshot/envelope-NN.json`, byte for byte from the copy `static_host.py fetch` saved.
+
+**Instagram.** Resolve the profile, then retrieve Feed and Reels pages. Persist every page and keep
+Feed and Reels as separate comparable formats.
 
 - The public sample is at most 100 persisted rows across Feed and Reels **combined**. While both
   operations still have another page and the combined count is under 100, take the next page from
   the format that currently has fewer persisted rows. Stop both as soon as the combined count
   reaches 100, even if either side still has `more_available`. Do not spend the whole cap on one
-  format first.
+  format first. The call's parameters say exactly this: `max_items: 100`, `max_pages: 40`, and
+  `instagram_formats` with `balance: "fewer_rows_first"`.
 - Hitting the combined cap is the latest bounded sample, not the account's complete history: keep
   coverage incomplete, and do not attest an operation as complete while it still had
   `more_available` or was cut off by the cap. Attest a paginated operation as complete only after
   its final persisted Envelope says `more_available=false` and the combined count stayed at or under
-  100; intermediate cursors are not incomplete coverage after that terminal page.
+  100; intermediate cursors are not incomplete coverage after that terminal page. A page that
+  failed stays out of the Snapshot and leaves its format incomplete.
 - A known handle or an `instagram.com/<handle>/reels/` URL is one account's history. Never use a
   topic-search or trend collector in its place.
-- When the handle does not resolve, `fetch` runs `instagram_search_accounts` for it, prints the
-  candidates and stops.
+- When the handle does not resolve, the same call searches accounts for it
+  (`on_identity_miss: "candidates"`); `fetch` prints up to 10 candidates and stops.
 
-**YouTube.** Resolve the requested handle (or channel id) with `youtube_get_channel`, then call
-`youtube_list_channel_uploads` with `max_results: 50`. When `data.coverage.next_page_token` is
-non-null, make one cursor follow-up, for at most 100 uploads, and persist both pages. If the second
-page still has a token, the run covers only the latest 100 uploads and the Snapshot is incomplete;
-only a final persisted page with an explicit `next_page_token=null` attests complete coverage. A
-completed call by itself is not proof of exhaustive channel coverage.
+**YouTube.** Resolve the requested handle (or channel id), then list the channel's uploads 50 per
+page (`page_size: 50`, `max_pages: 2`), for at most 100 uploads, and persist both pages. If the
+second page still has a token, the run covers only the latest 100 uploads and the Snapshot is
+incomplete; only a final persisted page with an explicit `next_page_token=null` attests complete
+coverage. A completed call by itself is not proof of exhaustive channel coverage. A handle the data
+service rejects as malformed is reported with a hint to fetch again with `--channel-id`.
 
-**TikTok.** Call `tiktok_list_account_posts` once with the canonical handle and `limit: 100`; the
-tool pages internally. Persist the single returned Envelope. Attest complete coverage only when
-`more_available=false`. Successful account-post resolution is the account-existence evidence for
-this review: do not gate it on a separate handle check. Do not use a public account snapshot to
-infer private TikTok analytics.
+**TikTok.** List the account's posts once with the canonical handle and `limit: 100`
+(`max_items: 100`); the data service pages internally. Persist the single returned Envelope. Attest
+complete coverage only when `more_available=false`. Successful account-post resolution is the
+account-existence evidence for this review: do not gate it on a separate handle check. Do not use a
+public account snapshot to infer private TikTok analytics.
+
+**Failures.** A profile, channel or account-post answer of `not_found` (or a handle refused as
+malformed) means the account was not found. A capability that is missing or spent (not offered, not
+allowed, quota used up) stops the review with no retry. Any other failure says nothing about the
+account: `fetch` stops, keeps that response out of the Snapshot and, run again without `--placed`,
+hands the call over once more.
 
 **Assembly.** `build_public_snapshot.py` assembles every persisted public content Envelope with the
 resolved platform and the window: the user's exact requested window when one exists, otherwise

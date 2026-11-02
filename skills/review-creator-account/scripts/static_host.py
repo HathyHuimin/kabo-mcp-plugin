@@ -57,6 +57,8 @@ CONNECTOR_TOOLS = {
 JOB_TOOLS = {"get_research_data_job"}
 # 交接给模型时可以原样调用的非数据工具：任务读回与一次就绪查询，与 allowed-tools 一致。
 DIRECT_TOOLS = JOB_TOOLS | {"get_research_capabilities"}
+# 驱动交给模型的组合取数工具（KS9）：账号主页与历史翻页由后台一次做完；入参在顶层，带 delivery 交出。
+COMPOSITE_CALLS = {"collect_account_history"}
 # 本 Skill 没有返回固定投影的业务级工具；共用的过期提示据此决定能否重签。
 PROJECTIONS: dict[str, str] = {}
 
@@ -100,6 +102,9 @@ def public_calls(call):
         if name is None:
             raise ValueError("No reviewed public MCP tool for " + key)
         return [{"tool": name, "arguments": {"parameters": args["params"], "delivery": "download"}}]
+    if tool in COMPOSITE_CALLS:
+        # 组合工具的下载字节是去掉 download 的整份出参，由 static_host.py fetch 逐项拆开落盘。
+        return [{"tool": tool, "arguments": {**args, "delivery": "download"}}]
     if tool not in DIRECT_TOOLS:
         raise ValueError("Unsupported public MCP operation: " + tool)
     if tool in JOB_TOOLS:
