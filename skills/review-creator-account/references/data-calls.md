@@ -34,8 +34,10 @@ Do what `fetch` prints. For a data tool's result, call `get_research_data_downlo
 that call itself fails, call the original tool again with the same parameters and
 `"delivery": "download"` (this re-runs it) and fetch that result right away. For a
 job read, an artifact read or a `lookup_*` tool, call that same tool again with
-`"delivery": "download"`. A `collect_*` or `enrich_*` result is complete inline: export it and run
-the same command with `stage` instead of calling the tool again.
+`"delivery": "download"`. A `collect_*_trend_candidates` or `enrich_*` result is complete inline:
+export it and run the same command with `stage` instead of calling the tool again. Any other result
+that lists `calls` is not complete inline: call that tool again with the same parameters and
+`"delivery": "download"`, then fetch it right away.
 
 ## Deferred jobs
 
