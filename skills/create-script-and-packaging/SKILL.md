@@ -3,7 +3,7 @@ name: create-script-and-packaging
 description: "Write a script, hooks and platform packaging (titles, captions, tags, thumbnail or cover briefs) for a topic the creator chose; adapt a specified video into written clips, hooks or carousel copy; rewrite openings, CTAs, captions or cover text; or propose new openings and cover text for an existing script. Use after an idea is picked or when a creator asks for a script or copy on a stated topic. Not for choosing ideas, trend research, publish timing, new artwork, CTR predictions or publishing."
 license: MIT
 metadata:
-  version: "0.2.24"
+  version: "0.2.27"
 compatibility: "Requires Python 3 and read and write access to a local workspace. Optional saved-script access requires the Kabo MCP at https://kabo.sh/mcp-pub. Source-video facts and channel samples come from the creator or existing evidence. Optional image operations need host image download, resize and preview. Kabo permissions, saved scripts only: workspace:read to read, workspace:write to save or replace on request."
 allowed-tools: list_scripts get_script save_script update_script
 ---
@@ -51,6 +51,8 @@ For a script saved in Kabo, or a request to save or update one, follow
 
 Before enforcing core package inputs, read [request-routing.md](references/request-routing.md). Advisory questions, public-example research and actual media execution have different completion criteria; name the Skill or capability they need instead of forcing them through a package. Do not block a general rules question on SelectedIdea or require private CTR for creative drafting. Preserve the core contracts for actual package generation.
 
+For a sequel, part 2 or "continue my last post", apply the continuation check in [source-adaptation.md](references/source-adaptation.md) before the topic-draft route: verify the actual previous episode first; never invent it or repeat its reveal.
+
 For a specified video, or a channel's latest upload, to be adapted into written clips, hooks or a carousel, keep packaging as the primary workflow and read [source-adaptation.md](references/source-adaptation.md). Choose the workflow by the requested deliverable, not by the presence of a source URL or a performance adjective. Source facts are evidence for this task, not a transfer of the creative request; a diagnosis, craft teardown or creative proposal is not the requested adaptation.
 
 When a Creator names a concrete topic and asks for a script, titles, cover copy or a package but has not confirmed every audience, goal or CTA field, read [topic-drafts.md](references/topic-drafts.md). This route may return a complete, clearly labelled creative draft with proposed constraints; it must not fabricate a native `SelectedIdea`, approval, evidence, asset, product result, course entitlement or promised giveaway. Ask one grouped follow-up only for details that materially change production or verification, and keep the draft useful while those details are pending.
@@ -81,7 +83,7 @@ For an explicit user-selected direction, build the SelectedIdea with the direct-
 - `packaging_only`: require a source ScriptPackage, keep `script=null`, and produce platform-appropriate title/headline, caption/description, tags or hashtags, and Thumbnail/cover briefs.
 - `full_package`: produce both sections in one coherent package.
 
-The mode is a hard output contract: `script_only` has `script` and no `packaging`; `packaging_only` consumes a validated source package and has `packaging` with no regenerated script; `full_package` has both. If an input artifact cannot be verified, return a blocked/draft result with structured blocking reasons and never invent a snapshot or approval. Script and Packaging remain separate objects in one Skill because all modes share the same selected promise and constraints.
+The mode is a hard output contract: `script_only` has `script` and no `packaging`; `packaging_only` consumes a validated source package and has `packaging` with no regenerated script; `full_package` has both. If an input artifact cannot be verified, return a blocked/draft result with structured blocking reasons and never invent a snapshot or approval.
 
 ## Workflow
 
@@ -128,7 +130,7 @@ Before script-bearing generation, read `references/duration-planning.md`. Resolv
     python3 '<skill directory>/scripts/build_run_manifest.py' --request '<run>/script-package-request.json' --package '<run>/script_package.json' --concise '<run>/SCRIPT_PACKAGE.md' --full '<run>/SCRIPT_PACKAGE_FULL.md' --run-root '<run>' --run-id <run directory name> --runtime <host name> --model <model name>
     ```
 
-    It reruns the package validator, verifies both deterministic Markdown projections, records the request plus every source reference from it, and rejects paths outside this run root or duplicate logical paths. Never hand-author `run-manifest.json` or declare validation status yourself. The manifest records hashes for its inputs and three outputs but deliberately does not hash itself: embedding its own final hash is self-referential and cannot be made stable. Never claim that `run-manifest.json` provides a self-hash. Keep `approval_status=pending` until an independent human approval event exists. Never output `agent_native_reasoning`; use short decision rationales and source manifest metadata instead.
+    It reruns the package validator, verifies both deterministic Markdown projections, records the request plus every source reference from it, and rejects paths outside this run root or duplicate logical paths. Never hand-author `run-manifest.json` or declare validation status yourself. The manifest hashes its inputs and three outputs but not itself; never claim it provides a self-hash. Keep `approval_status=pending` until an independent human approval event exists. Never output `agent_native_reasoning`; use short decision rationales and source manifest metadata instead.
 
 ## Decision rules (1–7)
 

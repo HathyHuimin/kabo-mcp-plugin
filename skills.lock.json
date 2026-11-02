@@ -13,7 +13,8 @@
   "skills": [
     {
       "id": "analyze-content-video",
-      "derivedFromVersion": "0.14.26",
+      "derivedFromVersion": "0.14.29",
+      "derivedFromCommit": "a9514ba301cf52b02d700976e6e94cc11237542d",
       "sourcePath": "creator-skills/runtime/analyze-content-video"
     },
     {
@@ -30,7 +31,8 @@
     },
     {
       "id": "create-script-and-packaging",
-      "derivedFromVersion": "0.2.24",
+      "derivedFromVersion": "0.2.27",
+      "derivedFromCommit": "a9514ba301cf52b02d700976e6e94cc11237542d",
       "sourcePath": "creator-skills/runtime/create-script-and-packaging"
     },
     {
