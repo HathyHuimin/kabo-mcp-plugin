@@ -179,3 +179,25 @@ recognized an object. The check itself neither rewrites the draft nor certifies 
 If a command is rejected before running while the run remains open, correct it and run it again.
 Once a terminal failure is reported, stop and preserve every artifact of that run; never overwrite
 or replace it.
+
+## Report voice and fields
+
+Required voice: the report is written to the creator about their account, never about this Skill.
+It does not narrate stages, does not compare what the catalog said before with what the videos said
+after, and does not use this Skill's internal words for its own machinery. A video that yielded
+neither frames nor a transcript is simply one the conclusions do not rest on; saying so once in the
+evidence list is enough.
+
+- `question_answer` is a complete-sentence answer to the frozen original question. Catalog figures
+  come from `catalog_stability.json`.
+- `insight` is one sentence that still helps after deleting view counts and practice names.
+- `practices` names practices locked from watched videos, under the name the frames and spoken lines
+  support — a class the catalog labelled from its title alone is simply renamed, with no
+  before-and-after. The report is what this account should do next, not a record of how this Skill
+  reached it. Unwatched rows stay provisional.
+- Craft pins come after the answer and only from watched videos. Every authored pin is an original
+  point_ref; compilation supplies the watched `content_id`, `cue` or `frame`, and original
+  `start_s`. Legacy canonical pins keep that three-field shape.
+- `next_shoot.keep` / `next_shoot.stop` are 1+1: keep the Leo class, then name the next-shoot cut
+  inside that class (hook, first frame or payoff second). Never replace the class with a topic
+  slogan.
