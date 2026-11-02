@@ -2,7 +2,7 @@
 
 规则见 `docs/skills-spec.md` KS9：一段多轮取数由后台一个接口做完，所有宿主调同一个接口。本文是把现有 8 个
 带驱动的 Skill 迁过去的接口设计与顺序。后台实现在 kabo 仓，按 ADR-0021（服务端编排研究管线）的四件套范式做：
-领域函数一份，`/mcp-pub`、旧 `/mcp`（按需）和 Web agent 内部接口三个入口共用。
+领域函数一份，`/mcp-pub` 和 Web agent 内部接口两个入口共用。
 
 ## 现状
 
@@ -103,17 +103,23 @@
 - 驱动每段只交出一个 `call:`（组合工具），续跑时从拆好的单工具结果里取数，后续解析不变。
 - Web：agent-service 的 `RESEARCH_TOOLS` 加四项，`run_research_tool` 直接调；结果经 `evidence_refs` + `stage` 落盘，与插件同一条拆分逻辑。
 
-## 顺序
+## 迁移后
 
-1. 无判断点的：`collect_account_history`、`render_official_pages`、YouTube 短窗口。覆盖账号复盘、流量诊断、规则核验，也给后面两批打底。
-2. 判断点少的：`collect_tiktok_trend_candidates`、`enrich_tiktok_shortlist`；TikTok 竞品复用它们和 `collect_account_history`。
-3. 跨平台竞品异步任务与后台 prompt 节点，连同新 ADR。
+| Skill | 后台调用 | 宿主模型的判断 |
+|---|---|---|
+| 账号复盘、流量诊断、规则核验、YouTube 短窗口 | 1 次 | 无（规则核验选来源在取数前） |
+| IG / YouTube 长窗口热门 | 2 次（已是） | 计划、Gate |
+| TikTok 热门 | 2 次：候选、作者历史 | 计划、Gate |
+| TikTok 竞品 | 2 次：候选、账号历史（评论另 1 次，可选） | 计划、Gate |
+| 跨平台竞品 | 4 次：主体、发现、选账号（含补位）、内容 | 身份、意图、Gate、eligibility（判断全留宿主） |
 
-每批：kabo 分支 → pre 验收 → 合 main（kabo 合入即上生产，需用户授权）→ 插件 Skill 切到新接口（R3，负责人回归）→ Web 适配本地验证。接口只增不改，旧插件和 Web 现网不受影响。
+迁完一个 Skill，就在同一 PR 里把 `scripts/fetch-orchestration.test.mjs` 的轮次数改小；删掉 outbox 残留时把文件从名单里拿掉。
+
+## 顺序与发布
+
+一个分支做完全部，本地（Codex 实测插件、本地起 Web）跑通再合。kabo 只加新工具、不改旧工具，可先合入上线，方便插件与 Web 对着线上实测；插件与 agent-service 测完一起合。跑通指取数链路没有遗漏、没有报错；效果由各 Skill 负责人回归。
 
 ## 待定
 
-- kabo 合入 main 即上生产，每批上线前由用户授权。
-- 后台 LLM 调用目前只走 LiteLLM 虚拟 key 预算，不进用户额度；跨平台竞品上线前要定是否按用户计量。
-- 旧 `/mcp` 是否也注册新接口（只在旧插件仍需要时）。
-- 同步上限与网关超时的实际配置未核实。
+- 旧 `/mcp` 不注册新工具（旧插件不用）。
+- 同步上限与网关超时的实际配置未核实；墙钟预算 90 秒按此留余量。
