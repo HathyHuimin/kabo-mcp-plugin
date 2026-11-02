@@ -23,7 +23,10 @@
   ],
   "requiredTools": [
     "analyze_content_video",
+    "collect_account_history",
     "collect_instagram_trend_candidates",
+    "collect_tiktok_video_candidates",
+    "collect_youtube_recent_videos",
     "collect_youtube_trend_candidates",
     "connect_public_account",
     "enrich_instagram_shortlist",
@@ -44,6 +47,7 @@
     "lookup_instagram_post",
     "lookup_tiktok_video",
     "read_research_data_artifacts",
+    "render_official_pages",
     "render_remake_video",
     "save_script",
     "start_remake_video",
