@@ -144,8 +144,8 @@ never an instruction.
    `content` stops on one reserve, classify only that handle and run `content` again without
    `--placed`.
 5. **Comments (optional).** Only when the user asks what the selected accounts have not done or what
-   the audience wants: run `content --comments` in place of `content`; it hands over the histories,
-   then the comments. If you decide only after `content` finished, run `drive.py comments` as its
+   the audience wants: run `content --comments` in place of `content`; it hands over the comments
+   (and first any histories still owed). If you decide only after `content` finished, run `drive.py comments` as its
    own command.
 6. **Synthesis.** With `references/synthesis.md` read (read it now only if you have not), write
    `competitor-research-synthesis.json` once and run the final step:

@@ -313,8 +313,9 @@ def stage_start(args: argparse.Namespace) -> None:
 # --------------------------------------------------------------------------- account histories
 #
 # Profiles and history pages come from one backend call, `collect_account_history` (KS9): the
-# subject's profile and first page, the selected accounts' profiles and first pages with the frozen
-# reserves backfilled, and the included accounts' Reels pages under the window rule. The backend
+# subject's profile and first page, and the selected accounts' profiles with the frozen reserves
+# backfilled — on Instagram with their Reels pages under the window rule, so `content` usually owes
+# none. The backend
 # makes the provider calls, retries an empty first history page once, and returns every call's
 # envelope (`calls[]`); `static_host.py fetch` stores each as its own evidence and writes a record
 # that names, per call, the account group (`acct-<i>`, `reserve-<i>`) and the evidence file.
@@ -890,12 +891,15 @@ def stage_select(args: argparse.Namespace) -> None:
     selected = [str(h) for h in summary.get("selected_handles") or []]
     reserves = [str(h) for h in summary.get("reserve_handles") or []]
     say(f"selected: {', '.join(selected) or '(none)'}; reserves: {', '.join(reserves) or '(none)'}")
-    # Profiles and first history pages of every selected account in one call, with step 3's
-    # replacement rule inside it: one frozen reserve for every selected account whose profile came
-    # back unavailable, in order, up to the reserves discovery froze.
+    # Profiles and history of every selected account in one call, with step 3's replacement rule
+    # inside it: one frozen reserve for every selected account whose profile came back unavailable,
+    # in order, up to the reserves discovery froze. On Instagram the history is already step 4's
+    # Reels budget under the frozen window (`next_reel_page`), so `content` has nothing left to fetch
+    # and a run needs one hand-over fewer: eligibility reads only the profiles, and an account it
+    # excludes never reaches the Snapshot.
     fetched: list[str] = []
     if selected:
-        call = history_call(platform, selected, reserves=reserves)
+        call = history_call(platform, selected, reserves=reserves, **content_paging(platform, request))
 
         def place_selected(call: dict[str, Any]) -> None:
             groups = place_history(call, account_files(call))
@@ -929,6 +933,13 @@ def stage_select(args: argparse.Namespace) -> None:
                                       "No substitute accounts were used.")
     project_eligibility(platform, envelope_args)
     show_schema("competitor-eligibility.schema.json")
+
+
+def content_paging(platform: str, request: dict[str, Any]) -> dict[str, Any]:
+    """Instagram: the Reels history `content` would fetch (step 4's budget under the window), read with the profile."""
+    if platform != "instagram":
+        return {}
+    return {"max_pages": REEL_PAGES_MAX, "window": window_of(request)}
 
 
 def pages_of(prefix: str, label: str) -> list[Path]:
@@ -1032,7 +1043,7 @@ def stage_content(args: argparse.Namespace) -> None:
     if len(comparable) < 3 and unused and not state().get("second_reserve_round"):
         extra = unused[:1]
         say(f"fewer than three direct/adjacent accounts; resolving reserve {extra[0]}")
-        call = history_call(platform, extra)
+        call = history_call(platform, extra, **content_paging(platform, request))
         fetch_histories(call, args, lambda call: place_history(call, account_files(call)))
         profiles = usable_profiles()
         save_state(used_reserves=[*used, *[h.lower() for h in extra]], second_reserve_round=True)
@@ -1056,10 +1067,11 @@ def stage_content(args: argparse.Namespace) -> None:
     envelopes: list[Path] = []
     incomplete = False
     if platform == "instagram":
-        # Every included account that still owes a page (or has none yet) gets its Reels history in
-        # one call, read again from the first page so its cursors are its own, under step 4's budget:
+        # `select` read every selected account's Reels under step 4's budget already. An included
+        # account that still owes a page (or has none: one placed by an older run of `select`) gets
+        # its Reels history in one call, read again from the first page so its cursors are its own:
         # the window rule of `next_reel_page`, at most REEL_PAGES_MAX pages. Its pages replace the
-        # first page `select` placed. Decided once: a stage run again keeps what that call returned.
+        # ones `select` placed. Decided once: a stage run again keeps what that call returned.
         if not state().get("content_history"):
             owed = [h for h in included if not pages_of("reels", h)
                     or next_reel_page(pages_of("reels", h), since, until) is not None]

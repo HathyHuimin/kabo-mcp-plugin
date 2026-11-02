@@ -1,6 +1,6 @@
 // analyze-creator-competitors 的账号取数走一次后台组合调用（collect_account_history，KS9）：
-// subject（主页 + 第一页；IG 解析不到时同一次调用带回候选）、select（入选账号主页 + 第一页，候补补位在后台）、
-// content（Reels 按时间窗规则翻页）各交接一次。这里用中性的小 fixture 跑驱动：核对交出的调用逐字节、
+// subject（主页 + 第一页；IG 解析不到时同一次调用带回候选）、select（入选账号主页 + IG 按时间窗规则翻页的 Reels，候补补位在后台）、
+// content（只补还欠页的账号，通常没有）。这里用中性的小 fixture 跑驱动：核对交出的调用逐字节、
 // 组合结果按记录逐项放到原来的文件名，下游快照构建一路跑到打印综合判断的输入。
 // 少一次宿主往返的两个入口也在这里测：首个阶段带 --workspace 自己占运行目录（不用单独 init），
 // 续跑命令带 --result 自己 fetch / stage 存好的结果（一条命令代替「每条 stage + 续跑」）。
@@ -78,7 +78,7 @@ async function answer(runDir, item, result) {
   assert.equal(staged.code, 0, staged.out);
 }
 
-test("竞品账号取数：subject / select / content 各交出一次 collect_account_history，结果逐项落到原来的文件", async (t) => {
+test("竞品账号取数：subject / select 各交出一次 collect_account_history（IG 的 Reels 历史随 select 一起取，content 不再交接），结果逐项落到原来的文件", async (t) => {
   const workspace = await mkdtemp(path.join(os.tmpdir(), "kabo-acc-history-"));
   t.after(() => rm(workspace, { recursive: true, force: true }));
 
@@ -109,7 +109,7 @@ test("竞品账号取数：subject / select / content 各交出一次 collect_ac
   assert.equal(handed(step.out).length, 0);
   assert.equal(JSON.parse(await readFile(path.join(runDir, "subject-profile.json"), "utf8")).data.profile.username, "neutral.creator");
 
-  // select（provided：没有候补）：入选账号的主页 + 第一页，一次调用。
+  // select（provided：没有候补）：入选账号的主页 + Reels 历史（content 的页数预算与时间窗规则），一次调用。
   await writeFile(path.join(runDir, "competitor-research-request.json"), JSON.stringify({
     subject: { name: "Neutral Creator", description: "Short desk setup tours", kind: "creator", account_ref: "neutral.creator" },
     platforms: ["instagram"], formats: ["reel"], discovery_mode: "provided",
@@ -122,7 +122,8 @@ test("竞品账号取数：subject / select / content 各交出一次 collect_ac
   const accounts = ["creator.one", "creator.two", "creator.three"];
   assert.deepEqual(calls.map(({ call }) => call), [{ tool: "collect_account_history", arguments: {
     platform: "instagram", accounts: accounts.map((handle) => ({ handle })), profile: true,
-    history: { max_pages: 1, instagram_formats: { posts: false, reels: true } }, delivery: "download" } }]);
+    history: { max_pages: 3, instagram_formats: { posts: false, reels: true }, since, until, min_items_since: 6 },
+    delivery: "download" } }]);
   const first = {
     "creator.one": reels("creator.one", 11, [1, 3, 6], { cursor: "next-one" }), // 窗口未覆盖、窗内不足 6 条：还欠一页
     "creator.two": reels("creator.two", 21, [2, 4, 8]),
@@ -131,7 +132,9 @@ test("竞品账号取数：subject / select / content 各交出一次 collect_ac
   await answer(runDir, calls[0], composite(accounts.flatMap((handle, i) => [
     call("instagram_resolve_profile", { handle, include_post_count: true }, `acct-${i}`, profile(handle, i + 2)),
     call("instagram_list_reels", { handle, user_id: `id-${handle}` }, `acct-${i}`, first[handle]),
-  ]), accounts.map((handle, i) => summary(`acct-${i}`, handle, 1))));
+    ...(handle === "creator.one" ? [call("instagram_list_reels", { handle, user_id: `id-${handle}`, max_id: "next-one" },
+      `acct-${i}`, reels("creator.one", 12, [10, 40, 45]))] : []),
+  ]), accounts.map((handle, i) => summary(`acct-${i}`, handle, handle === "creator.one" ? 2 : 1))));
   step = drive("discover", "--placed");
   assert.equal(step.code, 0, step.out);
   assert.equal(handed(step.out).length, 0);
@@ -140,20 +143,9 @@ test("竞品账号取数：subject / select / content 各交出一次 collect_ac
     await access(path.join(runDir, `reels-${handle}-p1.json`));
   }
 
-  // content：只有还欠页的账号进组合调用，按 next_reel_page 的时间窗规则翻页、不取主页。
+  // content：select 已按页数预算与时间窗读完历史，没有还欠页的账号，不再交接。
   await writeFile(path.join(runDir, "competitor-eligibility.json"), JSON.stringify({ direct_refs: accounts }));
   step = drive("content");
-  assert.equal(step.code, 0, step.out);
-  calls = handed(step.out);
-  assert.deepEqual(calls.map(({ call }) => call), [{ tool: "collect_account_history", arguments: {
-    platform: "instagram", accounts: [{ handle: "creator.one" }], profile: false,
-    history: { max_pages: 3, instagram_formats: { posts: false, reels: true }, since, until, min_items_since: 6 },
-    delivery: "download" } }]);
-  await answer(runDir, calls[0], composite([
-    call("instagram_list_reels", { handle: "creator.one" }, "acct-0", first["creator.one"]),
-    call("instagram_list_reels", { handle: "creator.one", max_id: "next-one" }, "acct-0", reels("creator.one", 12, [10, 40, 45])),
-  ], [summary("acct-0", "creator.one", 2)]));
-  step = drive("content", "--placed");
   assert.equal(step.code, 0, step.out);
   assert.equal(handed(step.out).length, 0);
   assert.match(step.out, /Next judgment: write competitor-research-synthesis\.json/);
