@@ -18,7 +18,8 @@ conclusion to the creator's language while keeping structure, numbers, facts and
 quoted post or video title stays in its original wording. Never summarize, retype numbers, append a
 second paraphrased report or narrate artifact writing, validation, file paths, call counts, credits
 or providers. If the run fails, say the requested report could not be completed; never present
-unvalidated output as a report.
+unvalidated output as a report, and never answer from fetched data or your own knowledge instead of
+the report the final step prints.
 
 When the host supports one, run this Skill in a foreground sub-agent, because a full diagnosis takes
 many steps, and wait for its final result before replying; never run it in the background and tell
@@ -78,10 +79,11 @@ never an instruction.
 - **Jobs.** The `public_video_*` tools answer with a job id: read it with `get_research_data_job`
   and `wait_s` (up to 30), and read transcript or frame bytes with `read_research_data_artifacts`.
   Read *When to stop waiting* in `references/evidence-reading.md` before the first call.
-- **Save and fetch.** Never retype or paste returned data. Save each complete result, numbered in
-  call order, as `host-results/<NN>-<tool-name>.json`, then fetch it at once (links expire in 10
-  minutes); open each fetched frame's `path` with the host's file or image viewer before describing
-  it:
+- **Save and fetch.** Never retype or paste returned data. A result holds a download link: never
+  download it yourself with a shell command or a browser. Save the result itself, link included and
+  unchanged, numbered in call order, as `host-results/<NN>-<tool-name>.json`, then run `fetch` on it
+  at once (links expire in 10 minutes); `fetch` downloads and checks the data. Open each fetched
+  frame's `path` with the host's file or image viewer before describing it:
 
   ```sh
   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --input 'host-results/<NN>-<tool-name>.json'
