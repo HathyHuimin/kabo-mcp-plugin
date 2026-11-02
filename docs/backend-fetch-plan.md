@@ -1,4 +1,4 @@
-# 多轮取数迁到后台：接口设计（草案，2026-11-02）
+# 多轮取数迁到后台：接口设计（2026-11-02）
 
 规则见 `docs/skills-spec.md` KS9：一段多轮取数由后台一个接口做完，所有宿主调同一个接口。本文是把现有 8 个
 带驱动的 Skill 迁过去的接口设计与顺序。后台实现在 kabo 仓，按 ADR-0021（服务端编排研究管线）的四件套范式做：
@@ -21,38 +21,87 @@
 
 ## 新接口
 
-| 接口 | 做什么 | 服务的 Skill |
+四个后台组合工具，只做确定性的多轮取数；轮次之间需要模型判断的地方仍留在宿主（判断点都不多）。
+
+| 工具 | 做什么 | 服务的 Skill |
 |---|---|---|
-| `collect_account_history` | 一到多个账号（上限 12，并发 4）：解析身份 → 主页 → 按规则翻页到条数上限。IG 每轮取行数少的一侧，YT 上传列表每页 50；空历史重取一次；身份解析不到时返回候选列表（`needs_identity`），不报错 | 账号复盘（上限 100）、流量诊断（上限 30，IG 每种格式 15）、TikTok 竞品第二段、跨平台竞品选账号与内容、TikTok 热门作者基线 |
-| `render_official_pages` | 一组官方页面（上限 32，并发 4）一次渲染，逐页给出可达性、重定向出域、`retrieved_at` | 平台规则核验 |
-| `collect_tiktok_trend_candidates` | 每个意图两种排序的搜索 + 前一天榜单（为空补前两天），按 query 对回关键词，返回 `candidate_set_id` | TikTok 热门、TikTok 竞品第一段 |
-| `enrich_tiktok_shortlist` | 按 `candidate_set_id` + 入选 id 拉作者历史、算基线 | TikTok 热门 |
-| YouTube 短窗口 | 扩 `collect_youtube_trend_candidates`：≤7 天窗口时搜索 + 详情分块一次做完 | YouTube 热门短窗口 |
-| `run_creator_competitor_research`（异步任务） | 跨平台竞品整段：发现 → 后台 prompt 节点打 Gate 分 → 选账号与补位 → 后台 prompt 节点判 eligibility → 内容与评论。宿主只做身份确认（可能要问用户）和最后的分析写作 | 跨平台竞品 |
+| `collect_account_history` | 1–12 个账号（并发 4）：主页 → 按规则翻页到上限；空历史重取一次；可带候补名单补位；身份解析不到返回候选 | 账号复盘、流量诊断、TikTok 竞品第二段、跨平台竞品（主体 / 选账号 / 内容）、TikTok 热门作者历史 |
+| `collect_tiktok_video_candidates` | 每个意图按给定排序各搜一次，可选加日榜（为空往前补一天），结果按 query 与排序对回 | TikTok 热门、TikTok 竞品第一段 |
+| `collect_youtube_recent_videos` | 2–4 次搜索 → 去重 → 详情按 50 个一块补全 | YouTube 热门短窗口 |
+| `render_official_pages` | 1–32 个官方页面一次渲染（并发 4） | 平台规则核验 |
 
-共同约定（照 collect/enrich）：
-- 失败与缺口收进 `status: partial` + `limitations` + `coverage`，不抛错；重试规则以现有 4 份 `connector_driver.py` 里最全的一份为准（`retry_lost`、限流整轮再交一次只做一次）。
-- 预算由调用方给的上限钉住，额度仍按每次 provider 调用记到用户名下。
-- `/mcp-pub` 首发就带 `delivery: "download"`；Web 走 `POST /internal/agent/research/<tool>`，agent-service 的 `RESEARCH_TOOLS` 加一项即可，不需要宿主专用分支。
-- 超过同步上限（约 120 秒）的走异步任务（start/get + `idempotency_key`），照 `analyze_content_video` / remake 的做法。多账号历史在账号多时可能超时，先量再定是否异步。
+### 共同出参（`kabo-composite-fetch.v1`）
 
-后台 prompt 节点（只在跨平台竞品用）：
-- 把 `gate-and-eligibility.md` 里打分与 eligibility 的引导抽成独立 prompt，版本号写进结果（`prompt_version`），照 video-review 的做法。
-- 用产品 LLM key（`KABO_LLM_*`，经 LiteLLM），在 composition 里注入 provider，不在领域包里读环境变量。
-- ADR-0021 规定两段之间的语义判断归模型（宿主），这里改成「判断点多时归后台 prompt 节点」，需要新写一份 ADR。
+```json
+{
+  "schema_version": "kabo-composite-fetch.v1",
+  "tool": "collect_account_history",
+  "status": "completed | partial | failed",
+  "calls": [
+    { "tool": "instagram_list_reels", "parameters": { "...": "..." }, "group": "acct-0", "result": { "...": "与单个 /mcp-pub 数据工具的 result 完全相同的信封" } }
+  ],
+  "summary": { "...": "按工具不同，见下" },
+  "coverage": { "...": "..." },
+  "limitations": ["..."]
+}
+```
 
-## 迁移后
+- `calls[]` 是后台实际发出的每一次单操作调用：`tool` 用 `/mcp-pub` 单数据工具名，`parameters` 是那次调用的完整入参（含后台算出的游标），`result` 是 `runConnectorOperation` 产出的信封原样（含 `connector_id`、`operation`、`status`、`evidence_ref`、`raw_sha256`、`request_id`、`data`）。脚本把每一项当作一次单工具调用落盘，下游解析代码不变。
+- `group` 把调用归到输入里的某个账号 / 意图 / 页面（`acct-<i>`、`intent-<i>`、`page-<i>`），按输入顺序编号。
+- 失败与缺口收进 `status: partial` + `limitations` + `coverage`，不抛错；领域函数抛异常才是工具失败。
+- 预算：入参钉住扇出与页数上限；墙钟预算 90 秒，到点停止新请求、已拿到的照常返回并在 `coverage` 标出未完成项。
+- 只在 `/mcp-pub` 与 Web 内部接口 `POST /internal/agent/research/<tool>` 注册（旧 `/mcp` 不注册）；`/mcp-pub` 首发带 `delivery: "download"`，下载字节是去掉 `download` 的整份出参。
+- 重试：`service_unavailable` 同一请求原样重试 1 次；`rate_limited` 等 2 秒整组重试 1 次，仍失败记缺口；准入拒绝按 `runWithCapacityRetry`。
 
-每个 Skill 的驱动只剩「准备参数 → 宿主调一次接口 → 落盘续跑 → 算分出报告」。判断点只有一两个的 Skill（热门三件、TikTok 竞品）在判断点切开，最多两三次后台调用。
+### `collect_account_history`
 
-| Skill | 后台调用次数 |
-|---|---|
-| 账号复盘、流量诊断、规则核验、YouTube 短窗口 | 1 |
-| IG / YouTube 长窗口热门 | 2（已是） |
-| TikTok 热门、TikTok 竞品 | 2 |
-| 跨平台竞品 | 1 个异步任务 |
+入参：
 
-迁完一个 Skill，就在同一 PR 里把 `scripts/fetch-orchestration.test.mjs` 的轮次数改小；删掉 outbox 残留时把文件从名单里拿掉。
+```json
+{
+  "platform": "instagram | youtube | tiktok",
+  "accounts": [{ "handle": "...", "channel_id": "...", "user_id": "..." }],
+  "reserves": [{ "handle": "..." }],
+  "target_count": 6,
+  "profile": true,
+  "history": {
+    "max_items": 100,
+    "max_pages": 40,
+    "page_size": 50,
+    "since": "2026-08-01T00:00:00Z",
+    "min_items_since": 6,
+    "instagram_formats": { "posts": true, "reels": true, "per_format_max": 15, "balance": "fewer_rows_first" }
+  },
+  "on_identity_miss": "candidates | gap"
+}
+```
+
+- IG：`instagram_resolve_profile` → 首轮 `instagram_list_posts` + `instagram_list_reels` → `balance: fewer_rows_first` 时每轮只给行数少的一侧翻一页，直到合计 `max_items`、两侧都没有下一页或到 `max_pages`；只要 reels 时只翻 reels（竞品内容段）。`per_format_max` 截断每侧（流量诊断）。
+- YouTube：`youtube_get_channel`（handle 或 channel_id）→ `youtube_list_channel_uploads` 每页 `page_size`，到 `max_items` / `max_pages`。
+- TikTok：`tiktok_list_account_posts`，`limit = max_items`。
+- `since` + `min_items_since`：窗口内条数够了或翻到窗口外就停（竞品内容段的 `MIN_WINDOW_REELS` / `REEL_PAGES_MAX`）。
+- 历史为空时重取一次。
+- `reserves` + `target_count`：主页不可用的账号按顺序用候补补足到 `target_count`，补位只做一轮。
+- 身份解析不到：`candidates` 时 IG 调 `instagram_search_accounts` 返回最多 10 个候选，账号状态 `needs_identity`；`gap` 时记缺口。
+- `summary.accounts[]`：`{ group, input, resolved: {handle, id}, status: completed|partial|unavailable|needs_identity|replaced, replaced_by?, items_total, pages, candidates? }`。
+
+### `collect_tiktok_video_candidates`
+
+入参：`{ "intents": [{ "keyword": "...", "publish_time": 7 }], "sorts": [0, 1], "count": 30, "region": "US", "top_contents": { "date": "2026-11-01", "fallback_days": 1 } }`（`top_contents` 可省）。每个意图 × 每种排序一次 `tiktok_discovery_search_videos`；`top_contents` 给了就调 `tiktok_discovery_list_top_contents`，为空往前补 `fallback_days` 天。`group` 为 `intent-<i>-sort-<s>` 与 `top-<date>`。
+
+### `collect_youtube_recent_videos`
+
+入参：`{ "queries": [{ "q": "...", "published_after": "...", "order": "viewCount" }], "max_results": 50, "details": true }`。每个 query 一次 `youtube_search_videos`，去重后按 50 个一块调 `youtube_get_video`。
+
+### `render_official_pages`
+
+入参：`{ "pages": [{ "url": "...", "source_id": "..." }] }`，上限 32。每页一次 `official_page_render_page`，并发 4；`group` 为 `page-<i>`，`summary.pages[]` 给 `{group, url, source_id, status, final_url}`。
+
+### 插件与 Web 怎么接
+
+- `static_host.py` 认 `kabo-composite-fetch.v1`：`stage` / `fetch` 把 `calls[]` 拆成逐个单工具结果，按各自 `tool` 走现有校验落盘，另存一份整体摘要供驱动读 `summary` / `coverage`。
+- 驱动每段只交出一个 `call:`（组合工具），续跑时从拆好的单工具结果里取数，后续解析不变。
+- Web：agent-service 的 `RESEARCH_TOOLS` 加四项，`run_research_tool` 直接调；结果经 `evidence_refs` + `stage` 落盘，与插件同一条拆分逻辑。
 
 ## 顺序
 
