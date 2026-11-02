@@ -1,0 +1,47 @@
+{
+  "program_id": "tiktok.creator_rewards",
+  "platform": "tiktok",
+  "family": "creator_rewards",
+  "display_name": "Creator Rewards Program",
+  "payout_model": "platform_fund",
+  "what_it_pays_for": "The platform pays you for qualifying videos based on how they perform. It rewards longer original videos rather than short ones, so it changes what is worth making, not just how much you earn.",
+  "revenue_basis": {
+    "unit": "USD per 1,000 qualified views",
+    "note": "Qualified views times a rate, and both halves are soft in the same direction. The rate is not published by TikTok, so the only figure available is a range built from what creators report. The volume is a public view count, which overstates the qualified views the platform actually pays on. The result is therefore an upper order of magnitude and must be worded as one."
+  },
+  "additional_requirements_not_assessed": [
+    "Must be based in a country where the programme is available.",
+    "Account must be in good standing, with no history of repeated policy violations or fraudulent activity.",
+    "Must be a Personal Account; Business Accounts and political or government organisation accounts are not eligible.",
+    "Account information must be authentic, including real name and date of birth.",
+    "Must be at least 18 years old, or 19 in South Korea.",
+    "Per-video rules apply: original content, at least one minute long, posted after joining, and at least 1,000 qualified For You feed views. Duets, Stitches, photo-mode posts and sponsored content do not qualify.",
+    "Must have at least one valid linked digital payment account registered in the creator's own name."
+  ],
+  "provenance": {
+    "source_url": "https://www.tiktok.com/support/faq_detail?id=7581821550694013452",
+    "source_title": "Creator Rewards Program",
+    "regions": ["SOURCE_LISTS_COUNTRIES"],
+    "effective_from": null,
+    "effective_until": null,
+    "verified_at": "2026-08-27",
+    "verification_status": "verified",
+    "note": "Read in full 2026-08-27 from the platform's own support page. The page requires the creator to 'be based in one of the countries where the Creator Rewards Program is available' but does not enumerate them on this page, so the country list is still untranscribed. The programme terms at https://www.tiktok.com/legal/page/global/creator-rewards-program-us/en restate both thresholds as AUTHENTIC followers and AUTHENTIC total video views, and add a linked payment account; they likewise decline to enumerate the countries.",
+    "source_authority": "official_help_page",
+    "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "This support article renders client-side and the support.tiktok.com URL redirects to a www.tiktok.com faq_detail id; record the redirected id, not the pretty URL."},
+    "regions_source_url": null,
+    "watch_urls": null
+  },
+  "eligibility_paths": [
+    {"path_id": "rewards.followers_and_views", "applies_to": "new_applicant", "requirements": [{"requirement_id": "followers_10k", "metric_id": "tiktok.followers", "comparator": "gte", "threshold": 10000, "unit": "followers", "window_days": null, "any_of_group": null, "note": "The page reads 'Have at least 10,000 followers'. The programme terms word this as AUTHENTIC followers/views - a platform filter that is not published - so a public count can only overstate what the bar measures.", "quote": "Have at least 10,000 followers.", "bound_override": "upper"}, {"requirement_id": "views_100k_30d", "metric_id": "tiktok.views_30d", "comparator": "gte", "threshold": 100000, "unit": "views", "window_days": 30, "any_of_group": null, "note": "The page reads 'Have at least 100,000 video views in the last 30 days'. This bar is plain video views; the separate 'qualified views' definition governs how rewards are calculated, not entry. The programme terms word this as AUTHENTIC followers/views - a platform filter that is not published - so a public count can only overstate what the bar measures.", "quote": "Have at least 100,000 video views in the last 30 days.", "bound_override": "upper"}], "provenance": {"source_url": "https://www.tiktok.com/support/faq_detail?id=7581821550694013452", "source_title": "Creator Rewards Program", "regions": ["SOURCE_LISTS_COUNTRIES"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "note": null, "source_authority": "official_help_page", "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "This support article renders client-side and the support.tiktok.com URL redirects to a www.tiktok.com faq_detail id; record the redirected id, not the pretty URL."}, "regions_source_url": null, "watch_urls": null}}
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "创作者奖励计划", "what_it_pays_for": "平台按合格视频的表现直接付钱给你。它奖励的是较长的原创视频而不是短视频，所以它改变的不只是你赚多少，还有什么内容值得做。", "additional_requirements_not_assessed": ["需常驻在该计划开放的国家。", "账号需处于正常状态，没有反复违规或欺诈记录。", "必须是个人账号；企业账号与政府、政治组织账号不符合条件。", "账号信息需真实，包括真实姓名与出生日期。", "需年满 18 周岁，韩国为 19 周岁。", "对单条视频另有要求：原创、时长至少一分钟、加入计划之后发布、且在推荐流获得至少 1,000 次合格播放。合拍、抢镜、图文模式与带广告或赞助的内容不计入。", "需绑定至少一个本人名下的有效数字收款账户。"]}
+  },
+  "revenue_model": {
+    "formula": "monthly qualified views / 1000 x creator-reported rate",
+    "period": "monthly",
+    "inputs": [{"name": "monthly_views", "from": "observed_metric", "metric_id": "tiktok.views_30d", "benchmark_id": null, "unit": "views", "label": "Monthly video views", "where_to_find": null, "i18n": {"zh-CN": {"label": "每月播放量"}}}, {"name": "rate", "from": "benchmark", "metric_id": null, "benchmark_id": "tiktok.creator_rewards.rpm_creator_reported", "unit": "USD per 1,000 qualified views", "label": "Rate creators report for this programme", "where_to_find": null, "i18n": {"zh-CN": {"label": "创作者自报的费率区间"}}}]
+  },
+  "no_figure_reason": null
+}

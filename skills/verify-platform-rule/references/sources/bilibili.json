@@ -1,0 +1,196 @@
+{
+  "schema_version": "platform-policy-sources.v1",
+  "library_version": "2026.09.8",
+  "compiled_at": "2026-09-15",
+  "staleness_budget_days": 120,
+  "sources": [
+    {
+      "source_id": "bilibili.creator_incentive_rules",
+      "platform": "bilibili",
+      "domains": [
+        "monetization",
+        "terms"
+      ],
+      "role": "rule_source",
+      "title": "「bilibili创作激励计划」规则",
+      "url": "https://www.bilibili.com/read/cv173108",
+      "source_authority": "official_secondary",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://www.bilibili.com/blackboard/topic/activity-cn8bxPLzz.html"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The domestic incentive programme as last edited 2023-01-04: entry needs a creativity or influence score of 55 with a credit score of at least 80, review takes three working days, submissions must be original, must carry no commercial promotion of any kind, and must not be published on Bilibili later than elsewhere. Payment settles through the Shell system, withdrawable at 100 shells, with tax and bank transfer fees deducted. It also binds creators to confidentiality about programme details and sets a three-stage penalty ladder.",
+      "does_not_carry": "Any revenue split - earnings are 'calculated comprehensively' with no formula, rate or per-view figure. Nothing about whether overseas creators may join, and nothing about which country's bank account the transfer needs; the words for real-name, ID card, passport, overseas and nationality do not appear in it.",
+      "language": "zh"
+    },
+    {
+      "source_id": "bilibili.creator_portal",
+      "platform": "bilibili",
+      "domains": [
+        "monetization"
+      ],
+      "role": "rule_source",
+      "title": "bilibili Studio, global creator services center",
+      "url": "https://member.bilibili.com/creator/",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://www.bilibili.com/blackboard/activity-RCCsUFvzkk.html"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The public entry point for overseas creators, in English: creator case studies, free AI translation into Chinese subtitles, bullet chats, and a monetization heading.",
+      "does_not_carry": "Everything a creator would decide on. The monetization section is one qualitative sentence about 'various revenue models' with no threshold, rate, split or settlement period; no country list; no document requirement; no update date, its figures still citing 2022 Q1. Note what sits behind the login wall rather than being unpublished: the verification form there offers only a foreigner's permanent residence permit or another nation's ID and requires choosing a nation - so the identity rule exists as product behaviour but has never been written into any public page, and this Skill may not quote a form it cannot cite.",
+      "language": "en"
+    },
+    {
+      "source_id": "bilibili.global_influencer_program",
+      "platform": "bilibili",
+      "domains": [
+        "monetization"
+      ],
+      "role": "rule_source",
+      "title": "Bilibili Global Influencer Recruitment Program",
+      "url": "https://www.bilibili.com/blackboard/activity-RCCsUFvzkk.html",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://member.bilibili.com/creator/",
+        "https://www.bilibili.com/blackboard/activity-djX8gco7sC.html"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The only hard numbers Bilibili publishes for international creators. Entry: at least 10,000 followers on an off-site platform (or recognised expertise), never having posted on Bilibili or having under 20,000 followers there, and no prior participation. A Rookie Bonus of RMB 300 above 1M off-site followers and RMB 100 above 10k, conditional on 12 original videos over 30 seconds within 90 days. A tiered bonus on followers gained during the task period, not cumulative: RMB 100 above 1,000, 1,000 above 10,000, 2,000 above 30,000, 4,000 above 50,000, 10,000 above 100,000, 20,000 above 500,000, 35,000 above 1M. Settlement is stated to be in RMB.",
+      "does_not_carry": "Any date, and that absence is the dangerous one. The page states bonus figures with no registration window, no season and no effective period, so read alone it presents them as currently available. Its own 'Detail Rules' page - now registered as bilibili.global_influencer_program_rules - says the registration period ran 1 June 2022 to 31 December 2022. A run quoting these figures without that window tells a creator they can still claim a joining bonus, which is exactly the shape of wrong this Skill exists to prevent. Read the two rows together, or say the window is unknown.\nAlso no country or region list - it names no markets at all, and neither 'Latin' nor 'Spanish' nor their Chinese equivalents appear on it; the detail rules do not close that gap either. No identity-document requirement, no withdrawal method, no fee or tax terms. And no revenue share: everything here is a one-off bonus, not a continuing split, so it cannot answer 'how is the split calculated'.",
+      "language": "en"
+    },
+    {
+      "source_id": "bilibili.global_influencer_program_rules",
+      "platform": "bilibili",
+      "domains": [
+        "monetization",
+        "terms"
+      ],
+      "role": "rule_source",
+      "title": "Bilibili Global Influencer Recruiting Program - Detail Rules",
+      "url": "https://www.bilibili.com/blackboard/activity-djX8gco7sC.html",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://www.bilibili.com/blackboard/activity-RCCsUFvzkk.html"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The dates the programme summary omits, and they are the load-bearing fact: 'Registration period: From 00:00:00 on 1 June 2022 to 23:59:59 31 Dec 2022'. It also carries the application requirements restated (10,000+ followers off Bilibili on YouTube/Twitter/Instagram/Facebook/TikTok or internationally recognised expertise; never submitted on Bilibili or under 20,000 followers there; never in the Global Influencer Recruiting Project or the Star Project), that follower counts are taken as filled in on the day of registration, video requirements (self-made, original, non-commercial, over 30 seconds, fully translated), that results announce automatically after the 90-day mission, that welcome and tiered rewards pay within 15 working days of the announcement, and that Bilibili reserves the right to change, suspend or terminate the activity unilaterally.",
+      "does_not_carry": "A country or region list - the detail rules name no markets either, so the gap on the programme page is not closed here. No revenue split, no withdrawal route, no tax terms, and no identity-document requirement beyond 'complete the verification process'. It also does not say whether a later season reopened registration: it states one window and stops.",
+      "language": "en"
+    },
+    {
+      "source_id": "bilibili.intl_creator_faq",
+      "platform": "bilibili",
+      "domains": [
+        "monetization",
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Bilibili Studio (international) creator FAQ",
+      "url": "https://studio.bilibili.tv/help-center",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://studio.bilibili.tv/us"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The whole of what the international creator centre documents: registration, verification codes, uploading, editing and deleting videos, what tags do, and what to do when a submission is rejected. All of it operational.",
+      "does_not_carry": "Money, in any form. A scan of the full text finds no occurrence of monetization, revenue, income, bonus, payment, withdrawal, share, country, region, eligibility or identity. A creator asking the international side how they get paid, or whether their country is served, is asking something this help centre does not address at all - which is a finding, not a gap in the reading.",
+      "language": "en"
+    },
+    {
+      "source_id": "bilibili.intl_terms",
+      "platform": "bilibili",
+      "domains": [
+        "terms"
+      ],
+      "role": "rule_source",
+      "title": "Bilibili international Terms of User Service",
+      "url": "https://www.biliintl.com/marketing/protocal/international_en.html",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://studio.bilibili.tv/help-center"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "That the international service is a separate legal arrangement from the domestic one: the contracting entity is Balaboom Pte. Ltd., a Singapore company, not the Shanghai entity behind bilibili.com. It states 'Currently updated on: 2022.06.08' and sets a minimum age of 13, with guardian consent where local law sets an older threshold.",
+      "does_not_carry": "Anything about creator earnings. Across the full text the terms for monetization, revenue share, income, territory, passport, Latin and Spanish do not appear once. It settles which entity a creator contracts with and settles nothing about what they are paid or where the service is open.",
+      "language": "en"
+    },
+    {
+      "source_id": "bilibili.overseas_bonus_guide",
+      "platform": "bilibili",
+      "domains": [
+        "monetization"
+      ],
+      "role": "rule_source",
+      "title": "bilibili Studio - How to Get Bonus",
+      "url": "https://www.bilibili.com/read/cv17146058",
+      "source_authority": "official_secondary",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://member.bilibili.com/creator/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The monetization routes open to overseas creators, published 2022-06-17 by an official Bilibili account: the Global Creator Recruitment Program (10,000+ followers), Studio Challenges, the Incentive Plan, the Charging Plan, advertising through the bounty and Huahuo platforms, and live-streaming rewards. It carries the only identity requirement stated on any public page: Huahuo access needs completed real-name authentication on Bilibili, over 10,000 followers, and is closed to under-18s.",
+      "does_not_carry": "How any of it pays. The Incentive Plan is described only as a cash bonus based on views and interaction, with no formula, rate or threshold, and the Charging Plan is marked still under development. No country list, and nothing about which nations' documents the real-name check accepts. It is also an official-account column rather than an agreement, which is how most Bilibili creator rules are published and is not the same as a binding policy text.",
+      "language": "en"
+    },
+    {
+      "source_id": "bilibili.protocol_index",
+      "platform": "bilibili",
+      "domains": [
+        "terms"
+      ],
+      "role": "rule_source",
+      "title": "哔哩哔哩协议汇总（官方协议索引）",
+      "url": "https://www.bilibili.com/blackboard/topic/activity-cn8bxPLzz.html",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://www.bilibili.com/protocal/licence.html"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "Bilibili's own index of every official agreement it publishes, in four blocks: core agreements, other agreement rules, site announcements, and related-product agreements. Its value is what it settles by being complete: the index lists no overseas-creator agreement, no international-creator agreement, and no creator revenue-share agreement of any kind. Creator incentives appear only as a site announcement pointing at a column article, not as a policy text. That is structural evidence rather than a failed search.",
+      "does_not_carry": "Any rule itself - it is an index. It cannot prove an unlisted agreement exists nowhere; it proves Bilibili does not file one here, which is where it files the others.",
+      "language": "zh"
+    }
+  ]
+}

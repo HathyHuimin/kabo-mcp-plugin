@@ -271,9 +271,9 @@ test("重签结果按原操作放置：get_research_data_download 的信封经 s
 // 九份 static_host 里重签分支有两种写法（带 ROUTE_ALIASES 与投影拒绝的、只查 CONNECTOR_TOOLS 的），
 // 不在逐字节一致的共享段里：逐个 Skill 钉住接受、拒绝，以及落盘后由本 Skill 的 persist_envelope 按原操作放置。
 const RESIGN_SKILLS = ["analyze-content-video", "analyze-creator-competitors", "analyze-tiktok-competitors", "develop-content-ideas",
-  "research-instagram-trends", "research-tiktok-trends", "research-youtube-trends", "review-creator-account", "review-creator-account-deep"];
+  "research-instagram-trends", "research-tiktok-trends", "research-youtube-trends", "review-creator-account", "review-creator-account-deep", "diagnose-reach-drop", "recommend-publish-timing", "plan-platform-monetization"];
 
-test("重签工具：九个 Skill 都接受本 Skill 声明的操作并能按原操作放置，拒绝未声明的操作", async (t) => {
+test("重签工具：十二个 Skill 都接受本 Skill 声明的操作并能按原操作放置，拒绝未声明的操作", async (t) => {
   const probe = String.raw`
 import json, sys
 sys.path.insert(0, sys.argv[1])

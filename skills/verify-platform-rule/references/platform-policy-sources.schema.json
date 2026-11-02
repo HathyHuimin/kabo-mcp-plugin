@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "platform-policy-sources.v1",
+  "description": "One file of the registered pages this Skill is allowed to read, and what each one is known to settle. The registry is every JSON file in references/sources/; all files share the same header fields. A rule question is answered from this list or it is not answered: an open-ended search reaches whichever page ranks well today, which is how a stale help page gets quoted as current.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "library_version",
+    "compiled_at",
+    "staleness_budget_days",
+    "sources"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "platform-policy-sources.v1"
+    },
+    "library_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "compiled_at": {
+      "type": "string",
+      "minLength": 10
+    },
+    "staleness_budget_days": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "platform",
+        "domains",
+        "role",
+        "title",
+        "url",
+        "source_authority",
+        "status",
+        "verified_at",
+        "retrieval",
+        "watch_urls",
+        "watch_urls_absent_reason",
+        "carries",
+        "does_not_carry",
+        "language"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "platform": {
+          "enum": [
+            "youtube",
+            "instagram",
+            "tiktok",
+            "bilibili",
+            "twitch",
+            "other"
+          ],
+          "description": "The platform that published the page. `other` is the cross-platform row - an archive or tracker covering several platforms - and is in scope only as a change_signal, never as a source. `bilibili` and `twitch` are first-class platforms like the rest, not cases `other` covers."
+        },
+        "domains": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "monetization",
+              "content_policy",
+              "originality",
+              "recommendations",
+              "terms",
+              "platform_changes",
+              "product_help"
+            ]
+          }
+        },
+        "role": {
+          "enum": [
+            "rule_source",
+            "change_signal"
+          ],
+          "description": "rule_source may be quoted in a verdict. change_signal may only send a run to a rule_source - it reports that something moved, never what the rule now says."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Null is allowed only on an unverified_draft, and means the page has not been located yet. That is a recorded hole, not permission to answer from somewhere else."
+        },
+        "source_authority": {
+          "enum": [
+            "official_help_page",
+            "official_secondary",
+            "creator_reported",
+            "unofficial"
+          ],
+          "description": "Deliberately the same vocabulary as the monetization rule library, so a claim can move between the two without being relabelled."
+        },
+        "status": {
+          "enum": [
+            "verified",
+            "unverified_draft"
+          ]
+        },
+        "verified_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The date this page was last actually read. Non-null exactly when status is verified: a date here means somebody fetched it, never that somebody trusts it."
+        },
+        "retrieval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "method"
+          ],
+          "properties": {
+            "method": {
+              "enum": [
+                "plain_fetch",
+                "js_rendered",
+                "browser_rendered"
+              ],
+              "description": "plain_fetch: the first HTTP body is the document. js_rendered: a plain fetch returns an empty client shell, but a JS render returns the article. The only retrieval path is the official_page_render_page tool, which renders such pages on official help hosts. browser_rendered: no retrieval path has returned a body yet, so a re-check without a browser reads silence as stability and the row cannot be verified."
+            }
+          }
+        },
+        "watch_urls": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Where a change to this page shows up - usually an announcement blog or newsroom. Not the same page, and that is the whole point."
+        },
+        "watch_urls_absent_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Required whenever watch_urls is null. Forcing a sentence here is what stops 'nobody worked out where changes appear' from being silently indistinguishable from 'changes appear nowhere'."
+        },
+        "carries": {
+          "type": "string",
+          "minLength": 1
+        },
+        "does_not_carry": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "What this page is known NOT to state. Reading it saves the next run from concluding that a rule does not exist because the page it looked at was silent about it."
+        },
+        "language": {
+          "type": "string",
+          "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+          "description": "BCP-47 tag of the language the page is written in, such as en or zh. A quote stays in this language; a report delivered in a language with a different primary subtag owes each quote from this page a gloss."
+        }
+      }
+    }
+  }
+}

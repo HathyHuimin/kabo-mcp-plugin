@@ -426,7 +426,7 @@ print(json.dumps(sorted(path.name for path in (run / "analysis").iterdir() if pa
   // 脚本不能联网：产物只能内联重读；不能指回 stage（stage 对下载模式的结果会指回 fetch）。
   const offline = report.offline;
   assert.equal(offline.exit, 1);
-  assert.match(offline.stderr, /Download failed \(\w+\); if this host blocks network access for scripts, call read_research_data_artifacts again for those object_refs without delivery/);
+  assert.match(offline.stderr, /Download failed \(\w+(?:: [^)]*)?\); if this host blocks network access for scripts, call read_research_data_artifacts again for those object_refs without delivery/);
   assert.deepEqual(offline.files, {});
   noSecrets(offline);
 });
@@ -467,7 +467,7 @@ test("九份 static_host.py 的共用部分逐字相同；交给模型的调用�
     const text = await readFile(path.join(root, "skills", id, "scripts/static_host.py"), "utf8");
     shared.add(text.slice(text.indexOf("def evidence_id():")));
   }
-  assert.equal(fetchSkills.length, 9);
+  assert.equal(fetchSkills.length, 13);
   assert.equal(shared.size, 1, "evidence_id 之后的共用函数在各副本间不一致");
   const probe = String.raw`
 import json, runpy, sys
@@ -732,7 +732,7 @@ const VIDEO = ["--connector", "youtube-public", "--operation", "get_video"];
 const VIDEO_META = { connector_id: "youtube-public", operation: "get_video", delivery: "download" };
 
 test("persist：宿主导出的原始工具结果放在 snapshot/、host-results/ 或运行目录根都不算已放置；放置过的照旧去重", async (t) => {
-  assert.equal(persistCopies.size, 9);
+  assert.equal(persistCopies.size, 13);
   assert.equal(persistVariants.length, 3);
   const raw = (full) => downloadResult({ result: withoutData(full) });
   const placements = [

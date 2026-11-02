@@ -49,7 +49,7 @@ npm run build -- --commit <同一commit> --submission --evidence <验收目录>/
 （旧动态运行时的本地缓存回收——`kabo-prepare`、`envelope-staging`、`skill-gc`——已随旧编号 3.0.0 退出；
 固定 Skills 的运行目录在用户工作区的 `.kabo-runs/` 下，由用户自行管理。）
 
-当前发布版本另需记录 Claude Code / Cursor 的实际安装与业务回归矩阵（每个 Skill 一项；含 `remake-viral-video` 后为十一项）；这些宿主的成功不能替代 OpenAI 上架候选本身的验收。网页宿主缺少执行条件时如实标记，不能删掉待验收项制造就绪。
+当前发布版本另需记录 Claude Code / Cursor 的实际安装与业务回归矩阵（每个 Skill 一项；含本次新增四个 Skill 后为十五项）；这些宿主的成功不能替代 OpenAI 上架候选本身的验收。网页宿主缺少执行条件时如实标记，不能删掉待验收项制造就绪。
 
 ## skills CLI 发布渠道
 

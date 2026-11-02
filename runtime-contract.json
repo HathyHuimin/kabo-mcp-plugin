@@ -15,7 +15,11 @@
     "research-youtube-trends",
     "analyze-creator-competitors",
     "analyze-tiktok-competitors",
-    "remake-viral-video"
+    "remake-viral-video",
+    "diagnose-reach-drop",
+    "recommend-publish-timing",
+    "plan-platform-monetization",
+    "verify-platform-rule"
   ],
   "requiredTools": [
     "analyze_content_video",
@@ -58,6 +62,7 @@
     "instagram_resolve_profile",
     "instagram_search_accounts",
     "instagram_search_profiles",
+    "official_page_render_page",
     "public_video_collect_public_metadata",
     "public_video_extract_keyframes",
     "public_video_extract_keyframes_hosted_media",
@@ -96,6 +101,7 @@
     "instagram-discovery/resolve_profile": "instagram_resolve_profile",
     "instagram-discovery/search_accounts": "instagram_search_accounts",
     "instagram-discovery/search_profiles": "instagram_search_profiles",
+    "official-page-render/render_page": "official_page_render_page",
     "public-video-media/collect_public_metadata": "public_video_collect_public_metadata",
     "public-video-media/extract_keyframes": "public_video_extract_keyframes",
     "public-video-media/extract_keyframes_hosted_media": "public_video_extract_keyframes_hosted_media",

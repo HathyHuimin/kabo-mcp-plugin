@@ -15,5 +15,5 @@ test("从目录别名启动校验 CLI 仍执行检查，不能静默成功", asy
     [path.join(alias, "scripts", script), ...args], { encoding: "utf8" });
   assert.match(run("package-check.mjs"), /submissionReady=false/);
   const findings = JSON.parse(run("skills-lint.mjs", "--json"));
-  assert.equal(findings.length, 11);
+  assert.equal(findings.length, 15);
 });

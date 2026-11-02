@@ -1,0 +1,45 @@
+{
+  "program_id": "instagram.gifts",
+  "platform": "instagram",
+  "family": "gifts",
+  "display_name": "Gifts on reels",
+  "payout_model": "fan_payment",
+  "what_it_pays_for": "Viewers buy Stars and send them as gifts on your reels; the platform pays you USD 0.01 per Star received, monthly. It is a tipping mechanic rather than a subscription, and its bar is far lower than the subscription one.",
+  "revenue_basis": {
+    "unit": "USD 0.01 per Star received",
+    "note": "Unusually, the rate here is published rather than assumed. The number of Stars a creator receives is not, so a range still needs the creator's own volume."
+  },
+  "additional_requirements_not_assessed": [
+    "Must be 18 years or older.",
+    "Must meet the Partner Monetization Policies and stay compliant with Community Standards and Content Monetization Policies.",
+    "Must accept the Instagram Gifts Creators Terms.",
+    "Must have set up a payout account, or gifts can be seen but not collected.",
+    "Collaborative posts, and accounts that primarily post content focused on children, cannot earn from Gifts."
+  ],
+  "provenance": {
+    "source_url": "https://help.instagram.com/738469380549477",
+    "source_title": "How to earn money on Instagram Gifts",
+    "regions": ["AR", "AU", "AT", "BE", "BR", "BG", "CA", "CL", "CO", "HR", "CZ", "DK", "EE", "FI", "FR", "GE", "DE", "GH", "GR", "HU", "IN", "ID", "IE", "IT", "JP", "LV", "LT", "LU", "MY", "MX", "NL", "NZ", "PE", "PL", "PT", "RO", "SK", "SI", "ZA", "KR", "ES", "SE", "TW", "TZ", "TH", "TR", "UG", "GB", "US"],
+    "effective_from": null,
+    "effective_until": null,
+    "verified_at": "2026-08-27",
+    "verification_status": "verified",
+    "note": "Read in full 2026-08-27. Supersedes this library's earlier draft, which modelled Gifts as invitation-only; the page states a 500-follower bar. The page also states the payout rate: USD 0.01 per Star received.",
+    "source_authority": "official_help_page",
+    "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "The Instagram help centre renders client-side: a plain fetch returns the shell with no article body, so a re-check must drive a real browser."},
+    "regions_source_url": null,
+    "watch_urls": null
+  },
+  "eligibility_paths": [
+    {"path_id": "gifts.followers", "applies_to": "new_applicant", "requirements": [{"requirement_id": "professional_account", "metric_id": "instagram.professional_account", "comparator": "gte", "threshold": 1, "unit": "professional account", "window_days": null, "any_of_group": null, "note": "Visible on the public profile, so this one does not have to be left to the creator to check.", "quote": "Have a professional account.", "bound_override": null}, {"requirement_id": "followers_500", "metric_id": "instagram.followers", "comparator": "gte", "threshold": 500, "unit": "followers", "window_days": null, "any_of_group": null, "note": "The page reads 'Have at least 500 followers'.", "quote": "Have at least 500 followers.", "bound_override": null}], "provenance": {"source_url": "https://help.instagram.com/738469380549477", "source_title": "How to earn money on Instagram Gifts", "regions": ["AR", "AU", "AT", "BE", "BR", "BG", "CA", "CL", "CO", "HR", "CZ", "DK", "EE", "FI", "FR", "GE", "DE", "GH", "GR", "HU", "IN", "ID", "IE", "IT", "JP", "LV", "LT", "LU", "MY", "MX", "NL", "NZ", "PE", "PL", "PT", "RO", "SK", "SI", "ZA", "KR", "ES", "SE", "TW", "TZ", "TH", "TR", "UG", "GB", "US"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "note": null, "source_authority": "official_help_page", "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "The Instagram help centre renders client-side: a plain fetch returns the shell with no article body, so a re-check must drive a real browser."}, "regions_source_url": null, "watch_urls": null}}
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "Reels 礼物", "what_it_pays_for": "观众购买 Stars 后送到你的 Reels 上，平台按每收到 1 个 Star 折算 0.01 美元、按月分给你。属于打赏，不是订阅——不需要粉丝长期承诺，门槛也比订阅低得多。", "additional_requirements_not_assessed": ["需年满 18 周岁。", "需符合合作变现政策，并持续遵守社区规范与内容变现政策。", "需接受 Instagram 礼物创作者条款。", "需已设置收款账户，否则能看到谁送了礼物但拿不到钱。", "合拍帖子、以及主要发布以儿童为主题内容的账号不能通过礼物赚钱。"]}
+  },
+  "revenue_model": {
+    "formula": "Stars received x rate per Star",
+    "period": "monthly",
+    "inputs": [{"name": "stars_received", "from": "observed_metric", "metric_id": "instagram.stars_received_30d", "benchmark_id": null, "unit": "Stars", "label": "Stars received in a month", "where_to_find": "Connect your own account and this comes from your dashboard automatically.", "i18n": {"zh-CN": {"label": "每月收到的 Star 数", "where_to_find": "连接你自己的账号后，这个数字会从你的后台直接读到。"}}}, {"name": "rate", "from": "benchmark", "metric_id": null, "benchmark_id": "instagram.gifts.star_rate", "unit": "USD per Star received", "label": "Rate the platform publishes per Star", "where_to_find": null, "i18n": {"zh-CN": {"label": "平台公布的每 Star 单价"}}}]
+  },
+  "no_figure_reason": null
+}

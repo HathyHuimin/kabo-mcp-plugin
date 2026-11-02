@@ -1,0 +1,104 @@
+{
+  "schema_version": "platform-policy-sources.v1",
+  "library_version": "2026.09.8",
+  "compiled_at": "2026-09-15",
+  "staleness_budget_days": 120,
+  "sources": [
+    {
+      "source_id": "twitch.account_settings",
+      "platform": "twitch",
+      "domains": [
+        "product_help",
+        "terms"
+      ],
+      "role": "rule_source",
+      "title": "Twitch Account Settings",
+      "url": "https://help.twitch.tv/s/article/twitch-account-settings?language=en_US",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://legal.twitch.com/en/legal/privacy-notice/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The official setting name Training for Generative AI, under Security and Privacy / Opt-out Preferences: 'Allow your channel content to train generative AI content models at Amazon.' Turning it off means streams, VODs, clips, stream chats, and pictures and text on the channel will not be used in future training of an Amazon model whose purpose is to generate or synthesize text, audio, images, or video. Opting out does not stop AutoMod, recommendations, captions, or other AI-supported features. The page tells the reader to manage the setting at twitch.tv/settings/security. Chat posted on someone else's stream follows that channel's opt-out, not the chatter's. A FAQ defines generative AI content models and what channel content is eligible.",
+      "does_not_carry": "The words default, opt-in, or on by default. The page names the setting and how to turn it off; it does not write that the switch starts on. The Privacy Notice's generative-AI authorization sentence is not on this page either - that lives on twitch.privacy_notice. This page is silent on it.",
+      "language": "en"
+    },
+    {
+      "source_id": "twitch.privacy_choices",
+      "platform": "twitch",
+      "domains": [
+        "terms"
+      ],
+      "role": "rule_source",
+      "title": "Twitch Privacy Choices",
+      "url": "https://legal.twitch.com/legal/privacy-choices/",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://legal.twitch.com/en/legal/privacy-notice/",
+        "https://help.twitch.tv/s/article/twitch-account-settings?language=en_US"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "Advertising and third-party tracking opt-outs (Network Advertising Initiative, Digital Advertising Alliance, Your Online Choices, Nielsen). Last modified 2023-05-17.",
+      "does_not_carry": "Generative AI training, Amazon models, the setting name Training for Generative AI, or any channel-content opt-out. A run that treats this page as the AI-training exit is reading the wrong document. The AI setting is on the Account Settings help page, and the authorization sentence is on the Privacy Notice. This page is silent on it.",
+      "language": "en"
+    },
+    {
+      "source_id": "twitch.privacy_notice",
+      "platform": "twitch",
+      "domains": [
+        "terms"
+      ],
+      "role": "rule_source",
+      "title": "Twitch Privacy Notice",
+      "url": "https://legal.twitch.com/en/legal/privacy-notice/",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://help.twitch.tv/s/article/twitch-account-settings?language=en_US",
+        "https://legal.twitch.com/en/legal/terms-of-service/"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "Last modified 2026-08-12. Twitch Interactive Inc. and its affiliates are subsidiaries of Amazon.com, Inc. The notice says Twitch uses data to test and improve technology, including machine learning and artificial intelligence, 'to develop or deploy our generative AI models and services', and that personal information may be combined with Amazon customer information and used by both. It points at Privacy Choices for advertising opt-out and at Amazon's own Generative AI page.",
+      "does_not_carry": "The setting name Training for Generative AI, whether that switch starts on, or the path to turn it off. Those are on the Account Settings help page. Advertising-network opt-outs are on Privacy Choices, not here. This page is silent on the named setting.",
+      "language": "en"
+    },
+    {
+      "source_id": "twitch.terms_of_service",
+      "platform": "twitch",
+      "domains": [
+        "terms"
+      ],
+      "role": "rule_source",
+      "title": "Twitch Terms of Service",
+      "url": "https://legal.twitch.com/en/legal/terms-of-service/",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://legal.twitch.com/en/legal/privacy-notice/",
+        "https://help.twitch.tv/s/article/twitch-account-settings?language=en_US"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "Last modified 2026-08-12. Section 8 User Content: by making content available you direct Twitch to cache and store it, and automated tools enabled on the account generate additional User Content that is also yours. A broad license to Twitch. Minimum age 13. Community Guidelines and Terms of Sale are incorporated by reference.",
+      "does_not_carry": "Generative AI training, Amazon model training, a default opt-in, or any opt-out setting. Those words do not appear. The AI-training authorization is on the Privacy Notice and the named setting is on the Account Settings help page - not about the corpus, about THIS page.",
+      "language": "en"
+    }
+  ]
+}

@@ -1,0 +1,391 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "publish-history.v2",
+  "title": "PublishHistory",
+  "description": "The per-post table recommend-publish-timing computes from. PublishRequest carries only aggregate counts, which is enough to describe a cohort but not enough to bucket it, so the rows live here. v2 carries a panel of metrics per post rather than one: v1 kept a single figure and dropped likes and comments on the way in, which made it impossible to ask whether several metrics agree about a window — and agreement across metrics is what a creator can actually judge, where a p-value is not. Captions and post content stay out; timing needs when and how well, nothing else.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "history_id",
+    "platform",
+    "account_ref",
+    "source",
+    "timestamps",
+    "metric_panel",
+    "maturity",
+    "coverage",
+    "posts"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "publish-history.v2"
+    },
+    "history_id": {
+      "type": "string"
+    },
+    "platform": {
+      "enum": [
+        "instagram",
+        "youtube",
+        "tiktok"
+      ]
+    },
+    "account_ref": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "mode",
+        "snapshot_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "connector",
+            "provided_export",
+            "unavailable"
+          ],
+          "description": "How the rows were obtained. A provided export is still owner-authorised data; it is not public scraping."
+        },
+        "snapshot_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "snapshot_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "generated_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_api_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "window": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "since": {
+              "type": "string"
+            },
+            "until": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "timestamps": {
+      "type": "object",
+      "description": "Whether a publishing hour can be recovered at all, and in which zone. An unconfirmed zone no longer stops the analysis — the windows are simply reported as UTC and the creator is asked once — but a source that reports no hour at all still does.",
+      "required": [
+        "timezone",
+        "rows_checked",
+        "local_time_recoverable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "timezone": {
+          "type": "string",
+          "description": "The offset every row carries, or 'mixed'."
+        },
+        "rows_checked": {
+          "type": "integer",
+          "description": "How many catalogue rows the offset claim was measured on. Measured across the whole export, not only the rows that survive filtering, because the claim is about the export."
+        },
+        "local_time_recoverable": {
+          "type": "boolean",
+          "description": "Whether every exported row carries an absolute instant, i.e. a UTC offset. When it does, the creator's local hour is a conversion rather than a guess and needs only their zone, which the host supplies on the request. Three producers used to hard-code this false and the engine answered in UTC on every run; the information was present the whole time and was simply never converted. It no longer gates anything — an unresolvable zone identifier does."
+        },
+        "time_of_day_recoverable": {
+          "type": "boolean",
+          "description": "Whether the rows carry a real clock time at all. False when every timestamp is midnight, which is what a date-only or estimated source produces. This one still forces a refusal: there is no hour to rank in any zone."
+        },
+        "date_precision": {
+          "type": "string",
+          "enum": [
+            "second",
+            "day",
+            "estimated_day"
+          ],
+          "description": "estimated_day means an upstream source inferred the calendar date rather than reporting a platform timestamp. Such rows must not be used for time-of-day ranking."
+        },
+        "precision_note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "metric_panel": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Every metric these rows carry, each declaring which direction is good and where it came from. Platforms get their own panel because their data is not the same: an Instagram owner export knows reach, saves and skip rate, while a public YouTube read knows views, likes and comments and nothing about the audience that skipped.",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "direction",
+          "period",
+          "denominator_known",
+          "accumulates_with_age",
+          "scope",
+          "posts_carrying"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "native_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "direction": {
+            "enum": [
+              "higher_is_better",
+              "lower_is_better"
+            ],
+            "description": "Skip rate is the reason this field exists: ranking it the same way as views would put the worst window on top."
+          },
+          "derived_from": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Set for ratios such as like_rate. A rate divides out how far the platform distributed the post, so it tracks how the audience that did see it responded — which is the part a publish hour could plausibly move."
+          },
+          "period": {
+            "type": "string"
+          },
+          "denominator": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "denominator_known": {
+            "type": "boolean"
+          },
+          "accumulates_with_age": {
+            "type": "boolean",
+            "description": "True for lifetime counters. When true the recommendation must state the maturity confound: an older post carries more of the metric regardless of publish hour."
+          },
+          "scope": {
+            "enum": [
+              "owner",
+              "public"
+            ],
+            "description": "owner metrics come from the account holder's own analytics; public counters come from the open API. A single ranking must never mix the two."
+          },
+          "posts_carrying": {
+            "type": "integer",
+            "description": "How many rows actually have this metric. A metric present on three posts must not carry the same weight as one present on all of them."
+          }
+        }
+      }
+    },
+    "maturity": {
+      "type": "object",
+      "required": [
+        "days",
+        "cutoff"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "days": {
+          "type": "integer"
+        },
+        "cutoff": {
+          "type": "string"
+        },
+        "basis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "owner_scope": {
+      "type": "object",
+      "description": "Audit of account ownership before timing projection. Unattributed rows remain visible in the cohort but are not covered by the owner claim.",
+      "required": [
+        "owner_id",
+        "rule",
+        "kept",
+        "excluded_not_owner",
+        "unattributed",
+        "unattributed_note"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "owner_id": {
+          "type": "string"
+        },
+        "rule": {
+          "type": "string"
+        },
+        "kept": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excluded_not_owner": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "content_id",
+              "creator_id",
+              "url",
+              "published_at"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "content_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "creator_id": {
+                "type": "string"
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "published_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "unattributed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unattributed_note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "description": "What was dropped on the way to the usable rows. A cohort that looks clean because the failures were filtered out is the failure mode this block exists to prevent.",
+      "required": [
+        "catalog_posts",
+        "cohort_total",
+        "cohort_with_metric",
+        "cohort_mature_with_metric"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "catalog_posts": {
+          "type": "integer"
+        },
+        "posts_with_insights": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cohort_total": {
+          "type": "integer",
+          "description": "Posts of the requested format, before the metric and maturity filters."
+        },
+        "cohort_with_metric": {
+          "type": "integer",
+          "description": "Rows carrying at least one panel metric."
+        },
+        "cohort_mature_with_metric": {
+          "type": "integer"
+        },
+        "dropped": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "coverage_note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "posts": {
+      "type": "array",
+      "description": "One row per post. Only what a timing comparison consumes.",
+      "items": {
+        "type": "object",
+        "required": [
+          "post_ref",
+          "published_at",
+          "product_type",
+          "metrics",
+          "is_mature"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "post_ref": {
+            "type": "string",
+            "description": "Public shortcode or video id; enough to open the post, not enough to carry its content."
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "product_type": {
+            "type": "string"
+          },
+          "metrics": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "description": "Keyed by metric_panel name. null means this post does not carry that metric — a partial export is normal and must not be read as a zero."
+          },
+          "is_mature": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

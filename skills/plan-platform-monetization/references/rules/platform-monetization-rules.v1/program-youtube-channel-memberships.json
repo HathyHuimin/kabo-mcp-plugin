@@ -1,0 +1,45 @@
+{
+  "program_id": "youtube.channel_memberships",
+  "platform": "youtube",
+  "family": "memberships",
+  "display_name": "Channel memberships",
+  "payout_model": "fan_payment",
+  "what_it_pays_for": "Viewers pay a monthly fee for perks you set - badges, emoji, members-only posts and videos. It is recurring income from your existing audience rather than from advertisers, and it unlocks at the lower of the two Partner Program bars.",
+  "revenue_basis": {
+    "unit": "revenue per paying member per month",
+    "note": "A function of how many of your viewers convert to paying members and at what tier price, minus the platform's share. Conversion is not published for any channel."
+  },
+  "additional_requirements_not_assessed": [
+    "No active Community Guidelines strikes on the channel",
+    "The channel is in a country or region where the programme operates",
+    "A linked and approved payments account",
+    "A minimum age applies to fan-funding products; the source read here does not state it"
+  ],
+  "provenance": {
+    "source_url": "https://support.google.com/youtube/answer/13429240",
+    "source_title": "Overview of the expanded YouTube Partner Program",
+    "regions": ["AE", "AR", "AS", "AT", "AU", "AW", "BA", "BE", "BG", "BH", "BM", "BO", "BR", "BY", "CA", "CH", "CL", "CO", "CR", "CY", "CZ", "DE", "DK", "DO", "DZ", "EC", "EE", "EG", "ES", "FI", "FR", "GB", "GF", "GP", "GR", "GT", "GU", "HK", "HN", "HR", "HU", "ID", "IE", "IL", "IN", "IS", "IT", "JO", "JP", "KE", "KR", "KW", "KY", "LB", "LI", "LT", "LU", "LV", "MA", "MK", "MP", "MT", "MX", "MY", "NG", "NI", "NL", "NO", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PL", "PR", "PT", "PY", "QA", "RO", "RS", "SA", "SE", "SG", "SI", "SK", "SN", "SV", "TC", "TH", "TR", "TW", "UG", "US", "UY", "ZA"],
+    "effective_from": null,
+    "effective_until": null,
+    "verified_at": "2026-08-27",
+    "verification_status": "verified",
+    "note": "The source lists channel memberships among the products unlocked at the expanded 500-subscriber tier, and states that tier does not include ad revenue sharing. Country list transcribed 2026-08-27 from Overview of the expanded YouTube Partner Program - countries/regions section: 97 entries -> 97 ISO codes.",
+    "source_authority": "official_help_page",
+    "retrieval": {"method": "plain_fetch", "retrieved_at": "2026-08-27", "note": "The help pages serve readable HTML to a plain fetch."},
+    "regions_source_url": "https://support.google.com/youtube/answer/13429240#expandedyppcountries",
+    "watch_urls": ["https://blog.youtube/news-and-events/"]
+  },
+  "eligibility_paths": [
+    {"path_id": "expanded.watch_hours", "applies_to": "new_applicant", "requirements": [{"requirement_id": "subs_500", "metric_id": "youtube.subscribers", "comparator": "gte", "threshold": 500, "unit": "subscribers", "window_days": null, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3,000 qualified watch hours in the last 12 months", "bound_override": null}, {"requirement_id": "uploads_3", "metric_id": "youtube.public_uploads_90d", "comparator": "gte", "threshold": 3, "unit": "uploads", "window_days": 90, "any_of_group": null, "note": "The source says 'valid public uploads'. Validity is a platform determination, so a public count is an upper bound.", "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3,000 qualified watch hours in the last 12 months", "bound_override": null}, {"requirement_id": "watch_hours_3000", "metric_id": "youtube.qualified_watch_hours_365d", "comparator": "gte", "threshold": 3000, "unit": "qualified watch hours", "window_days": 365, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3,000 qualified watch hours in the last 12 months", "bound_override": null}], "provenance": {"source_url": "https://support.google.com/youtube/answer/13429240", "source_title": "Overview of the expanded YouTube Partner Program", "regions": ["AE", "AR", "AS", "AT", "AU", "AW", "BA", "BE", "BG", "BH", "BM", "BO", "BR", "BY", "CA", "CH", "CL", "CO", "CR", "CY", "CZ", "DE", "DK", "DO", "DZ", "EC", "EE", "EG", "ES", "FI", "FR", "GB", "GF", "GP", "GR", "GT", "GU", "HK", "HN", "HR", "HU", "ID", "IE", "IL", "IN", "IS", "IT", "JO", "JP", "KE", "KR", "KW", "KY", "LB", "LI", "LT", "LU", "LV", "MA", "MK", "MP", "MT", "MX", "MY", "NG", "NI", "NL", "NO", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PL", "PR", "PT", "PY", "QA", "RO", "RS", "SA", "SE", "SG", "SI", "SK", "SN", "SV", "TC", "TH", "TR", "TW", "UG", "US", "UY", "ZA"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "note": "Read verbatim as '500 subscribers with 3 valid public uploads in the last 90 days, and 3,000 qualified watch hours in the last 12 months'.", "source_authority": "official_help_page", "retrieval": {"method": "plain_fetch", "retrieved_at": "2026-08-27", "note": "The help pages serve readable HTML to a plain fetch."}, "regions_source_url": "https://support.google.com/youtube/answer/13429240#expandedyppcountries", "watch_urls": ["https://blog.youtube/news-and-events/"]}},
+    {"path_id": "expanded.shorts_views", "applies_to": "new_applicant", "requirements": [{"requirement_id": "subs_500", "metric_id": "youtube.subscribers", "comparator": "gte", "threshold": 500, "unit": "subscribers", "window_days": null, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3 million qualified Shorts views in the last 90 days", "bound_override": null}, {"requirement_id": "uploads_3", "metric_id": "youtube.public_uploads_90d", "comparator": "gte", "threshold": 3, "unit": "uploads", "window_days": 90, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3 million qualified Shorts views in the last 90 days", "bound_override": null}, {"requirement_id": "shorts_views_3m", "metric_id": "youtube.shorts_views_90d", "comparator": "gte", "threshold": 3000000, "unit": "qualified Shorts views", "window_days": 90, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3 million qualified Shorts views in the last 90 days", "bound_override": null}], "provenance": {"source_url": "https://support.google.com/youtube/answer/13429240", "source_title": "Overview of the expanded YouTube Partner Program", "regions": ["AE", "AR", "AS", "AT", "AU", "AW", "BA", "BE", "BG", "BH", "BM", "BO", "BR", "BY", "CA", "CH", "CL", "CO", "CR", "CY", "CZ", "DE", "DK", "DO", "DZ", "EC", "EE", "EG", "ES", "FI", "FR", "GB", "GF", "GP", "GR", "GT", "GU", "HK", "HN", "HR", "HU", "ID", "IE", "IL", "IN", "IS", "IT", "JO", "JP", "KE", "KR", "KW", "KY", "LB", "LI", "LT", "LU", "LV", "MA", "MK", "MP", "MT", "MX", "MY", "NG", "NI", "NL", "NO", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PL", "PR", "PT", "PY", "QA", "RO", "RS", "SA", "SE", "SG", "SI", "SK", "SN", "SV", "TC", "TH", "TR", "TW", "UG", "US", "UY", "ZA"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "note": "Read verbatim as '500 subscribers with 3 valid public uploads in the last 90 days, and 3 million qualified Shorts views in the last 90 days'.", "source_authority": "official_help_page", "retrieval": {"method": "plain_fetch", "retrieved_at": "2026-08-27", "note": "The help pages serve readable HTML to a plain fetch."}, "regions_source_url": "https://support.google.com/youtube/answer/13429240#expandedyppcountries", "watch_urls": ["https://blog.youtube/news-and-events/"]}}
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "频道会员", "what_it_pays_for": "观众按月付费，换取你设定的专属权益——会员徽章、专属表情、只有会员能看的帖子和视频。这笔钱来自你已有的观众而不是广告主，而且它在合作伙伴计划较低的那道门就能解锁。", "additional_requirements_not_assessed": ["频道没有生效中的社区准则警告。", "该计划只在部分国家和地区开放，需要确认你的账号所在地在名单内。", "需要绑定并通过审核的收款账户。", "打赏类产品有最低年龄要求，本轮核对的页面没有写明具体数字。"]}
+  },
+  "revenue_model": {
+    "formula": "paying members x monthly price",
+    "period": "monthly",
+    "inputs": [{"name": "members", "from": "observed_metric", "metric_id": "youtube.paying_members", "benchmark_id": null, "unit": "members", "label": "Paying members", "where_to_find": "Connect your own account and this comes from your dashboard automatically.", "i18n": {"zh-CN": {"label": "付费会员数", "where_to_find": "连接你自己的账号后，这个数字会从你的后台直接读到。"}}}, {"name": "price", "from": "observed_metric", "metric_id": "youtube.membership_price", "benchmark_id": null, "unit": "USD per member per month", "label": "The tier price you set", "where_to_find": "Connect your own account and this comes from your dashboard automatically.", "i18n": {"zh-CN": {"label": "你设定的档位价", "where_to_find": "连接你自己的账号后，这个数字会从你的后台直接读到。"}}}]
+  },
+  "no_figure_reason": null
+}

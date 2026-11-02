@@ -1,0 +1,36 @@
+{
+  "program_id": "tiktok.subscriptions",
+  "platform": "tiktok",
+  "family": "subscriptions",
+  "display_name": "LIVE Subscription",
+  "payout_model": "fan_payment",
+  "what_it_pays_for": "Viewers pay monthly for subscriber-only perks around your live streams - badges, custom emotes and subscriber-only chat. Recurring rather than one-off.",
+  "revenue_basis": null,
+  "additional_requirements_not_assessed": [
+    "Viewers must be 18 or older to subscribe, or 19 in South Korea.",
+    "Availability is limited to certain countries.",
+    "Creator-side access appears to be granted per account; no published bar was located."
+  ],
+  "provenance": {
+    "source_url": "https://www.tiktok.com/support/faq_detail?id=7135363369778928129",
+    "source_title": "LIVE subscription is not available",
+    "source_authority": "official_secondary",
+    "regions": ["SOURCE_LISTS_COUNTRIES"],
+    "effective_from": null,
+    "effective_until": null,
+    "verified_at": null,
+    "verification_status": "unverified_draft",
+    "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "Reached through the TikTok LIVE sidebar; the article covers the viewer side only."},
+    "note": "Searched 2026-08-27. The platform's LIVE Subscription support articles are all viewer-side (how to subscribe, refunds, payment failures); no creator-side eligibility article was located. The requirement below is inferred from the product structure - a LIVE Community exists only where the creator can go LIVE - and is NOT stated on any page read. It stays a draft and decides nothing.",
+    "regions_source_url": null,
+    "watch_urls": null
+  },
+  "eligibility_paths": [
+    {"path_id": "live_subscription.live_eligibility", "applies_to": "new_applicant", "requirements": [{"requirement_id": "followers_1k", "metric_id": "tiktok.followers", "comparator": "gte", "threshold": 1000, "unit": "followers", "window_days": null, "any_of_group": null, "note": "Inferred, not read: a LIVE Community presupposes being able to go LIVE, whose bar is 1,000 followers. No page states this for LIVE Subscription itself.", "quote": null, "bound_override": null}], "provenance": {"source_url": "https://www.tiktok.com/support/faq_detail?id=7135363369778928129", "source_title": "LIVE subscription is not available", "source_authority": "official_secondary", "regions": ["SOURCE_LISTS_COUNTRIES"], "effective_from": null, "effective_until": null, "verified_at": null, "verification_status": "unverified_draft", "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "Reached through the TikTok LIVE sidebar; the article covers the viewer side only."}, "note": "Searched 2026-08-27. The platform's LIVE Subscription support articles are all viewer-side (how to subscribe, refunds, payment failures); no creator-side eligibility article was located. The requirement below is inferred from the product structure - a LIVE Community exists only where the creator can go LIVE - and is NOT stated on any page read. It stays a draft and decides nothing.", "regions_source_url": null, "watch_urls": null}}
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "直播订阅", "what_it_pays_for": "观众按月付费，换取围绕你直播间的专属权益——订阅标识、专属表情、订阅者专属聊天。是持续收入而非一次性。", "additional_requirements_not_assessed": ["订阅者需年满 18 周岁，韩国为 19 周岁。", "只在部分国家开放。", "创作者一侧似乎按账号开通，未找到公开门槛。"]}
+  },
+  "revenue_model": null,
+  "no_figure_reason": null
+}

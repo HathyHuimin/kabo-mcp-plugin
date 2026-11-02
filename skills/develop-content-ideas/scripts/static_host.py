@@ -424,7 +424,11 @@ def download(tool, descriptor, kind, hint):
         # 下载模式的产物结果 stage 不收（它会指回 fetch）；脚本不能联网时产物只能内联重读，否则两条命令互相指回。
         fallback = (REREAD_INLINE if kind == "artifact" else
                     "export the complete tool result through the host and run static_host.py stage instead")
-        raise ValueError(f"Download failed ({type(error).__name__}); if this host blocks network access for scripts, "
+        # 只说异常类型无法区分沙箱断网、代理和证书问题（T-20261029-12 R2 只看到 URLError），带上 reason；它不含签名链接。
+        reason = str(error.reason)[:160] if isinstance(error, urllib.error.URLError) else ""
+        reason = "" if "http" in reason.lower() else reason  # 不让签名链接进输出
+        label = f"{type(error).__name__}: {reason}" if reason else type(error).__name__
+        raise ValueError(f"Download failed ({label}); if this host blocks network access for scripts, "
                          + fallback) from None
     if status == "type":
         raise ValueError("Download content type does not match the declared content_type; nothing was written")

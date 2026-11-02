@@ -1,0 +1,37 @@
+{
+  "program_id": "instagram.bonuses",
+  "platform": "instagram",
+  "family": "bonuses",
+  "display_name": "Bonuses",
+  "payout_model": "platform_fund",
+  "what_it_pays_for": "The platform pays you directly for hitting performance targets it sets, usually on reels, during a limited campaign. Money comes from the platform rather than from viewers or advertisers.",
+  "revenue_basis": null,
+  "additional_requirements_not_assessed": [
+    "Must have a professional account (business or creator).",
+    "Must meet the Partner Monetization Policies.",
+    "Must live in a country where bonuses are being tested.",
+    "Invitations are issued by the platform and include an element of random selection, so no public number predicts one."
+  ],
+  "provenance": {
+    "source_url": "https://help.instagram.com/331274061770840",
+    "source_title": "About bonuses on Instagram",
+    "source_authority": "official_help_page",
+    "regions": ["SOURCE_LISTS_COUNTRIES"],
+    "effective_from": null,
+    "effective_until": null,
+    "verified_at": "2026-08-27",
+    "verification_status": "verified",
+    "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "The Instagram help centre renders client-side: a plain fetch returns the shell with no article body, so a re-check must drive a real browser."},
+    "note": "Read in full 2026-08-27. There is no numeric bar to record: the page states bonuses are offered by invitation only, for a limited time, with an explicit element of random selection.",
+    "regions_source_url": null,
+    "watch_urls": null
+  },
+  "eligibility_paths": [
+    {"path_id": "bonuses.invitation", "applies_to": "any", "requirements": [{"requirement_id": "invited_to_program", "metric_id": "instagram.program_invitation", "comparator": "gte", "threshold": 1, "unit": "invitation", "window_days": null, "any_of_group": null, "note": "No follower or performance bar is published; the gate is the invitation itself.", "quote": "Instagram may offer specific bonus programs to creators by invitation only for a limited time with availability in different countries. Please note there is an element of random selection due to the nature of product testing.", "bound_override": null}], "provenance": {"source_url": "https://help.instagram.com/331274061770840", "source_title": "About bonuses on Instagram", "source_authority": "official_help_page", "regions": ["SOURCE_LISTS_COUNTRIES"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "The Instagram help centre renders client-side: a plain fetch returns the shell with no article body, so a re-check must drive a real browser."}, "note": null, "regions_source_url": null, "watch_urls": null}}
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "奖金计划", "what_it_pays_for": "平台按它设定的表现目标直接付钱给你，通常针对 Reels，且只在限定活动期内。钱来自平台，不来自观众或广告主。", "additional_requirements_not_assessed": ["需要专业账号（商家号或创作者号）。", "需符合合作变现政策。", "需常驻在正在测试奖金计划的国家。", "邀请由平台发出且带有随机抽选成分，任何公开数字都预测不了。"]}
+  },
+  "revenue_model": null,
+  "no_figure_reason": null
+}

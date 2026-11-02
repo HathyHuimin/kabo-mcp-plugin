@@ -1,0 +1,43 @@
+{
+  "program_id": "tiktok.shop_commission",
+  "platform": "tiktok",
+  "family": "commerce",
+  "display_name": "Shop affiliate commission",
+  "payout_model": "commission",
+  "what_it_pays_for": "You feature a seller's product in a video or live stream and earn a commission on what sells through your link. Earnings track sales rather than views, so a small engaged audience can out-earn a large passive one.",
+  "revenue_basis": {
+    "unit": "commission per sale",
+    "note": "A function of order value, conversion rate and the commission rate the seller sets. None of the three is observable from public account data."
+  },
+  "additional_requirements_not_assessed": [
+    "A minimum age applies.",
+    "Availability is limited to certain markets.",
+    "Account standing requirements apply, and a follower bar is widely reported but has not been sourced here."
+  ],
+  "provenance": {
+    "source_url": "https://www.tiktok.com/support/faq_detail?id=7581821550694013452",
+    "source_title": "Creator Rewards Program (monetization index; no affiliate eligibility article located)",
+    "source_authority": "unofficial",
+    "regions": ["SOURCE_LISTS_COUNTRIES"],
+    "effective_from": null,
+    "effective_until": null,
+    "verified_at": null,
+    "verification_status": "unverified_draft",
+    "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "The monetization support tree has no affiliate-commission article; the programme is documented on the seller side, which was not reachable from this session."},
+    "note": "Searched 2026-08-27 without locating an official eligibility article; the seller-side university URL previously recorded here was a guess and did not resolve to a rule page. The follower figure widely reported for the affiliate programme is deliberately NOT recorded, because recording an unsourced number next to sourced ones is exactly what this library exists to prevent.",
+    "regions_source_url": null,
+    "watch_urls": null
+  },
+  "eligibility_paths": [
+    {"path_id": "shop.access_granted", "applies_to": "any", "requirements": [{"requirement_id": "affiliate_access", "metric_id": "tiktok.program_invitation", "comparator": "gte", "threshold": 1, "unit": "invitation", "window_days": null, "any_of_group": null, "note": "Modelled as access rather than a threshold because no threshold has been sourced.", "quote": null, "bound_override": null}], "provenance": {"source_url": "https://www.tiktok.com/support/faq_detail?id=7581821550694013452", "source_title": "Creator Rewards Program (monetization index; no affiliate eligibility article located)", "source_authority": "unofficial", "regions": ["SOURCE_LISTS_COUNTRIES"], "effective_from": null, "effective_until": null, "verified_at": null, "verification_status": "unverified_draft", "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "The monetization support tree has no affiliate-commission article; the programme is documented on the seller side, which was not reachable from this session."}, "note": "Searched 2026-08-27 without locating an official eligibility article; the seller-side university URL previously recorded here was a guess and did not resolve to a rule page. The follower figure widely reported for the affiliate programme is deliberately NOT recorded, because recording an unsourced number next to sourced ones is exactly what this library exists to prevent.", "regions_source_url": null, "watch_urls": null}}
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "电商带货佣金", "what_it_pays_for": "你在视频或直播里推荐商家的商品，通过你的链接成交后你拿佣金。收入跟着成交额走而不是播放量，所以一个小而精准的账号可能比一个大而被动的账号赚得多。", "additional_requirements_not_assessed": ["有最低年龄要求。", "只在部分市场开放。", "对账号状态另有要求；坊间流传的粉丝门槛本库未取得来源，故不记录。"]}
+  },
+  "revenue_model": {
+    "formula": "monthly sales x commission rate",
+    "period": "monthly",
+    "inputs": [{"name": "sales", "from": "observed_metric", "metric_id": "tiktok.shop_sales_30d", "benchmark_id": null, "unit": "USD of attributed sales", "label": "Sales through your links", "where_to_find": "Connect your own account and this comes from your dashboard automatically.", "i18n": {"zh-CN": {"label": "通过你的链接成交的金额", "where_to_find": "连接你自己的账号后，这个数字会从你的后台直接读到。"}}}, {"name": "rate", "from": "observed_metric", "metric_id": "tiktok.shop_commission_rate", "benchmark_id": null, "unit": "fraction of sale value", "label": "The commission rate the seller set", "where_to_find": "Connect your own account and this comes from your dashboard automatically.", "i18n": {"zh-CN": {"label": "商家设定的佣金率", "where_to_find": "连接你自己的账号后，这个数字会从你的后台直接读到。"}}}]
+  },
+  "no_figure_reason": null
+}

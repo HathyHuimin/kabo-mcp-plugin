@@ -1,0 +1,37 @@
+{
+  "program_id": "tiktok.live_gifts",
+  "platform": "tiktok",
+  "family": "gifts",
+  "display_name": "LIVE gifts",
+  "payout_model": "fan_payment",
+  "what_it_pays_for": "Viewers buy coins and send gifts during your live streams, which you collect as Diamonds and convert to a payout. It turns on only once you can go LIVE at all, which is its own bar.",
+  "revenue_basis": null,
+  "additional_requirements_not_assessed": [
+    "Must live in a location where LIVE Gifts is available.",
+    "Must be 18 or older to go LIVE, and 18 or older (19 in South Korea) to receive gifts during a LIVE.",
+    "Account must be in good standing under the Community Guidelines and Terms of Service.",
+    "Government, politician, political party and other public-interest accounts cannot collect from LIVE Gifts."
+  ],
+  "provenance": {
+    "source_url": "https://www.tiktok.com/support/faq_detail?id=7543897462415579704",
+    "source_title": "LIVE Gifts on TikTok",
+    "regions": ["SOURCE_LISTS_COUNTRIES"],
+    "effective_from": null,
+    "effective_until": null,
+    "verified_at": "2026-08-27",
+    "verification_status": "verified",
+    "note": "Read in full 2026-08-27. This page delegates the numeric bar to LIVE eligibility, so the path below cites the LIVE page where that number actually appears.",
+    "source_authority": "official_help_page",
+    "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "This support article renders client-side and the support.tiktok.com URL redirects to a www.tiktok.com faq_detail id; record the redirected id, not the pretty URL."},
+    "regions_source_url": null,
+    "watch_urls": null
+  },
+  "eligibility_paths": [
+    {"path_id": "live_gifts.live_eligibility", "applies_to": "new_applicant", "requirements": [{"requirement_id": "followers_1k", "metric_id": "tiktok.followers", "comparator": "gte", "threshold": 1000, "unit": "followers", "window_days": null, "any_of_group": null, "note": "Turning on LIVE Gifts requires being eligible to go LIVE, and the LIVE page reads 'Have 1,000 followers to go LIVE (may vary across regions)'. The parenthetical is the platform's own, so this bar is not uniform worldwide.", "quote": "Have 1,000 followers to go LIVE (may vary across regions).", "bound_override": null}], "provenance": {"source_url": "https://www.tiktok.com/support/faq_detail?id=7543604790438451768", "source_title": "What is TikTok LIVE?", "regions": ["SOURCE_LISTS_COUNTRIES"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "note": "The platform qualifies this number with 'may vary across regions'.", "source_authority": "official_help_page", "retrieval": {"method": "browser_rendered", "retrieved_at": "2026-08-27", "note": "This support article renders client-side and the support.tiktok.com URL redirects to a www.tiktok.com faq_detail id; record the redirected id, not the pretty URL."}, "regions_source_url": null, "watch_urls": null}}
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "直播礼物", "what_it_pays_for": "观众充值后在你的直播间送礼物，你收到的礼物折算成 Diamonds 再提现。它要先能开播才谈得上——开播本身就是一道门槛。", "additional_requirements_not_assessed": ["需常驻在开放 LIVE 礼物的地区。", "开播需年满 18 周岁；直播中收礼物需年满 18 周岁，韩国为 19 周岁。", "账号需符合社区规范与服务条款，处于正常状态。", "政府、政治人物、政党及其他公共利益类账号不能通过直播礼物收款。"]}
+  },
+  "revenue_model": null,
+  "no_figure_reason": null
+}

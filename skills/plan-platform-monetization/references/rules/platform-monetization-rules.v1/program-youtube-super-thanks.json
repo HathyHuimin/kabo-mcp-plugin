@@ -1,0 +1,41 @@
+{
+  "program_id": "youtube.super_thanks",
+  "platform": "youtube",
+  "family": "fan_funding",
+  "display_name": "Super Thanks, Super Chat and Super Stickers",
+  "payout_model": "fan_payment",
+  "what_it_pays_for": "One-off payments a viewer chooses to make - a tip on a video, or a highlighted message during a live stream. Unlike memberships there is no recurring commitment, and like memberships it unlocks at the lower Partner Program bar rather than the ad-revenue bar.",
+  "revenue_basis": {
+    "unit": "revenue per tipping viewer",
+    "note": "A function of how many viewers tip and how much, minus the platform's share. Neither is published for any channel."
+  },
+  "additional_requirements_not_assessed": [
+    "No active Community Guidelines strikes on the channel",
+    "The channel is in a country or region where the programme operates",
+    "A linked and approved payments account",
+    "A minimum age applies to fan-funding products; the source read here does not state it"
+  ],
+  "provenance": {
+    "source_url": "https://support.google.com/youtube/answer/13429240",
+    "source_title": "Overview of the expanded YouTube Partner Program",
+    "regions": ["AE", "AR", "AS", "AT", "AU", "AW", "BA", "BE", "BG", "BH", "BM", "BO", "BR", "BY", "CA", "CH", "CL", "CO", "CR", "CY", "CZ", "DE", "DK", "DO", "DZ", "EC", "EE", "EG", "ES", "FI", "FR", "GB", "GF", "GP", "GR", "GT", "GU", "HK", "HN", "HR", "HU", "ID", "IE", "IL", "IN", "IS", "IT", "JO", "JP", "KE", "KR", "KW", "KY", "LB", "LI", "LT", "LU", "LV", "MA", "MK", "MP", "MT", "MX", "MY", "NG", "NI", "NL", "NO", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PL", "PR", "PT", "PY", "QA", "RO", "RS", "SA", "SE", "SG", "SI", "SK", "SN", "SV", "TC", "TH", "TR", "TW", "UG", "US", "UY", "ZA"],
+    "effective_from": null,
+    "effective_until": null,
+    "verified_at": "2026-08-27",
+    "verification_status": "verified",
+    "note": "The source lists Super Chat & Super Stickers, Super Thanks, and Jewels and gifts among the products unlocked at the expanded 500-subscriber tier. Country list transcribed 2026-08-27 from Overview of the expanded YouTube Partner Program - countries/regions section: 97 entries -> 97 ISO codes.",
+    "source_authority": "official_help_page",
+    "retrieval": {"method": "plain_fetch", "retrieved_at": "2026-08-27", "note": "The help pages serve readable HTML to a plain fetch."},
+    "regions_source_url": "https://support.google.com/youtube/answer/13429240#expandedyppcountries",
+    "watch_urls": ["https://blog.youtube/news-and-events/"]
+  },
+  "eligibility_paths": [
+    {"path_id": "expanded.watch_hours", "applies_to": "new_applicant", "requirements": [{"requirement_id": "subs_500", "metric_id": "youtube.subscribers", "comparator": "gte", "threshold": 500, "unit": "subscribers", "window_days": null, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3,000 qualified watch hours in the last 12 months", "bound_override": null}, {"requirement_id": "uploads_3", "metric_id": "youtube.public_uploads_90d", "comparator": "gte", "threshold": 3, "unit": "uploads", "window_days": 90, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3,000 qualified watch hours in the last 12 months", "bound_override": null}, {"requirement_id": "watch_hours_3000", "metric_id": "youtube.qualified_watch_hours_365d", "comparator": "gte", "threshold": 3000, "unit": "qualified watch hours", "window_days": 365, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3,000 qualified watch hours in the last 12 months", "bound_override": null}], "provenance": {"source_url": "https://support.google.com/youtube/answer/13429240", "source_title": "Overview of the expanded YouTube Partner Program", "regions": ["AE", "AR", "AS", "AT", "AU", "AW", "BA", "BE", "BG", "BH", "BM", "BO", "BR", "BY", "CA", "CH", "CL", "CO", "CR", "CY", "CZ", "DE", "DK", "DO", "DZ", "EC", "EE", "EG", "ES", "FI", "FR", "GB", "GF", "GP", "GR", "GT", "GU", "HK", "HN", "HR", "HU", "ID", "IE", "IL", "IN", "IS", "IT", "JO", "JP", "KE", "KR", "KW", "KY", "LB", "LI", "LT", "LU", "LV", "MA", "MK", "MP", "MT", "MX", "MY", "NG", "NI", "NL", "NO", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PL", "PR", "PT", "PY", "QA", "RO", "RS", "SA", "SE", "SG", "SI", "SK", "SN", "SV", "TC", "TH", "TR", "TW", "UG", "US", "UY", "ZA"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "note": null, "source_authority": "official_help_page", "retrieval": {"method": "plain_fetch", "retrieved_at": "2026-08-27", "note": "The help pages serve readable HTML to a plain fetch."}, "regions_source_url": "https://support.google.com/youtube/answer/13429240#expandedyppcountries", "watch_urls": ["https://blog.youtube/news-and-events/"]}},
+    {"path_id": "expanded.shorts_views", "applies_to": "new_applicant", "requirements": [{"requirement_id": "subs_500", "metric_id": "youtube.subscribers", "comparator": "gte", "threshold": 500, "unit": "subscribers", "window_days": null, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3 million qualified Shorts views in the last 90 days", "bound_override": null}, {"requirement_id": "uploads_3", "metric_id": "youtube.public_uploads_90d", "comparator": "gte", "threshold": 3, "unit": "uploads", "window_days": 90, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3 million qualified Shorts views in the last 90 days", "bound_override": null}, {"requirement_id": "shorts_views_3m", "metric_id": "youtube.shorts_views_90d", "comparator": "gte", "threshold": 3000000, "unit": "qualified Shorts views", "window_days": 90, "any_of_group": null, "note": null, "quote": "500 subscribers with 3 valid public uploads in the last 90 days, and 3 million qualified Shorts views in the last 90 days", "bound_override": null}], "provenance": {"source_url": "https://support.google.com/youtube/answer/13429240", "source_title": "Overview of the expanded YouTube Partner Program", "regions": ["AE", "AR", "AS", "AT", "AU", "AW", "BA", "BE", "BG", "BH", "BM", "BO", "BR", "BY", "CA", "CH", "CL", "CO", "CR", "CY", "CZ", "DE", "DK", "DO", "DZ", "EC", "EE", "EG", "ES", "FI", "FR", "GB", "GF", "GP", "GR", "GT", "GU", "HK", "HN", "HR", "HU", "ID", "IE", "IL", "IN", "IS", "IT", "JO", "JP", "KE", "KR", "KW", "KY", "LB", "LI", "LT", "LU", "LV", "MA", "MK", "MP", "MT", "MX", "MY", "NG", "NI", "NL", "NO", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PL", "PR", "PT", "PY", "QA", "RO", "RS", "SA", "SE", "SG", "SI", "SK", "SN", "SV", "TC", "TH", "TR", "TW", "UG", "US", "UY", "ZA"], "effective_from": null, "effective_until": null, "verified_at": "2026-08-27", "verification_status": "verified", "note": null, "source_authority": "official_help_page", "retrieval": {"method": "plain_fetch", "retrieved_at": "2026-08-27", "note": "The help pages serve readable HTML to a plain fetch."}, "regions_source_url": "https://support.google.com/youtube/answer/13429240#expandedyppcountries", "watch_urls": ["https://blog.youtube/news-and-events/"]}}
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "Super Thanks、Super Chat 与 Super Stickers", "what_it_pays_for": "观众自愿给的一次性打赏——在视频下打赏，或在直播中花钱让自己的留言被高亮。和会员不同，它没有长期承诺；和会员相同的是，它也在较低那道门就能解锁，不必等到广告分成那一档。", "additional_requirements_not_assessed": ["频道没有生效中的社区准则警告。", "该计划只在部分国家和地区开放，需要确认你的账号所在地在名单内。", "需要绑定并通过审核的收款账户。", "打赏类产品有最低年龄要求，本轮核对的页面没有写明具体数字。"], "no_figure_reason": "这一条没有公式可算：打赏是观众想给多少给多少、想什么时候给就什么时候给。它不像会员那样是「人数 × 单价」，所以连你自己的后台也只能告诉你已经收到了多少，算不出预期。"}
+  },
+  "revenue_model": null,
+  "no_figure_reason": "There is no formula to run here: a tip is whatever a viewer decides to give, whenever they decide to. Unlike memberships it is not a count times a price, so even your own dashboard shows only what has already come in, not what to expect."
+}

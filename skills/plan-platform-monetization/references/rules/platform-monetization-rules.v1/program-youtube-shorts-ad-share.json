@@ -1,0 +1,38 @@
+{
+  "program_id": "youtube.shorts_ad_share",
+  "platform": "youtube",
+  "family": "ad_share",
+  "display_name": "Shorts ad and subscription revenue sharing",
+  "payout_model": "revenue_share",
+  "what_it_pays_for": "A share of the ads and Premium revenue attributed to your Shorts specifically. From 2027-02-01 this is its own ongoing bar rather than something the Partner Program grants once: you keep it by holding a Shorts view level, and losing it costs you the Shorts share alone, not the rest.",
+  "revenue_basis": {
+    "unit": "revenue per 1,000 Shorts views",
+    "note": "Counted inside the channel figure under youtube.ad_share; a separate Shorts amount would double count it."
+  },
+  "revenue_model": null,
+  "additional_requirements_not_assessed": [
+    "Requires being in the Partner Program already; this bar governs the Shorts share, not entry.",
+    "Reviewed monthly. Falling below suspends the Shorts share only and does not remove the channel from the programme or affect its other earnings."
+  ],
+  "i18n": {
+    "zh-CN": {"display_name": "Shorts 广告与订阅分成", "what_it_pays_for": "专门针对你的 Shorts 那部分广告与会员收入。2027-02-01 起它变成一道**持续**门槛而不是一次性授予：要靠维持播放量保住，掉下去只丢 Shorts 这一份，不影响其它收入。", "additional_requirements_not_assessed": ["需已在合作伙伴计划内；这道门管的是 Shorts 那一份，不是入场。", "按月复查。掉下去只暂停 Shorts 分成，不会把频道移出计划，也不影响其它收入。"], "no_figure_reason": "你的 Shorts 收入已经算在上面的频道数字里了：YouTube 的 RPM 把 Shorts 的有效观看和长视频观看一起算。要单独看 Shorts，需要 Shorts 内容页里的 RPM；把它再加到频道数字上，同一笔钱就算了两次。"}
+  },
+  "eligibility_paths": [
+    {"path_id": "shorts_share.rolling", "applies_to": "existing_participant", "requirements": [{"requirement_id": "shorts_views_10m", "metric_id": "youtube.shorts_views_90d", "comparator": "gte", "threshold": 10000000, "unit": "qualified Shorts views", "window_days": 90, "any_of_group": null, "bound_override": null, "note": null, "quote": "10M qualified Shorts views over the last 90 days"}], "provenance": {"source_url": "https://support.google.com/youtube/answer/12843009", "source_title": "Changes to the YouTube Partner Program", "source_authority": "official_help_page", "regions": ["AE", "AI", "AM", "AR", "AS", "AT", "AU", "AW", "AZ", "BA", "BD", "BE", "BG", "BH", "BM", "BO", "BR", "CA", "CH", "CL", "CO", "CR", "CY", "CZ", "DE", "DK", "DO", "DZ", "EC", "EE", "EG", "ES", "FI", "FO", "FR", "GB", "GE", "GF", "GH", "GI", "GL", "GP", "GR", "GT", "GU", "HK", "HN", "HR", "HU", "ID", "IE", "IL", "IN", "IO", "IQ", "IS", "IT", "JM", "JO", "JP", "KE", "KH", "KR", "KW", "KY", "KZ", "LA", "LB", "LI", "LK", "LT", "LU", "LV", "LY", "MA", "MD", "ME", "MK", "MP", "MQ", "MS", "MT", "MX", "MY", "NC", "NF", "NG", "NI", "NL", "NO", "NP", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM", "PR", "PT", "PY", "QA", "RE", "RO", "RS", "SA", "SE", "SG", "SH", "SI", "SJ", "SK", "SN", "SV", "TC", "TH", "TN", "TR", "TW", "TZ", "UA", "UG", "US", "VG", "YT", "ZA"], "regions_source_url": null, "effective_from": "2027-02-01", "effective_until": null, "verified_at": "2026-09-06", "verification_status": "verified", "retrieval": {"method": "plain_fetch", "retrieved_at": "2026-09-06", "note": "Separate from the eligibility overview: that page announces a 2027-02-01 update without stating its numbers, and this one carries them."}, "note": "Read verbatim: to earn monthly from Shorts a creator must maintain 10M qualified Shorts views over the last 90 days; missing it does not remove them from the programme.", "watch_urls": ["https://support.google.com/youtube/answer/72851", "https://support.google.com/youtube/answer/12843009", "https://blog.youtube/news-and-events/youtube-partner-program-updates-2027-new-opportunities-earn/"]}}
+  ],
+  "provenance": {
+    "source_url": "https://support.google.com/youtube/answer/12843009",
+    "source_title": "Changes to the YouTube Partner Program",
+    "source_authority": "official_help_page",
+    "regions": ["AE", "AI", "AM", "AR", "AS", "AT", "AU", "AW", "AZ", "BA", "BD", "BE", "BG", "BH", "BM", "BO", "BR", "CA", "CH", "CL", "CO", "CR", "CY", "CZ", "DE", "DK", "DO", "DZ", "EC", "EE", "EG", "ES", "FI", "FO", "FR", "GB", "GE", "GF", "GH", "GI", "GL", "GP", "GR", "GT", "GU", "HK", "HN", "HR", "HU", "ID", "IE", "IL", "IN", "IO", "IQ", "IS", "IT", "JM", "JO", "JP", "KE", "KH", "KR", "KW", "KY", "KZ", "LA", "LB", "LI", "LK", "LT", "LU", "LV", "LY", "MA", "MD", "ME", "MK", "MP", "MQ", "MS", "MT", "MX", "MY", "NC", "NF", "NG", "NI", "NL", "NO", "NP", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM", "PR", "PT", "PY", "QA", "RE", "RO", "RS", "SA", "SE", "SG", "SH", "SI", "SJ", "SK", "SN", "SV", "TC", "TH", "TN", "TR", "TW", "TZ", "UA", "UG", "US", "VG", "YT", "ZA"],
+    "regions_source_url": null,
+    "effective_from": "2027-02-01",
+    "effective_until": null,
+    "verified_at": "2026-09-06",
+    "verification_status": "verified",
+    "retrieval": {"method": "plain_fetch", "retrieved_at": "2026-09-06", "note": "Separate from the eligibility overview: that page announces a 2027-02-01 update without stating its numbers, and this one carries them."},
+    "note": "A distinct ongoing gate introduced by the 2027-02-01 update, separate from Partner Program entry.",
+    "watch_urls": ["https://support.google.com/youtube/answer/72851", "https://support.google.com/youtube/answer/12843009", "https://blog.youtube/news-and-events/youtube-partner-program-updates-2027-new-opportunities-earn/"]
+  },
+  "no_figure_reason": "Your Shorts are already inside the channel figure above: YouTube's RPM counts Shorts engaged views together with long-form views. A separate Shorts amount would need the RPM from the Shorts content tab, and adding it to the channel figure would count the same money twice."
+}

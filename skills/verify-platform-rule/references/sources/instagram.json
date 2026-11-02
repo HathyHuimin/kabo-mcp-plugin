@@ -1,0 +1,268 @@
+{
+  "schema_version": "platform-policy-sources.v1",
+  "library_version": "2026.09.8",
+  "compiled_at": "2026-09-15",
+  "staleness_budget_days": 120,
+  "sources": [
+    {
+      "source_id": "instagram.inspiring_creativity",
+      "platform": "instagram",
+      "domains": [
+        "product_help",
+        "recommendations",
+        "platform_changes"
+      ],
+      "role": "rule_source",
+      "title": "Inspiring creativity on Instagram | Instagram Blog",
+      "url": "https://about.instagram.com/blog/announcements/inspiring-instagram-creativity",
+      "source_authority": "official_secondary",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://creators.instagram.com/blog/instagram-trial-reels"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "Adam Mosseri's 2025-06-12 announcement that Trial Reels is available to everyone (share a Reel with non-followers first), and the experiment statistic: after trying Trial Reels, 40 percent of creators started posting Reels more often and of those who did, 80 percent saw an increase in Reels reach from non-followers, from an internal look at 400,000+ creators. The footnote says performance is not guaranteed.",
+      "does_not_carry": "A general rule that about 80 percent of recommendations go to non-followers. The 80 percent sentence on THIS page is scoped to people who posted more after using Trial Reels, not to all Reels reach. That distinction is the reason this row exists.",
+      "language": "en"
+    },
+    {
+      "source_id": "instagram.insights_overview",
+      "platform": "instagram",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "About Instagram insights | Instagram Help Center",
+      "url": "https://help.instagram.com/788388387972460",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-15",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://about.instagram.com/blog/announcements"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "Instagram Insights availability for public accounts; the app overview names Views, Interactions, New followers and Content you shared; account and content overviews are also available on instagram.com; the overview dropdown accepts preset or custom timeframes only within the past 90 days; the content library can filter content by media type, reach, interactions and time frame. It also carries metric definitions and the 100-account threshold for some audience demographics.",
+      "does_not_carry": "A sort control that ranks Reels by Follows, a 12-month aggregate Insights window, or a complete recipe for deciding what content to make next. Individual-Reel Follows and its longer availability window live on instagram.reels_insights.",
+      "language": "en"
+    },
+    {
+      "source_id": "instagram.link_a_reel",
+      "platform": "instagram",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Link a reel | Instagram Help Center",
+      "url": "https://help.instagram.com/31179524024966208",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-09",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://about.instagram.com/features/reels"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The official name Link a reel, and that a Reel can have a link attached as the Help Center describes it.",
+      "does_not_carry": "Who is eligible, any ranking boost for linked Reels, or a full tap-path beyond what this short article writes.",
+      "language": "en"
+    },
+    {
+      "source_id": "instagram.originality",
+      "platform": "instagram",
+      "domains": [
+        "originality",
+        "recommendations"
+      ],
+      "role": "rule_source",
+      "title": "Original content guidelines | Instagram for Creators",
+      "url": "https://creators.instagram.com/original-content-guidelines",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-09",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://creators.instagram.com/blog/rewarding-original-creators-on-instagram"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "What Instagram counts as original versus unoriginal content, and a 30-day rolling window for recommendation eligibility.",
+      "does_not_carry": "Any number of allowed reposts, any required interval between posts, or whether a specific Trial respost is judged a duplicate. That absence is a fact about THIS page.",
+      "language": "en"
+    },
+    {
+      "source_id": "instagram.reels_feature",
+      "platform": "instagram",
+      "domains": [
+        "recommendations",
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Reels | Instagram",
+      "url": "https://about.instagram.com/features/reels",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-09",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://creators.instagram.com/blog/tips-for-improving-your-reach"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "That you can record Reels up to 20 minutes, and that Reels over 3 minutes will not be recommended to new audiences.",
+      "does_not_carry": "Any sentence that long-form Reels are boosted, or that about 80 percent of recommendations go to non-followers as a general rule. The Trial Reels 80 percent experiment lives on the registered inspiring-creativity announcement, not on this page.",
+      "language": "en"
+    },
+    {
+      "source_id": "instagram.reels_insights",
+      "platform": "instagram",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "View insights on your Instagram reels | Instagram Help Center",
+      "url": "https://help.instagram.com/202865988324236",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-15",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://about.instagram.com/blog/announcements"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The current individual-Reel entry path (profile Reels tab, select a Reel, View insights); Views, Watch time, Viewers, Average watch time and Follows definitions; Follows means accounts that started following as a result of viewing that Reel; eligibility for Reels posted on or after 2021-05-14 and availability for up to two years after original publication.",
+      "does_not_carry": "A bulk list that can be sorted by Follows, an all-content 12-month filter, or any instruction to compare Follows without a reach/view denominator, consistent window and sample-size check.",
+      "language": "en"
+    },
+    {
+      "source_id": "instagram.rewarding_original",
+      "platform": "instagram",
+      "domains": [
+        "originality",
+        "recommendations"
+      ],
+      "role": "rule_source",
+      "title": "Rewarding original creators on Instagram",
+      "url": "https://creators.instagram.com/blog/rewarding-original-creators-on-instagram",
+      "source_authority": "official_secondary",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://creators.instagram.com/original-content-guidelines"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The 2026-04-30 announcement that originality protections now cover photos and carousels as well as Reels; that accounts which primarily re-upload others' work lose recommendations (not the follower feed); that 75 percent of US recommendations now come from original posts; and the rolling 30-day window to regain eligibility.",
+      "does_not_carry": "The Trial Reels 80 percent non-follower experiment, or any allowed-repost count. Those are not on this announcement.",
+      "language": "en"
+    },
+    {
+      "source_id": "instagram.tips_improving_reach",
+      "platform": "instagram",
+      "domains": [
+        "recommendations"
+      ],
+      "role": "rule_source",
+      "title": "Tips for improving your reach | Instagram for Creators",
+      "url": "https://creators.instagram.com/blog/tips-for-improving-your-reach",
+      "source_authority": "official_secondary",
+      "status": "verified",
+      "verified_at": "2026-09-09",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://about.instagram.com/features/reels",
+        "https://about.instagram.com/blog/announcements/inspiring-instagram-creativity"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "That the Reels tab is mostly content from accounts you do not follow, and that Instagram recommends Reels of 3 minutes or less.",
+      "does_not_carry": "The sentence 'about 80 percent of viewers are non-followers' as a general reach rule. A 2025 Trial Reels statistic about 80 percent of people who posted more seeing more non-follower reach lives on the registered inspiring-creativity announcement, not on this page.",
+      "language": "en"
+    },
+    {
+      "source_id": "instagram.trial_reels",
+      "platform": "instagram",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Introducing trial reels | Meta Newsroom",
+      "url": "https://about.fb.com/news/2024/12/trial-reels-try-content-non-followers-first-see-what-perfoms-best/",
+      "source_authority": "official_secondary",
+      "status": "verified",
+      "verified_at": "2026-09-09",
+      "retrieval": {
+        "method": "plain_fetch"
+      },
+      "watch_urls": [
+        "https://creators.instagram.com/blog/instagram-trial-reels"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The official name trial reels; that they are shown to non-followers first so a creator can see how the Reel performs before sharing it with followers.",
+      "does_not_carry": "A required number of trials, a pass line, or a respost strategy. Those are not on this announcement.",
+      "language": "en"
+    },
+    {
+      "source_id": "instagram.trial_reels_creators",
+      "platform": "instagram",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Instagram trial reels | Instagram for Creators",
+      "url": "https://creators.instagram.com/blog/instagram-trial-reels",
+      "source_authority": "official_secondary",
+      "status": "verified",
+      "verified_at": "2026-09-10",
+      "retrieval": {
+        "method": "js_rendered"
+      },
+      "watch_urls": [
+        "https://about.instagram.com/blog/announcements/inspiring-instagram-creativity"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "The 2024-12-10 product write-up: a Trial Reel is shown to non-followers first, not on the profile Reels tab or main grid until Share to everyone; about 24 hours later the creator sees views and a comparison; Instagram may auto-share to followers based on views in the first 72 hours.",
+      "does_not_carry": "The 40 percent / 80 percent Trial Reels experiment numbers. Those live on the inspiring-creativity announcement, not on this how-to.",
+      "language": "en"
+    },
+    {
+      "source_id": "meta.transparency_recent_updates",
+      "platform": "instagram",
+      "domains": [
+        "platform_changes",
+        "content_policy"
+      ],
+      "role": "change_signal",
+      "title": "Recent Updates | Meta Transparency Center",
+      "url": "https://transparency.meta.com/recent-updates/",
+      "source_authority": "official_help_page",
+      "status": "unverified_draft",
+      "verified_at": null,
+      "retrieval": {
+        "method": "browser_rendered"
+      },
+      "watch_urls": [
+        "https://transparency.meta.com/policies/community-standards"
+      ],
+      "watch_urls_absent_reason": null,
+      "carries": "An ordered list of recent policy and reporting updates across Meta's surfaces.",
+      "does_not_carry": "Dates. Measured 2026-09-06 through a host extract: entries carry a title and a description with no timestamp, so relative order is the only chronology available and 'what changed since I last looked' cannot be answered from this page. It is the weakest change feed of the three platforms, and it is recorded as a signal rather than a source for that reason. Also carries nothing about reposted or aggregated content, recommendation eligibility, or reduced distribution.",
+      "language": "en"
+    }
+  ]
+}
