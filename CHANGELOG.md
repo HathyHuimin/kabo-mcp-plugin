@@ -30,6 +30,8 @@
   已知 runner 画面问题（不比 r67 更差，另由 runner 跟进）：画中画录屏被裁切、字幕压在录屏上；实物桌面产品不全、部分插镜换成生成的静帧；
   口播原白底标题丢失、字幕压手。
 - 合入 main（1.0.5 / 1.0.6 已由 main 发布，含旁白参考）：旁白与三类口播并存，参考上限统一 90 秒。
+  合并后的包在生产上冒烟（画中画 TikTok，job `20964b79`，runner V2-r71，73.3 秒，$1.22）：读到画中画格式文件、`all_models` 取到
+  `talking_model_choices`、默认出片用 Vivix、终审结论（framing）逐项转述，均通过。旁白参考本轮未测（随 main 的 1.0.5 / 1.0.6 已发布）。
 - `contracts/directory-mcp/` 重新固定到 kabo `f00ff9738`（63 个工具；`get_remake_video` 的 `all_models` 与 `talking_model_choices`、`render_remake_video` 的默认模型与说明，另含 `tiktok_list_account_posts` 的说明变化）。
 - 三个 trends Skill：逐项核对 creator-skills `92824da5b` 到 `a9514ba30`（冻结点）之间的账号画像系列（#914、#915、#918、#920，15 个提交），脚本与 references 已由 #32、#33 和 1.0.6 全部覆盖，无需补移植；`skills.lock.json` 的来源改记为 IG 0.3.115 / TT 0.1.105 / YT 0.1.103（`a9514ba30`）。
 
