@@ -150,15 +150,11 @@ def supersede(path: Path | None) -> None:
 def resume_command() -> str:
     """This same stage, with the same arguments, run again with `--placed` from this run directory.
 
-    `--without-include` answered one hand-over and is remembered by the run; the original ask given with
-    `--question-file` is stored by the run too, and a resume does not read standard input again.
+    `--without-include` answered one hand-over and is remembered by the run. `--question-file -` stays:
+    the run checks a first stage's arguments, and a `--placed` run keeps the stored ask without
+    waiting on standard input.
     """
-    stage, rest = [], iter(sys.argv[1:])
-    for arg in rest:
-        if arg == "--question-file":
-            next(rest, None)
-        elif arg not in ("--placed", "--without-include") and not arg.startswith("--question-file="):
-            stage.append(arg)
+    stage = [arg for arg in sys.argv[1:] if arg not in ("--placed", "--without-include")]
     return (f"cd '{Path.cwd()}' && KABO_STATIC_RUN_DIR='{Path.cwd()}' python3 '{SCRIPTS / 'drive.py'}' "
             + " ".join(f"'{arg}'" if re.search(r"[^\w./=:-]", arg) else arg for arg in stage) + " --placed")
 
