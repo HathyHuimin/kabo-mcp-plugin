@@ -7,8 +7,8 @@ needed by each host. The AI host runs the workflows and writes
 reports; Kabo provides the data tools. The plugin does not hand work to Kabo's web agent, download
 Skills at runtime, or register lifecycle hooks.
 
-The current GitHub package release is [**1.0.5**](https://github.com/kabo-sh/kabo-mcp-plugin/releases/tag/v1.0.5),
-packaged as `kabo-1.0.5.zip`. Version 1.0.0 reset the public release numbering while retaining the latest
+The current GitHub package release is [**1.0.6**](https://github.com/kabo-sh/kabo-mcp-plugin/releases/tag/v1.0.6),
+packaged as `kabo-1.0.6.zip`. Version 1.0.0 reset the public release numbering while retaining the latest
 implementation. Earlier version history and source Skill versions remain separate. OpenAI marketplace
 review and production acceptance remain separate from this GitHub release.
 
@@ -102,7 +102,7 @@ for `-g`. The repository's `skills.lock.json` is a separate record of the origin
 
 - `#stable` follows published releases. It advances only after a release; installed files stay as
   they are until you run an installation or update command.
-- `#v1.0.5` pins one release. Updating does not switch to a newer tag; install the new tag explicitly.
+- `#v1.0.6` pins one release. Updating does not switch to a newer tag; install the new tag explicitly.
 - Without a ref, the CLI follows `main`, which includes unreleased changes.
 
 See [GitHub Releases](https://github.com/kabo-sh/kabo-mcp-plugin/releases) for new versions and release
