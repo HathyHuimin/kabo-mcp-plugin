@@ -30,8 +30,9 @@ Do what `fetch` prints. For a data tool's result, call `get_research_data_downlo
 `--tool get_research_data_download`; the new link's sha256 and bytes can differ from the old one. If
 that call itself fails, call the original tool again with the same parameters and
 `"delivery": "download"` (this re-runs it) and fetch that result right away. For
-`get_research_data_job` or `read_research_data_artifacts`, call it again with
-`"delivery": "download"`.
+`get_research_data_job`, `read_research_data_artifacts` or a `lookup_*` tool, call it again with
+`"delivery": "download"`. A `collect_*` or `enrich_*` result is complete inline: export it and run
+the same command with `stage` instead of calling the tool again.
 
 ## Deferred jobs
 
