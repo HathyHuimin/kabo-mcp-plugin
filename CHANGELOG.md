@@ -15,9 +15,14 @@
   成片会短到多少、为什么（生产回归里一条 73 秒的参考只剩 13 秒）。
 - 旁白参考仍未放进插件（preview 需要 runner r63 以上，单独发版）。
 - `contracts/directory-mcp/` 未重新固定：kabo main 上 YouTube / TikTok 等工具契约另有变化，需与相关 Skill 的绑定一起同步，单独处理。
-- 生产回归：待补。
+- 生产回归（Codex，OAuth 连 `kabo.sh/mcp-pub`，默认 Vivix A1，runner V2-r70 `fdcd2d10`，实物另在 V2-r71 `087045c1` 复测）：
+  口播（Instagram 72.8 秒，job `22cb0fcd`）、画中画（TikTok，job `f3dbe111`）、实物（YouTube Short，job `3b4c83e2`）均交付，
+  插件侧检查全部通过：模型选项 Vivix 第一档、默认出片用 Vivix；画中画 / 实物读到对应格式文件，实物提前说明空手；终审转述完整。
+  口播参考大半是原作者的职业自述而创作者是园艺博主，脚本删到约 15 秒，并在选模型前告诉了用户。
+  已知 runner 画面问题（不比 r67 更差，另由 runner 跟进）：画中画录屏被裁切、字幕压在录屏上；实物桌面产品不全、部分插镜换成生成的静帧；
+  口播原白底标题丢失、字幕压手。
 
-## 1.0.5（2026-10-29；GitHub Release）
+## 1.0.5（未单独发布，并入 1.0.6）
 
 - `remake-viral-video`：参考视频上限 60 秒 → 90 秒（kabo#1826，runner r62）。
 - `remake-viral-video`：成片交付后用 `get_remake_video` 的 `include: ["review"]`（kabo#1825）取 Kabo 终审结论与交付说明：
