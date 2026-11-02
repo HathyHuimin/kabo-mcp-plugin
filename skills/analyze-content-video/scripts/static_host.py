@@ -76,6 +76,8 @@ JOB_TOOLS = {"get_research_data_job", "read_research_data_artifacts"}
 ROUTE_ALIASES = {
     "public-video-media/extract_keyframes": {"public-video-media/extract_keyframes_hosted_media",
                                              "public-video-media/extract_keyframes_hosted_stream"},
+    # YouTube 的测量与抽帧共用一次托管取流，任务信封记的是那次执行的名字。
+    "public-video-media/measure_media_signals": {"public-video-media/measure_media_signals_hosted_stream"},
     "instagram-discovery/get_post": {"instagram-detail-proxy/get_post"},
 }
 # lookup 的 data 不是路线原生形状，而是这份投影；消费方按它判形状，不按 connector_id。
@@ -204,7 +206,7 @@ def check_envelope(tool, envelope):
             raise ValueError("Incomplete connector envelope")
     if tool == "get_research_data_job":
         actual = envelope.get("connector_id", "") + "/" + envelope.get("operation", "")
-        if actual not in CONNECTOR_TOOLS:
+        if actual not in CONNECTOR_TOOLS and not any(actual in names for names in ROUTE_ALIASES.values()):
             raise ValueError("Job returned an undeclared data operation")
     if not operation and tool not in ("get_research_data_job", RESIGN_TOOL) and not envelope.get("schema_version") and tool != "read_research_data_artifacts":
         raise ValueError("Tool result has no supported evidence schema")

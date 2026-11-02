@@ -17,7 +17,10 @@ package reads it.
 2. **Read the file.**
    `cd '<run directory>' && python3 <skill directory>/scripts/extract_local_frames.py --media <absolute path> --out-dir analysis/frames
    --artifact analysis/local-media.json --hook-window-s <3 for a Short, 15–30 for long-form>`,
-   adding `--measure-loudness` when the question is about sound. It writes the same frame shape the
+   adding `--measure-loudness` when the question is about sound, and `--measure-signals` whenever it
+   touches pacing, cuts, pauses or the ending: frames place no cut shorter than their spacing and
+   hear no pause, and the measurement does both with the connector's own thresholds, landing in
+   `media.probed` exactly as a published video's would. It writes the same frame shape the
    connector writes, so everything in *Frame sampling* in `references/evidence-reading.md` applies unchanged — `frames.origin`
    included. **Locally sampled frames are real pixels and are read exactly like any other frame:
    open them, quote what is on them, cite them the same way.** Nothing in the analysis branches on
@@ -73,6 +76,10 @@ re-encode turns into audible distortion, so it is worth saying on the master.
    `creator_supplied` and that is what lets you quote a line as what they actually say. Its timings
    were never checked against this cut, so quote the words freely and say once that the timing is
    the file's claim about the video rather than a measurement of it.
+   **Where the host can transcribe the attached file itself**, that is the same tier with a machine
+   behind it: save the cues it returned, timings unchanged, as `analysis/host-transcript.srt` and
+   read that with `--origin speech_recognition` added. The origin is the point — those words are
+   what the analysis heard, quotable as heard but never as the creator's exact wording.
 3. **Local speech recognition** — not implemented in this version. `probe_media_tools.py` reports
    it as a gap and prints the one line that would install it. This Skill never runs an install, and
    **it does not run this tier even where the library is already present**: nothing here would call

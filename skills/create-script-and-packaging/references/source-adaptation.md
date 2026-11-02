@@ -1,10 +1,34 @@
 # Adapt a source without losing the creative deliverable
 
-Use this route for a request to turn an identified video into written clip
-plans, opening variants or a carousel. A reference-only analysis remains an
+Use this route for a request to continue an identified episode, or turn a video
+into written clip plans, opening variants or a carousel. A reference-only analysis remains an
 analysis task; actual edited media needs a media execution capability from the
 host, which this Skill does not provide.
 Do not add source research to an independent creative brief.
+
+## Continue an episode without repeating it
+
+Resolve which episode the user means before writing its sequel. Reuse its actual
+script or source observations already available in this conversation. For "my
+latest post", verify the current listing and then the selected post's content.
+An account review, title, thumbnail, genre or remembered character is not the
+episode. A previous assistant proposal is not proof of what the creator posted.
+
+From that source, identify the established events, the ending/reveal and any
+unresolved question. Keep the source reference attached to those facts; source
+gaps remain gaps. Then choose a new consequence, obstacle, discovery or decision
+that follows from the ending. A short recap may orient the viewer, but the main
+beats and payoff must advance beyond the previous episode. Check the proposed
+hook, central beats and payoff against the original before delivery; changing
+wording, character labels or the final CTA does not make repeated events a sequel.
+Clearly distinguish new fictional proposals from events observed in the source.
+
+If no permitted path can recover the episode, ask for its script or a short
+description of the ending and unresolved point. Do not generate a supposed
+continuation from the topic alone. If the creator says "I already did that",
+recheck the source and identify the repeated beat before proposing a replacement;
+do not repeat an unchanged failed retrieval or offer another guessed episode.
+An independent new story is a different deliverable and needs the user's choice.
 
 Preserve the requested output, source identity, target platform, language and
 requested quantity while obtaining evidence. A URL identifies source material;
@@ -35,7 +59,9 @@ limits. If it also contains a diagnosis, craft teardown or creative proposal,
 those recommendations do not redefine the main task. Resume packaging with the
 original request once evidence is sufficient, rather than relaying that report
 as the final adaptation. Do not claim a retrieval failed if no retrieval was
-attempted.
+attempted. Bind a video-analysis result through `video_analysis_sources` by its
+`analysis/video_analysis.json` (`video-analysis.v1`, `artifact_id` = its
+`analysis_id`), never by its report Markdown or a summary written here.
 
 A missing transcript does not establish that visual evidence is unavailable.
 If the video Skill can analyze this source and duration, it can obtain visual
@@ -47,6 +73,9 @@ even if an upstream narrative suggests quoting it. An exact quotation needs
 independently verifiable source text or a directly inspected source frame.
 Do not invent speech from silent frames. When an analysis of this source is
 already pending, wait for its output rather than suggesting another paid run.
+Reuse its job id only while the host still accepts it; if the host rejects that
+id as not belonging to this turn, the analysis has to run again in this turn —
+do not ask the creator to describe a video that a permitted path can still read.
 Respect terminal errors recorded in that output. When no permitted path can
 recover material facts needed for the adaptation, identify that specific gap
 and ask for the minimum missing source material, preserving usable work.

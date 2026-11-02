@@ -6,6 +6,11 @@ or desired audience action required by the native direct-selection builder.
 Reuse established conversation facts first. An account handle or a request to
 write about an unspecified product is not a concrete topic.
 
+A sequel needs the actual previous episode, not just its topic. Apply
+[source-adaptation.md](source-adaptation.md) first when the user requests a
+continuation; the creative-draft permission here does not authorize inventing
+the prior episode or repeating it as new content.
+
 Distinguish a missing fact from a creative choice. A request to design a script
 can authorize proposing its framing or CTA; it does not confirm those proposals
 as facts about the creator. When a usable draft is possible, write it from the
