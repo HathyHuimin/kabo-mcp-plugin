@@ -11,9 +11,9 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import connector_driver as cd
-import persist_envelope as pe  # persist_envelope.py places what static_host.py staged, never model text
 import record_passages as passages
 import render_rule_check as renderer
+import static_host  # composite_records(): the render result static_host.py staged, never model text
 import validate_rule_check as validator
 import validate_sources
 
@@ -23,7 +23,11 @@ INPUT = Path("analysis/rule-input.json")
 # Resource budgets, not evidence sufficiency rules. Overflow is explicit, never silently clipped.
 DEFAULT_PAGES = 12
 MAX_PAGES = 32
-WAVE_SIZE = 4
+# The backend tool that renders every planned page in one call.
+RENDER_TOOL = "render_official_pages"
+# A planned page the backend did not render (its time budget ran out, or the render became a deferred
+# job whose result it leaves out): a gap marker, never an envelope, so the page reads as unreachable.
+UNRENDERED = "unrendered-page.v1"
 
 
 def write(path: Path, value: object) -> None:
@@ -108,18 +112,9 @@ def original_passages(text: str) -> list[str]:
 
 def page_view(item: dict, path: Path, rows: dict) -> dict:
     envelope = cd.load(path)
-    if envelope.get("schema_version") == "unbound-page-response.v1":
-        refs = envelope.get("unbound_records")
-        if not isinstance(refs, list) or not refs or len(set(refs)) != len(refs):
-            raise ValueError(f"{path}: invalid unbound response references")
-        for name in refs:
-            if not isinstance(name, str) or not re.fullmatch(r"raw-[0-9]+\.json", name):
-                raise ValueError(f"{path}: invalid unbound response path")
-            if not unbound_failure(path.parent / name):
-                raise ValueError(f"{path}: unbound record is not a URL-less failed response")
+    if envelope.get("schema_version") == UNRENDERED:
         return {**item, "status": "unreachable", "passages": [],
-                "reason": "No response could be bound to this selected URL. URL-less failed responses "
-                          "were retained without assigning their error or content to this page."}
+                "reason": "The data service did not render this page in this run."}
     if (envelope.get("connector_id"), envelope.get("operation")) != (passages.CONNECTOR, passages.OPERATION):
         raise ValueError(f"{path}: wrong connector/operation")
     data = envelope.get("data") or {}
@@ -146,12 +141,47 @@ def page_view(item: dict, path: Path, rows: dict) -> dict:
     return result
 
 
-def unbound_failure(path: Path) -> bool:
-    value = cd.load(path)
-    data = value.get("data")
-    return ((value.get("connector_id"), value.get("operation")) == (passages.CONNECTOR, passages.OPERATION)
-            and value.get("status") in {"failed", "blocked_setup", "unsupported"}
-            and (data is None or isinstance(data, dict) and not data.get("url")))
+def latest_render(plan: dict) -> dict:
+    """This run's newest render_official_pages record whose calls all belong to this plan's pages."""
+    groups = {f"page-{i}" for i in range(len(plan["pages"]))}
+    for record in reversed(static_host.composite_records(RENDER_TOOL)):
+        if all(call.get("group") in groups for call in record.get("calls") or []):
+            return record
+    raise ValueError("no staged render_official_pages result in this run; make the handed-over call, fetch "
+                     "its result as printed, then repeat the first command exactly and add --placed")
+
+
+def place_pages(plan: dict, rows: dict) -> None:
+    """Bind each rendered page to its planned page by its `page-<i>` group and requested URL."""
+    record = latest_render(plan)
+    by_group: dict[str, dict] = {}
+    for call in record["calls"]:
+        if call["group"] in by_group:
+            raise ValueError(f"render_official_pages answered {call['group']} twice; no page was placed")
+        by_group[call["group"]] = call
+    for i, item in enumerate(plan["pages"]):
+        group, target = f"page-{i}", Path(f"snapshot/page-{i:02d}.json")
+        call = by_group.get(group)
+        if call is None:
+            # Not rendered (time budget, or a deferred render the backend leaves out): a gap, never a
+            # guessed envelope.
+            write(target, {"schema_version": UNRENDERED, "url": item["url"]})
+            for sid in item["source_ids"]:
+                Path(f"snapshot/{sid}.envelope.json").unlink(missing_ok=True)
+            continue
+        source = Path(call["path"])
+        meta = cd.load(source.with_suffix(".meta"))
+        requested = (meta.get("composite_parameters") or {}).get("url")
+        if (call.get("tool") != "official_page_render_page" or not isinstance(requested, str)
+                or validator.page_identity(requested) != validator.page_identity(item["url"])):
+            raise ValueError(f"{group} answers {requested!r}, not the planned page {item['url']!r}; "
+                             "no page was relabelled")
+        raw = Path(f"snapshot/raw-{i:02d}.json")
+        raw.write_bytes(source.read_bytes())
+        page_view(item, raw, rows)  # identity check before it can become evidence
+        target.write_bytes(raw.read_bytes())
+        for sid in item["source_ids"]:
+            Path(f"snapshot/{sid}.envelope.json").write_bytes(raw.read_bytes())
 
 
 def build_input(plan: dict, rows: dict) -> dict:
@@ -179,52 +209,11 @@ def stage_fetch(args: argparse.Namespace) -> None:
     if PLAN.exists() and cd.load(PLAN) != plan:
         raise ValueError("this run has a different source plan; start a new run without --placed")
     write(PLAN, plan)
-    for start in range(0, len(plan["pages"]), WAVE_SIZE):
-        wave = plan["pages"][start:start + WAVE_SIZE]
-        calls = [cd.run_call(passages.CONNECTOR, passages.OPERATION, {"url": p["url"]}) for p in wave]
-
-        def place(wave=wave, start=start):
-            # Stage all records before assigning fallback responses: completion order can differ.
-            pending = []
-            for offset, item in enumerate(wave):
-                raw = Path(f"snapshot/raw-{start + offset:02d}.json")
-                if not raw.exists():
-                    def fallback(raw=raw):
-                        pe.persist(dest=raw, connector_id=passages.CONNECTOR,
-                                   operation=passages.OPERATION, any_status=True)
-                    cd.place_record(passages.OPERATION, raw, fallback, nth=offset)
-                pending.append((offset, raw))
-            direct = cd.LAST_RECORDS is not None
-            unmatched = []
-            for offset, item in enumerate(wave):
-                if direct:
-                    match = next((p for i, p in pending if i == offset), None)
-                else:
-                    match = next((p for _, p in pending if validator.page_identity(
-                        (cd.load(p).get("data") or {}).get("url")) == validator.page_identity(item["url"])), None)
-                if match is None:
-                    unmatched.append((offset, item))
-                    continue
-                page_view(item, match, rows)  # identity check before it can become evidence
-                target = Path(f"snapshot/page-{start + offset:02d}.json")
-                target.write_bytes(match.read_bytes())
-                for sid in item["source_ids"]:
-                    Path(f"snapshot/{sid}.envelope.json").write_bytes(match.read_bytes())
-                pending = [(i, p) for i, p in pending if p != match]
-            if unmatched:
-                if len(pending) != len(unmatched) or not all(unbound_failure(p) for _, p in pending):
-                    raise ValueError("cannot bind host responses; no page was relabelled. "
-                                     "Inspect staged responses before retrying with --placed")
-                # A gap marker is not an envelope: preserve all failures, but never guess which
-                # request failed or turn a missing identity into quotable evidence.
-                gap = {"schema_version": "unbound-page-response.v1",
-                       "unbound_records": [p.name for _, p in pending]}
-                for offset, item in unmatched:
-                    write(Path(f"snapshot/page-{start + offset:02d}.json"), gap)
-                    for sid in item["source_ids"]:
-                        Path(f"snapshot/{sid}.envelope.json").unlink(missing_ok=True)
-
-        cd.fetch_round(calls, args, place)
+    # One backend call renders every planned page: page-<i> in it answers plan["pages"][i].
+    pages = [{"url": p["url"], **({"source_id": p["source_ids"][0]} if p["source_ids"] else {})}
+             for p in plan["pages"]]
+    call = {"tool": RENDER_TOOL, "arguments": {"pages": pages, "delivery": "download"}}
+    cd.fetch_round([call], args, lambda: place_pages(plan, rows))
     value = build_input(plan, rows)
     write(INPUT, value)
     indexed = Path("analysis/rule-input.txt")

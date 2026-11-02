@@ -3,9 +3,9 @@ name: verify-platform-rule
 description: "Verify platform rules, rumours, thresholds, features and settings from registered official pages, with quotes, URLs and retrieval dates. Covers feature availability, entry paths, configuration and Instagram Insights timeframe/filter/sort controls. Use plan-platform-monetization for creator eligibility, diagnose-reach-drop for account reach diagnosis, and review-creator-account for account or owner-metric analysis. Not for pricing, content coaching or end-to-end operational playbooks."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download official_page_render_page
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download render_official_pages
 metadata:
-  version: "0.18.23"
+  version: "0.18.24"
 ---
 
 # Verify Platform Rule
@@ -58,21 +58,20 @@ before claiming anything.
 
 ## Retrieval
 
-The only retrieval path is the Kabo tool `official_page_render_page`, which reads registered
-official help and newsroom pages; a registered page on another host comes back as a failed call and
-is unreachable for this run. No browser, web fetch or second route, never a search summary for the
-page, and never a rule from memory. Call `get_research_capabilities` once per run before the first
-fetch (or reuse a readiness note); if `official_page_render_page` is not ready, report the missing
-capability and stop.
+The only retrieval path is the Kabo tool `render_official_pages`, which reads registered official
+help and newsroom pages, all planned pages in one call; a registered page on another host comes back
+as a failed page and is unreachable for this run. No browser, web fetch or second route, never a
+search summary for the page, and never a rule from memory. Call `get_research_capabilities` once per
+run before the first fetch (or reuse a readiness note); if the official page render operation is not
+ready, report the missing capability and stop.
 
-- **Hand-over.** `drive.py fetch` exits 0 after printing a `call:` line per page read, in waves of up
-  to four. That pause is unfinished work. Make exactly those calls with the arguments verbatim, each
-  as its own individual call, all in one response; then do what it prints under each call (save the
-  result to the named file, run the printed `fetch` command) and finally run the printed resume
-  command. Never retype or paste page text.
+- **Hand-over.** `drive.py fetch` exits 0 after printing one `call:` line that reads every planned
+  page. That pause is unfinished work. Make exactly that call with the arguments verbatim; then do
+  what it prints under it (save the result to the named file, run the printed `fetch` command) and
+  finally run the printed resume command. Never retype or paste page text.
 - **Anything else** — a refused fetch, an expired link, a queued job, a failed call — follow
-  `references/data-calls.md`. A failed page read is evidence: stage a failed connector envelope like
-  any other result and `drive.py` records that page as unreachable. An invalid-input error (such as a
+  `references/data-calls.md`. A failed page read is evidence: `drive.py` records that page as
+  unreachable. An invalid-input error (such as a
   host that is not an official help site) is never retried.
 
 ## Workflow
@@ -95,8 +94,8 @@ capability and stop.
 
    Region defaults to UNKNOWN; add `--region <code> --region-source user_stated|account_declared`
    only when supplied, never inferred from language or profile. For each selected source the
-   driver also takes its `watch_urls`, deduplicates URLs and hands over reads in waves of at most
-   four. The budget is 12 distinct pages including watch URLs; explicitly raise `--max-pages` up
+   driver also takes its `watch_urls`, deduplicates URLs and hands over one call that reads them all.
+   The budget is 12 distinct pages including watch URLs; explicitly raise `--max-pages` up
    to 32 when needed. These are resource limits, not evidence sufficiency thresholds. Overflow
    stops before fetching; nothing is silently omitted. Resume each hand-over as described above.
 

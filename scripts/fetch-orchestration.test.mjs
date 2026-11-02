@@ -36,7 +36,6 @@ const HANDOVER_SITES = {
 const HOST_PROBE_FILES = [
   "skills/diagnose-reach-drop/scripts/connector_driver.py",
   "skills/review-creator-account/scripts/connector_driver.py",
-  "skills/verify-platform-rule/scripts/connector_driver.py",
 ];
 
 export function handoverSites(files = scripts()) {
