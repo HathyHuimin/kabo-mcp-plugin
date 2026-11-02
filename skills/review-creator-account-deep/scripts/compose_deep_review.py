@@ -480,6 +480,11 @@ def main(argv: list[str] | None = None) -> int:
     write_json(args.output, report)
     args.markdown.parent.mkdir(parents=True, exist_ok=True)
     args.markdown.write_text(report["markdown"], encoding="utf-8")
+    # 与其他出报告的 Skill 一致：最终步打印 creator_report 路径与报告全文，模型照原文交付，不再自己读文件转述
+    # （实测里模型转述时删掉了证据引用）。
+    print(f"creator_report: {args.markdown.resolve()}")
+    print(report["markdown"].rstrip())
+    print('Your reply is this report, even when the question was short: at most one short sentence of your own, then the report above complete and unchanged (translated only where the Skill says), then this creator_report line.')
     return 0
 
 

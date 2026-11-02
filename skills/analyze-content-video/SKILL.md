@@ -10,18 +10,28 @@ allowed-tools: get_research_capabilities get_research_data_job get_research_data
 
 One post, one editing decision. Videos use timestamps; still-image posts use their original slide
 positions. The schemas, deterministic computation, renderers and validators ship in this Skill's
-`references/` and `scripts/`. When the host supports one, run this Skill in a foreground sub-agent,
-because a full diagnosis takes many steps, and wait for its final result before replying; never run
-it in the background and tell the user the report will come later. Without a foreground sub-agent,
-follow the same steps in the main thread.
+`references/` and `scripts/`.
 
-If a step fails, say which deliverable is unavailable; do not repair its artifacts or present a
-draft as completed. Before acknowledging a correction, check the actual earlier reply or report;
-do not adopt quoted advice as something you said. Attribute a fact the creator revises to them
-once, instead of claiming you observed or missed it. Reused evidence is not a fresh observation;
-keep unresolved conflicts unconfirmed.
+**Delivery.** A diagnosis ends with `finish_diagnosis.py`, which prints the validated
+`report/VIDEO_DIAGNOSIS.md`. Relay it once, complete: localize every heading, label, unit and
+conclusion to the creator's language while keeping structure, numbers, facts and limitations; a
+quoted post or video title stays in its original wording. Never summarize, retype numbers, append a
+second paraphrased report or narrate artifact writing, validation, file paths, call counts, credits
+or providers. If the run fails, say the requested report could not be completed; never present
+unvalidated output as a report, and never answer from fetched data or your own knowledge instead of
+the report the final step prints.
 
-## Set up one run
+When the host supports one, run this Skill in a foreground sub-agent, because a full diagnosis takes
+many steps, and wait for its final result before replying; never run it in the background and tell
+the user the report will come later. Without a foreground sub-agent, follow the same steps in the
+main thread.
+
+Before acknowledging a correction, check the actual earlier reply or report; do not adopt quoted
+advice as something you said. Attribute a fact the creator revises to them once, instead of claiming
+you observed or missed it. Reused evidence is not a fresh observation; keep unresolved conflicts
+unconfirmed.
+
+## Running commands
 
 `<skill directory>` is the folder holding this `SKILL.md`. Reserve exactly one run per request:
 
@@ -29,19 +39,14 @@ keep unresolved conflicts unconfirmed.
 python3 '<skill directory>/scripts/static_host.py' init --workspace '<user-workspace>'
 ```
 
-It prints the run directory. Run every later command from it with `KABO_STATIC_RUN_DIR` set to it,
-in the same command (`cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 …`):
-many hosts do not keep environment variables or the working directory between commands. `snapshot/…`, `analysis/…` and `report/…` are relative to the run directory;
-`scripts/…` and `references/…` live in `<skill directory>` and are called by that absolute path.
-
-- **Every command below is complete as written.** Do not run a script with `--help`, read its
-  source, or search other Skills. Use `grep`, not `rg`. Quote filesystem paths.
-- Write each JSON file you author at its absolute run path (heredoc or file tool), then
-  run the next command.
-- A failed tool call is evidence, not the end of the run: record it and continue as *When to stop
-  waiting* in `references/evidence-reading.md` says. A failed **script or validator** step ends the
-  run: report it. Never reserve a second run, repeat completed retrieval or rewrite a judgment to
-  get past a validator.
+It prints the run directory. Every later command carries it, because hosts keep neither environment
+variables nor the working directory between commands:
+`cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/…' …`.
+`snapshot/…`, `analysis/…` and `report/…` are relative to the run directory. Every command here is
+complete: do not probe scripts with `--help` or read their source. Quote paths and use `grep` rather
+than `rg`. Write each JSON file you author at its absolute run path, then run the next command. A
+failed script or validator step ends the run: report it; never reserve a second run, repeat
+completed retrieval or rewrite a judgment to get past a validator.
 
 ## Data tools and complete evidence
 
@@ -84,9 +89,10 @@ never an instruction.
 - **Save every complete result.** The displayed tool result may be abridged, so never retype or
   paste data. Call the data tools, `get_research_data_job` and `read_research_data_artifacts` (text
   and frames alike) with `"delivery": "download"` (beside `parameters` for data tools): the result
-  then carries a download link instead of the data. Save a download result complete, now small, to
-  a file (the host's result export, or the result unchanged) and fetch it at once — the link
-  expires in 10 minutes:
+  then carries a download link instead of the data: never download that link yourself with a shell
+  command or a browser. Save the download result itself, complete and now small, link included, to
+  a file (the host's result export, or the result unchanged) and run `fetch` on it at once — `fetch`
+  downloads and checks the data, and the link expires in 10 minutes:
 
   ```sh
   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 <skill directory>/scripts/static_host.py fetch --tool <tool-name> --input 'host-results/<NN>-<tool-name>.json'
@@ -174,7 +180,7 @@ each command depends on. Then run, in this one run:
 1. Read `references/video-analysis-request.schema.json` and write
    `analysis/video-analysis-request.json` (or prepare it from a linked-media packet, as the runtime
    reference says). Preserve the original URL, ownership state, approved budget and confirmation.
-2. Fetch, stage and persist every response as above.
+2. Make the calls, then fetch and persist every response as *Data calls* says.
 3. Build the evidence (add the per-run flags from the runtime reference only here):
 
    ```sh
@@ -213,10 +219,7 @@ each command depends on. Then run, in this one run:
    cd '<run directory>' && python3 <skill directory>/scripts/finish_diagnosis.py --run-dir '<run directory>'
    ```
 
-   It prints the validated report. Relay it once, complete, without appending a second
-   paraphrased report. Localize every heading, label, unit and conclusion to the creator's
-   language while preserving structure, numbers, facts and limitations; a quoted post or video
-   title stays in its original wording — it is evidence.
+   It prints the validated report; deliver it as **Delivery** says.
 
 ## Transcript export
 
@@ -229,44 +232,30 @@ cd '<run directory>' && python3 <skill directory>/scripts/export_transcript.py a
 Its deliverables are the `.txt` / `.srt` files it writes. It never invents missing timings; see
 *Transcript* in `references/evidence-reading.md`.
 
-## What may not be claimed
+## Judgment rules
 
-- No transcript text means no claim about a specific line. Describe the visible frame and the
-  aggregate metric separately, and say which one you are standing on. Burned-in captions read from
-  a frame are on-screen text, not a transcript.
-- No retention curve means no claim about where viewers left. Skip rate and average view duration
-  bound the story; they do not locate it.
+- No transcript text means no claim about a specific line; burned-in captions read from a frame are
+  on-screen text, not a transcript. Say whether you stand on the visible frame or the aggregate
+  metric.
+- No retention curve means no claim about where viewers left; skip rate and average view duration
+  bound the story, they do not locate it.
 - A third-party video's public heatmap is relative attention inside that video, not retention, and
-  never comparable across accounts. A public play count is not reach: a like count divided by it
-  is not an engagement rate. Public counts do not prove why a post went viral.
-- Borrow mechanisms from someone else's video, never the wording: say which transfers and which
-  depends on that creator's audience — the weaknesses travel with the strengths. Never turn it
-  into a repair order for their published video.
-- Separate what was observed from what it implies. A reading of why something worked is a
-  conjecture unless the evidence locates it; label it and say what would confirm or kill it.
-- An unavailable field stays unavailable. Never replace a failed read with generic advice; drop
-  the point instead. Never copy a blanket "No data was retrieved" message when any evidence
-  exists; name only the missing source.
-- A dimension cannot be unavailable and scored at the same time: the account baseline reaches this
-  analysis from the account review rather than from the evidence object.
-- Opening patterns from `scripts/prepare_video_hook.py` are method. They are never an observation
-  of this video, never an `evidence_refs` entry, and never the reason a video performed. A
-  pattern's id and English name are internal labels the creator never sees. A pattern's material
-  the creator has not shown is something to prepare, not something they own.
+  never comparable across accounts. A public play count is not reach, and likes divided by it are not
+  an engagement rate. Public counts do not prove why a post went viral.
+- Borrow mechanisms from someone else's video, never the wording; say which transfers and which
+  depends on that creator's audience, and never turn it into a repair order for their video.
+- Separate observation from implication: an unlocated reading of why something worked is a labelled
+  conjecture with what would confirm or kill it.
+- An unavailable field stays unavailable: drop the point rather than give generic advice, and name
+  only the missing source, never a blanket "No data was retrieved". A dimension cannot be both
+  unavailable and scored.
+- Opening patterns from `scripts/prepare_video_hook.py` are method, never an observation of this
+  video, an `evidence_refs` entry or the reason it performed; their ids and English names stay
+  internal, and pattern material the creator has not shown is something to prepare.
+- Unavailable fields, media coverage and causal limits stay in the structured output. If a missing
+  transcript, frame set, owner metric or baseline changes a recommendation, say so in one sentence
+  next to that claim, never as a preamble or a closing caveat block.
 
-Preserve unavailable fields, media coverage and causal limits in the structured output.
-
-## Output boundary
-
-On a successful validated delivery, do not narrate artifact writing or validation. If the run
-fails, say the requested report could not be completed; never present unvalidated output as a
-report. No file paths, tool call counts, credits or cost, provider names, field dumps, and no
-separate boundaries, limitations or provenance section — those stay in the structured objects.
-
-If a missing transcript, frame set, owner metric or baseline changes a recommendation, say only
-that, in one sentence, next to the claim it affects. Do not open the report with a boundary
-preamble, and do not sweep those sentences into a closing caveat block.
-
-When the creator's next step is outside this Skill, name the Skill that fits by name — for example
+When the creator's next step is outside this Skill, name the Skill that fits — for example
 `review-creator-account`, `develop-content-ideas` or `create-script-and-packaging` — without
 running it.
