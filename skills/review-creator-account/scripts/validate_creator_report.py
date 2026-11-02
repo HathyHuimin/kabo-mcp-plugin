@@ -133,6 +133,13 @@ def evidence_hosts(report: dict) -> set[str]:
             continue
         for match in URL_HOST.finditer(child):
             hosts.add(match.group(1).lower().removeprefix("www."))
+    # 示例标题由组装脚本从证据原样抄来（如帖文里的「Ridge.com/MKBHD」），其中的裸域名是来源文字，不是泄露；
+    # 模型写的分析文字不在此列，仍按外来域名拦。
+    for key in ("what_works", "what_hurts"):
+        for pattern in report.get(key) or []:
+            for example in pattern.get("examples") or []:
+                for match in BARE_HOST.finditer(str(example.get("title") or "")):
+                    hosts.add(match.group(1).lower().removeprefix("www."))
     return hosts
 
 

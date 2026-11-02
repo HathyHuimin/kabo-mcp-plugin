@@ -1,7 +1,7 @@
 # Short window: hottest and fastest-rising
 
 Read this whole file before the first call of this route. `<run directory>` and
-`<skill directory>` are the absolute paths from *Set up one run* in `SKILL.md`; run every command
+`<skill directory>` are the absolute paths from *Running commands* in `SKILL.md`; run every command
 from the run directory.
 
 Use this route when the requested window is seven days or shorter (the last day, the last 48
@@ -27,7 +27,7 @@ plays: a collection on a short-window ask is a failed delivery, not a reason to 
 Make each call on its own, never batched. After every search call of steps 3 and 4, window lane
 and heat lane alike, completed or failed, save and fetch its result and persist it, numbering the
 files `01`, `02`, … in call order. The placement refuses a failed response; a search that still
-fails after its one retry (*Failed tool calls* in `SKILL.md`) means the short-window report cannot
+fails after its one retry (`references/data-calls.md`) means the short-window report cannot
 be completed: say so and stop, and never build from the remaining lanes.
 
 ```bash
@@ -134,4 +134,4 @@ It recomputes the original strict validation and requires the existing report by
 exactly; it never creates or rewrites a report. No connector call, new run or extra evidence is
 needed. Do not emit, return or claim success from the rendered file until this final step
 succeeds; then deliver `creator-report.md` after the complete-report language check in `SKILL.md`
-(*Deliver once*).
+(*Language at delivery*).
