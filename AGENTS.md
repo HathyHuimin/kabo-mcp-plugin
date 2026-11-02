@@ -16,6 +16,10 @@
   Research judgments, scripts and reports run in the AI host. The plugin runs independently of Kabo's
   web agent and never calls it, directly or through the API, a queue or another proxy.
   They share no sessions, tasks, model loop, sandbox or report chain; only the Skills share an origin.
+- A multi-round fetch runs in one backend data tool, not as rounds handed to the host model
+  (`docs/skills-spec.md` KS9, enforced by `scripts/fetch-orchestration.test.mjs`). Judgment needed between
+  fetch rounds may run as a backend prompt node inside that tool; analysis and the report stay in the host.
+  Scripts never branch on the host to choose a fetch path.
 - The only production MCP connection is `/mcp-pub`. Each data operation is pinned and must match the
   provider's artifacts. Do not introduce a registry, a general-purpose executor or remote end-to-end
   research tasks. The provider keeps the old dynamic server protocol compatible.

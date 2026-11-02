@@ -60,6 +60,12 @@ reviews:
         (position, count, references, numbers, fields) instead. Renderers keep one English set of fixed labels;
         do not add bilingual label tables. Reading legacy localized machine values from already-shipped
         artifacts is allowed if new output never produces them.
+        Flag as **critical** (docs/skills-spec.md KS9): a new or larger multi-round fetch orchestrated on the
+        host, i.e. a driver stage that prints `call:` lines for the host model to make and then resumes, or
+        a script that branches on the host to pick a fetch path (connector-outbox, session thread ids, turn
+        tokens). Ask for one backend endpoint that runs the whole fetch; model judgment between rounds goes
+        to a backend prompt node, or splits the fetch into at most two or three backend calls. Removing
+        hand-over rounds is always welcome.
 
   pre_merge_checks:
     title:
