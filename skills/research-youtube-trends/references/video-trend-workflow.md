@@ -3,7 +3,7 @@
 Read this whole file before `drive.py start`. It holds what each stage of the longer-window scan
 does and every rule for your judgments: the frozen Request with its query plan, the relevance Gate,
 and the synthesis (and, only when the first collection fails coverage, a replacement plan).
-`<run directory>` and `<skill directory>` are the absolute paths from *Set up one run* in
+`<run directory>` and `<skill directory>` are the absolute paths from *Running commands* in
 `SKILL.md`.
 
 If the requested window is seven days or shorter and the user wants recent hot videos to copy,
@@ -27,13 +27,10 @@ stop this workflow and use the short-window route (`references/short-window.md`)
   message names the directory to use. Run `start` once per request; when it is run again for the
   same request, repeat its exact arguments and add `--placed`. Run a command a stage prints
   exactly as printed.
-- **Hand-over.** A stage that needs data stops with exit 0 after printing the call, one `call:`
-  line per call. That pause is unfinished work, not completion. Make exactly the printed calls with
-  the printed arguments verbatim, each as its own individual call (never combined into one batch
-  call), all in one response; save and fetch each complete result as `SKILL.md` says; then run the
-  same stage again with its exact arguments and `--placed` added, in the same run. A call that
-  failed is handled as *Failed tool calls* in `SKILL.md` says. Do not make data calls a stage has not
-  printed. `collect_youtube_trend_candidates` and `enrich_youtube_shortlist` take their printed
+- **Hand-over.** A stage that needs data exits 0 after printing one `call:` line per call, each
+  followed by the file to save its result in and the `fetch` command to run, and ends with the
+  resume command. Do exactly that (see *Data calls* in `SKILL.md`), and handle a failed call as
+  that section says. Do not make data calls a stage has not printed. `collect_youtube_trend_candidates` and `enrich_youtube_shortlist` take their printed
   arguments directly, not inside `parameters`.
 - A stage can still be running when the command first returns output; when your shell tool lets
   you choose how long to wait, give each `drive.py` command 120 s. Wait for that same command to
@@ -285,7 +282,7 @@ identifiers in model prose. When the Creator asks how the result was measured, a
 structured Report (window, collected and eligible counts, baselines, `data_gaps`) instead of
 re-running anything.
 
-Then deliver it after the complete-report language check in `SKILL.md` (*Deliver once*). When this
+Then deliver it after the complete-report language check in `SKILL.md` (*Language at delivery*). When this
 Skill runs in a sub-agent, return the original absolute report path on its own `creator_report:`
 line, so the main thread can read the complete validated artifact and apply the same check before
 delivering it.

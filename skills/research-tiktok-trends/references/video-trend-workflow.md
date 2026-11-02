@@ -3,7 +3,7 @@
 Read this whole file before `drive.py start`. It holds what each stage of the video-trend
 workflow does and every rule for the three judgments you make: the frozen Request with its query
 plan (and the search region when the Request region is unknown), the relevance Gate, and the
-synthesis. `<run directory>` and `<skill directory>` are the absolute paths from *Set up one run*
+synthesis. `<run directory>` and `<skill directory>` are the absolute paths from *Running commands*
 in `SKILL.md`.
 
 If the requested window is seven days or shorter and the user wants recent viral content to copy,
@@ -30,16 +30,12 @@ account-relative multiple, is not a short-window copy ask: it stays in this work
   message names the directory to use. Run `start` once per request; when it is run again for the
   same request, repeat its exact arguments and add `--placed`. Run a command a stage prints
   exactly as printed.
-- **Hand-over.** A stage that needs data stops with exit 0 after printing the calls, one `call:`
-  line per call. That pause is unfinished work, not completion. Make exactly the printed calls with
-  the printed arguments verbatim, each as its own individual call (never combined into one batch
-  call), all in one response; save and fetch each complete result as `SKILL.md` says; then run the
-  same `drive.py` command again with its exact arguments and `--placed` added, in the same run.
-  Rerun only the `drive.py`
-  command, not the heredoc before it: the artifact is already written. A stage can hand calls over
-  more than once (`discover` hands over its first round, then its second); each time, make the
-  calls it prints and run it again with `--placed`. Do not make data calls a stage has not printed.
-- Failed calls: see *Failed tool calls* in `SKILL.md`.
+- **Hand-over.** A stage that needs data exits 0 after printing one `call:` line per call, each
+  followed by the file to save its result in and the `fetch` command to run, and ends with the
+  resume command. Do exactly that (see *Data calls* in `SKILL.md`). A stage can hand calls over more
+  than once (`discover` hands over its first round, then its second); each time, do what it prints.
+  Do not make data calls a stage has not printed.
+- Failed calls: see `references/data-calls.md` and *Data calls* in `SKILL.md`.
 - If the data service briefly failed (`rate_limited`, `service_unavailable`) on calls you made, the
   stage sets that round aside and hands the whole round over once more; make it again and resume
   with `--placed`. A second failure is placed as the answer.
@@ -259,7 +255,7 @@ writes in, not the Request's `locale.language`. Unsupported languages fall back 
 the language check then translates. Answer follow-up questions about measurement from the structured
 Report.
 
-Then deliver it after the complete-report language check in `SKILL.md` (*Deliver once*). When
+Then deliver it after the complete-report language check in `SKILL.md` (*Language at delivery*). When
 this Skill runs in a sub-agent, return the original absolute report path on its own
 `creator_report:` line, so the main thread can read the complete validated artifact and apply the
 same check before delivering it.

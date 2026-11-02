@@ -1206,7 +1206,7 @@ def stage_report(args: argparse.Namespace) -> None:
     # delivered by path where the host can show a file, relayed unchanged where it cannot.
     script("render_reply.py", "competitor-research-report.json", "creator-reply.md")
     reply = Path("creator-reply.md").resolve()
-    say(f"creator reply: {reply}")
+    say(f"creator_report: {reply}")
     say(reply.read_text(encoding="utf-8").rstrip())
 
 

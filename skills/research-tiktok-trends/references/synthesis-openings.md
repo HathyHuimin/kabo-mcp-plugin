@@ -2,7 +2,7 @@
 
 Read this file whole while writing the synthesis (step 5 of `references/video-trend-workflow.md`)
 whenever a mechanism or Creator-fit direction needs an opening choice. `<run directory>` and
-`<skill directory>` are the absolute paths from *Set up one run* in `SKILL.md`.
+`<skill directory>` are the absolute paths from *Running commands* in `SKILL.md`.
 
 Apply it in the existing mechanism or direction fields and cite only current allowlisted content.
 

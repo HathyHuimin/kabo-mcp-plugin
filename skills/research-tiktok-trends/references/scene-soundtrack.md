@@ -1,7 +1,7 @@
 # Scene soundtrack
 
 Read this whole file before the first call of this route. `<run directory>` and
-`<skill directory>` are the absolute paths from *Set up one run* in `SKILL.md`; run every command
+`<skill directory>` are the absolute paths from *Running commands* in `SKILL.md`; run every command
 from the run directory.
 
 The user names video scenes, activities or genres (in any language) and wants sounds that fit
@@ -28,7 +28,7 @@ output or `TrendResearchReport` for this route.
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/persist_envelope.py' --into scene-sounds.json --at scenes --at [i] --at catalog --connector tiktok-discovery --operation search_sounds
    ```
 
-   A call that still fails after its one retry (*Failed tool calls* in `SKILL.md`) is not placed:
+   A call that still fails after its one retry (`references/data-calls.md`) is not placed:
    render the other scenes and say next to that scene that its search failed.
 4. Render; this is the route's final step and its report is `creator-report.md`. The script drops
    original sounds, joins on `sound_id`, and does not invent `daily_growth`:

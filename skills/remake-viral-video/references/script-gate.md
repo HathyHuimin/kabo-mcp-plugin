@@ -26,7 +26,9 @@ Read the matching sections of the bundled references for the judgement in front 
 - `references/opening-review.md` for the opening record.
 - `references/rewrite-and-sources.md` for sourcing: every fact and number traces back to the
   creator's own line or is marked as an inference.
-- `references/formats/talking-head.md` for the talking-head format.
+- `references/formats/talking-head.md` for the talking-head format, and, when
+  `brief_input.json` says `reference.type` is `talking_screen` or `talking_product`, also
+  `references/formats/talking-with-screens.md` or `references/formats/talking-with-product.md`.
 - `references/formats/narration.md` for a voice-over reference (`reference_type` `narration`):
   the picture plan, previewing the pictures and the one picture review.
 
@@ -109,6 +111,11 @@ Write each as a JSON file in the run's `script/` folder: `script/script.json`,
      "3"); a number in a rewritten line has to appear in what that line cites.
    - Every reference sentence is kept, named in a `replaces`, or listed in `route_b.dropped` as
      `{text, slot, why}` with `slot` `author_claim`, `opening` or `cta`.
+   - Prefer rewriting an author claim in the creator's voice (what they would say in that place,
+     from their own lines) over dropping it. If after that the script still keeps less than about
+     half of the reference's spoken length (for example most of the reference is the original
+     author's own story), tell the user at step 6, before the model question, in one line: the
+     remake will be about N seconds instead of the reference's M, and why.
 2. `opening_review` -- the opening decision record, in the shape shown in
    `references/opening-review.md` with `"stage": "script"` and `"route": "B"`: non-empty
    `intent`, `picture`, `sound`, `relationship`, `creator_fit` and `conditions`; `evidence` rows

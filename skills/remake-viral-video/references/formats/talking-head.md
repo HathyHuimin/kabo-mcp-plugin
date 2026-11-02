@@ -2,7 +2,8 @@
 
 **When this format applies**: the viral video is one person telling the camera about one thing
 (knowledge, a location visit, a breakdown, an opinion). This is the best-validated format: all seven
-cases in the test set belong to it, and it is the only format this Skill remakes.
+cases in the test set belong to it, and the other two kinds this Skill remakes (talking with
+screens, talking with a product) build on it.
 
 > Host edition. The runner does first frames, grading, captions and B-roll layout; take only the
 > writing rules from this file.

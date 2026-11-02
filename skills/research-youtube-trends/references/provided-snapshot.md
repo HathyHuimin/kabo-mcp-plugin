@@ -1,7 +1,7 @@
 # Provided Snapshot input
 
 Read this whole file before the first command of this route. `<run directory>` and
-`<skill directory>` are the absolute paths from *Set up one run* in `SKILL.md`; run every command
+`<skill directory>` are the absolute paths from *Running commands* in `SKILL.md`; run every command
 from the run directory and write new artifacts only there.
 
 Use this route when the user provides one `public-content-snapshot.v1` for YouTube and asks to
