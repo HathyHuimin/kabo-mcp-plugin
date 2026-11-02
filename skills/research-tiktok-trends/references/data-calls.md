@@ -7,9 +7,12 @@ command under it, then run the printed resume command.
 
 ## Saved results
 
-- The displayed result may be abridged, so never retype or paste data. Save each complete result
-  unchanged (the host's result export, or the result as returned) to the file the hand-over names
-  in the run's `host-results/` folder, then run the command printed under it. These files are inputs
+- The displayed result may be abridged, so never retype or paste data. A result called with
+  `"delivery": "download"` holds a download link instead of the data: never open that link yourself
+  with a shell command or a browser. Save the result itself, link included and unchanged (the host's result
+  export, or the result text as returned written with a single-quoted heredoc), to the file the
+  hand-over names in the run's `host-results/` folder, then run the command printed under it:
+  `fetch` downloads the data and checks its size and sha256. These files are inputs
   to `fetch` and `stage`, never placed evidence: do not save them in `snapshot/`.
 - `fetch` checks size and sha256, then stores the evidence exactly as `stage` would: a fetched result
   counts as staged, and `fetch` refuses what `stage` refuses, with the same message. When it reports
