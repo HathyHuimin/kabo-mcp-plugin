@@ -4,6 +4,8 @@
 
 ## 未发布
 
+- `develop-content-ideas` 同步 creator-skills 0.1.31（`a9514ba30`）：prep 对各类输入问题（非 JSON / 非 UTF-8 / 缺失文件、非原文主题、错误语言标签）统一返回 `needs_correction`，首轮合并所有可独立核实的问题、限纠正一次；支持「再来 10 个同风格」续轮（`--previous-ideas` 绑定上一轮 `idea_set.json`）；zh/en/fr/ar 之外的报告语言改用 `report_language.py --labels` 列出的 UI 标签译文并逐项校验。`remake-viral-video` 对照上游 0.1.34 无需改动（TikTok 链接由 #20 处理，Wan 3.0 不在当前 `/mcp-pub` 合约中，固定补间数值已在 #40 合入），只更新溯源记录。
+
 ## 1.0.6（2026-11-02；GitHub Release）
 
 - 推荐交付增加统一兜底：已有入选视频不会因 synthesis 留空而丢失；正常推荐为空时，最多展示三个本轮采到的视频参考，明确标注匹配或资料不足，不填造指标。原 Gate 和名额不改写，也不追加数据或模型调用。YouTube 一次重搜后仍覆盖不足时继续利用已有候选，不再直接中止报告。

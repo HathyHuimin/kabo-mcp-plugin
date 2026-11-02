@@ -13,9 +13,12 @@ the user's language. The renderer and validator share the locale contract, inclu
 and selection actions.
 
 Chinese omission is supported only for legacy requests; new non-Chinese requests must set the
-field. The shipped UI catalogs support zh/en/fr/ar and regional variants. For any unsupported
-language, report the missing locale support explicitly; do not generate a report silently in
-Chinese or another language.
+field. Built-in UI catalogs cover zh/en/fr/ar and their regional variants. Any other valid language
+tag, including a regional one, uses authored UI label projections instead: run
+`python3 '<skill directory>/scripts/report_language.py' <report-language> --labels` to list the
+English label sources, and add one `evidence_gap_translations` entry per listed source, preserving
+Markdown markers and boundary spacing. Missing labels fail validation; never silently substitute
+another language. If a reliable translation cannot be provided, state that limitation.
 
 ## `evidence_gap_translations`
 
@@ -33,7 +36,9 @@ value actually displayed: `status`, `task_intent`, `source_mode`, non-`unknown` 
 minute estimate is present, and each nonempty `primary_evidence_ref`. Translate these values for
 presentation only; never edit the canonical enums, evidence IDs or lineage.
 
-The array is one strict union of actual source gaps and these finite displayed values: unknown,
+For a language without a built-in catalog, the same array also carries the required UI labels
+above. The array is one strict union of actual source gaps, these finite displayed values and those
+labels: unknown,
 duplicate or missing mappings fail validation. A source present in both sets has exactly one entry.
 Do not add a new output field or turn a display value into a source gap. When source text already
 matches the report language, repeat it explicitly. The renderer projects only real source gaps into
