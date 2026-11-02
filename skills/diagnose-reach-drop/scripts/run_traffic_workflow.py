@@ -277,9 +277,9 @@ def finalize_command(args: argparse.Namespace) -> int:
         print(FINAL_BEGIN)
         print(report, end="")
         print(FINAL_END)
-        print("Deliver this report once, entirely in the creator's language: translate every part not in it, "
-              "including the evidence labels and source notes, and present the translated text, not a file path; "
-              "keep every conclusion, number, limitation and next step.")
+        print("Your reply is this report, even when the question was short: at most one short sentence of your own, "
+              "then the whole report between the markers above, unchanged except for translating every part not in "
+              "the creator's language (evidence labels and source notes included); never a summary or a file path.")
         return 0
     except (OSError, ValueError, KeyError, TypeError) as error:
         remove_artifacts(output, FINAL_ARTIFACTS)
