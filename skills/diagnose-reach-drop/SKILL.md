@@ -16,9 +16,9 @@ modules, write the plan and write the analysis around the computed facts.
 **Delivery.** The final `drive.py report` writes `creator-reply.md` and prints it between
 `KABO_FINAL_REPLY_BEGIN` and `KABO_FINAL_REPLY_END`. Deliver that text once, in the creator's
 language: translate faithfully any part not in that language, labels and source notes included, and
-present the Markdown text, not the file path. Keep every conclusion, number, limitation and next
-step; add, drop or summarize none, rephrase tool or cursor mechanics in source notes as plain
-limitations, and do not narrate artifact writing, validation or call counts. If a step fails, say
+present the Markdown text, not the file path. Keep every section, conclusion, number, limitation
+and next step in the order printed; add, drop, reorder or summarize none, even when the question was
+short, and do not narrate artifact writing, validation or call counts. If a step fails, say
 which deliverable is unavailable; never present a draft or an unvalidated file as the result.
 
 When the host supports one, run this Skill in a foreground sub-agent, because a diagnosis takes
