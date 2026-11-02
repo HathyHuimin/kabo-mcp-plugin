@@ -990,6 +990,15 @@ def validate_idea_set(
     errors = validate_request(request, request_path)
     validate_json_schema(idea_set, IDEA_SET_SCHEMA, "idea_set", errors)
     if errors:
+        # Report missing presentation translations together with schema errors:
+        # core allows two generation attempts, so a second round that only then
+        # learns about the translations runs out of attempts.
+        for project in (evidence_gaps, report_value_translations):
+            try:
+                project(idea_set)
+            except (ValueError, TypeError, AttributeError) as exc:
+                errors.append(str(exc))
+                break
         return errors
     decision = generation_decision(request)
 
