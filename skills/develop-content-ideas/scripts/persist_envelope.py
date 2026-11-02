@@ -100,9 +100,26 @@ def meta_conflicts(meta: dict[str, Any], connector_id: str | None, operation: st
     # A sidecar field that is absent is unknown, not a mismatch; the body is matched again below.
     if connector_id and meta.get("connector_id") not in (None, connector_id):
         return True
-    if operation and meta.get("operation") not in (None, operation):
+    if operation and meta.get("operation") is not None and not same_operation(
+            connector_id or meta.get("connector_id"), meta.get("operation"), operation):
         return True
     return False
+
+
+# A media job that ran on a hosted variant is the same request: hosts record either the requested
+# operation or the variant that ran, so a persist names either one. Only these media variants.
+MEDIA_VARIANTS = {
+    "extract_keyframes": {"extract_keyframes_hosted_media", "extract_keyframes_hosted_stream"},
+    "measure_media_signals": {"measure_media_signals_hosted_stream"},
+}
+
+
+def same_operation(connector_id: Any, actual: Any, wanted: str) -> bool:
+    if actual == wanted:
+        return True
+    if connector_id != "public-video-media":
+        return False
+    return any({actual, wanted} <= {name, *variants} for name, variants in MEDIA_VARIANTS.items())
 
 
 def parse_time(value: Any) -> datetime | None:
@@ -273,7 +290,7 @@ def row_count(envelope: dict[str, Any]) -> int | None:
 def matches(envelope: dict[str, Any], connector_id: str | None, operation: str | None) -> bool:
     if connector_id and envelope.get("connector_id") != connector_id:
         return False
-    if operation and envelope.get("operation") != operation:
+    if operation and not same_operation(connector_id or envelope.get("connector_id"), envelope.get("operation"), operation):
         return False
     return True
 

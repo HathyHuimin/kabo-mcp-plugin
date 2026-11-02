@@ -1115,3 +1115,22 @@ test("组合结果的读取与拆分段在各 Skill 的 static_host.py 中逐字
   }
   for (const { id, block } of blocks) assert.equal(block, blocks[0].block, `${id} 与 ${blocks[0].id} 不同`);
 });
+
+test("persist：媒体任务按请求名或托管变体名都能放置（宿主记哪一个都行），其他操作不借用", async (t) => {
+  const variants = [...persistCopies].filter(([, text]) => text.includes("MEDIA_VARIANTS"));
+  assert.ok(variants.length >= 1);
+  for (const [id] of variants) {
+    for (const [recorded, named] of [["extract_keyframes_hosted_stream", "extract_keyframes"], ["extract_keyframes", "extract_keyframes_hosted_media"],
+      ["measure_media_signals", "measure_media_signals_hosted_stream"]]) {
+      const run = await persistRun(t, id);
+      const job = { ...envelope, schema_version: "1.0", connector_id: "public-video-media", operation: recorded, raw_sha256: sha256(Buffer.from(recorded)),
+        request_id: `req-${recorded}`, evidence_ref: `ev-${recorded}`, data: { frames: [] } };
+      const staged = await run.stage(job, { connector_id: "public-video-media", operation: recorded });
+      const media = ["--connector", "public-video-media", "--any-status"];
+      assert.match(run.persist("--dest", "snapshot/other.json", ...media, "--operation", "fetch_transcript").out, /no complete host record/, `${id} ${recorded}`);
+      const placed = run.persist("--dest", "snapshot/media.json", ...media, "--operation", named);
+      assert.equal(placed.exit, 0, `${id} ${recorded} as ${named}: ${placed.out}`);
+      assert.deepEqual(await run.read("snapshot/media.json"), staged);
+    }
+  }
+});
