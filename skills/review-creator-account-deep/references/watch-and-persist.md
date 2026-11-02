@@ -139,3 +139,28 @@ cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill di
   ten videos at `jobs_pending` and reported shot-level findings from the three that had arrived.
 - Watched means frames arrived or a transcript arrived. Metadata alone is not watched. Never narrate
   hooks, cuts or spoken lines for an unwatched `content_id`.
+
+## View the frames and write the cards
+
+Display the actual frame images in the model context before making any
+visual claim; an artifact path, frame count or returned image-type list is not viewing. Retrieve
+frames with `read_research_data_artifacts` and `fetch`, then open the fetched image files,
+keeping their content IDs, timestamps and original `object_ref`s. If images cannot be displayed, keep the missing-visual-evidence limit and use the
+transcript only. `watched_evidence.json` reuses the single-video frame and cue contract. A title,
+caption or view multiple is not proof of a hook, a cut or on-screen text. Write one short card
+per watched item from its frames and transcript:
+
+- spoken hook, visual hook, text overlay, first-frame promise;
+- five shot aspects: subject, subject motion, scene, spatial framing, camera;
+- short-form checkpoints: 1–2 s hook, a visual change every 1–3 s, payoff second.
+
+The checkpoints are analysis prompts, not observed timings. Use the viewed frame timestamps and
+spoken cue times: when a sentence spans a checkpoint, do not say its full proposition was
+established before it. A cue with no end time proves its start and text, not when the sentence
+finished. Sparse frames support only the viewed moments, never continuous motion, an unchanged
+shot or absence across an unseen interval. Describe spoken and visual hooks separately, never
+substituting the title for speech. Keep observed objects and case-study setups in low-performing
+examples too; performance rank does not make an opening evidence-free. Do not emit the
+single-video Skill's diagnosis cards or 17-dimension funnel, and do not run that Skill. Watching
+can keep a Leo class or rename it — that rename is the value of watching; unwatched rows keep
+their provisional catalog labels.
