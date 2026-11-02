@@ -34,37 +34,52 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.dont_write_bytecode = True
 from project_account_context import project as project_account_review
 from project_comments import validate_projection
-from validate_ideas import REQUEST_SCHEMA, V3_SOURCE_VERSIONS, derive_source_mode, file_sha256  # noqa: E402
+from validate_ideas import REQUEST_SCHEMA, V3_SOURCE_VERSIONS, derive_source_mode, file_sha256, previous_ideas_context  # noqa: E402
 
-DERIVED_FIELDS = ("upstream_sources", "idea_context")
+DERIVED_FIELDS = ("upstream_sources", "idea_context", "continuation_context")
 CREATOR_CONTEXT_FIELDS = ("schema_version", "profile_id", "accounts", "markets", "audience", "positioning",
                           "content_profile", "key_missing_info", "extensions")
 ID_FIELDS = {"creator_profile": "profile_id", "account_review_report": "report_id", "trend_report": "report_id",
              "competitor_report": "report_id", "video_analysis": "analysis_id", "comment_context": "report_id"}
 
 
+class RequestInputError(ValueError):
+    def __init__(self, message, *, code="invalid_input", field="intent", next_action=None):
+        """Carry an actionable input issue without consuming a generation attempt."""
+        super().__init__(message)
+        self.issue = {
+            "code": code, "field": field, "message": message,
+            "next_action": next_action or "Correct the named input from the original request or source artifact; do not fabricate evidence.",
+        }
+
+
 def load(path: Path) -> dict[str, Any]:
+    """Read an original JSON object, rejecting scalar or array substitutes."""
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
-        raise ValueError(f"{path} must hold a JSON object")
+        raise RequestInputError(f"{path} must hold a JSON object")
     return value
 
 
 def source_ref(source_type: str, path: Path, artifact: dict[str, Any], base: Path, artifact_id: str | None = None) -> dict[str, Any]:
+    """Bind source identity and checksum to the provided artifact's actual bytes."""
     version = V3_SOURCE_VERSIONS.get(source_type) or artifact.get("schema_version")
     identifier = artifact_id or artifact.get(ID_FIELDS.get(source_type, ""))
     if not isinstance(identifier, str) or not identifier:
-        raise ValueError(f"{path} carries no {ID_FIELDS.get(source_type, 'id')} for its {source_type} lineage")
+        raise RequestInputError(f"{path} carries no {ID_FIELDS.get(source_type, 'id')} for its {source_type} lineage",
+            code="missing_artifact_metadata", field=f"{source_type}.{ID_FIELDS.get(source_type, 'id')}",
+            next_action="Restore the original upstream JSON, including its original identifier, from this conversation's saved result or file. A summary is not the artifact. Do not invent an identifier; if restoration is unavailable, report the missing evidence.")
     if not version:
-        raise ValueError(f"{path} carries no schema_version")
+        raise RequestInputError(f"{path} carries no schema_version", code="missing_artifact_metadata", field=f"{source_type}.schema_version")
     return {"source_type": source_type, "path": os.path.relpath(path.resolve(), base.resolve()),
             "artifact_id": identifier, "schema_version": version, "sha256": file_sha256(path)}
 
 
 def projection(path: Path, key: str) -> Any:
+    """Read the named upstream projection without reconstructing missing fields."""
     document = load(path)
     if key not in document:
-        raise ValueError(f"{path} is not a project_idea_context.py output: it has no {key!r}")
+        raise RequestInputError(f"{path} is not a project_idea_context.py output: it has no {key!r}")
     return document[key]
 
 
@@ -76,7 +91,7 @@ def bound(items: Any, report: dict[str, Any], path: Path, kind: str) -> Any:
         isinstance(item, dict) and all(pattern.get(key) == value for key, value in item.items() if key != "gaps")
         for item, pattern in zip(items, patterns))
     if not same:
-        raise ValueError(f"{path} is not the projection of --{kind}-report: rerun project_idea_context.py on that report")
+        raise RequestInputError(f"{path} is not the projection of --{kind}-report: rerun project_idea_context.py on that report")
     return items
 
 
@@ -84,17 +99,18 @@ def build(intent: dict[str, Any], output: Path, *, creator_profile: Path | None 
           account_review: Path | None = None, account_context: Path | None = None,
           trend_report: Path | None = None, trend_context: Path | None = None,
           competitor_report: Path | None = None, competitor_context: Path | None = None,
-          video_analysis: Path | None = None, comment_context: Path | None = None) -> dict[str, Any]:
+          video_analysis: Path | None = None, comment_context: Path | None = None,
+          previous_ideas: Path | None = None) -> dict[str, Any]:
     """Construct provenance and context from source files, not model-authored copies."""
     retyped = [field for field in DERIVED_FIELDS if field in intent]
     if retyped:
-        raise ValueError(f"the intent carries {retyped}: those are built from the artifacts, leave them out and "
+        raise RequestInputError(f"the intent carries {retyped}: those are built from the artifacts, leave them out and "
                          "pass the artifacts instead (--creator-profile, --account-review with --account-context, "
                          "--trend-report with --trend-context, --competitor-report with --competitor-context, "
                          "--video-analysis, --comment-context)")
     for report, context, name in ((trend_report, trend_context, "trend"), (competitor_report, competitor_context, "competitor")):
         if (report is None) != (context is None):
-            raise ValueError(f"--{name}-report and --{name}-context go together: the report is the lineage, "
+            raise RequestInputError(f"--{name}-report and --{name}-context go together: the report is the lineage, "
                              "the context is its projection")
     base = output.parent
     sources: list[dict[str, Any]] = []
@@ -118,7 +134,7 @@ def build(intent: dict[str, Any], output: Path, *, creator_profile: Path | None 
             account_context.write_text(json.dumps(projected, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
                                        encoding="utf-8")
         elif load(account_context) != projected:
-            raise ValueError(f"{account_context} is not the projection of --account-review: drop --account-context "
+            raise RequestInputError(f"{account_context} is not the projection of --account-review: drop --account-context "
                              "and prep projects the review itself")
     if account_context is not None:
         document = load(account_context)
@@ -141,6 +157,21 @@ def build(intent: dict[str, Any], output: Path, *, creator_profile: Path | None 
         sources.append(source_ref("comment_context", comment_context, comments, base))
         context["comments"] = comments
     request = {**intent, "upstream_sources": sources, "idea_context": context}
+    if previous_ideas is not None:
+        # One-call input mounts can disappear before core. Retain the exact bytes
+        # in this run so validation and revision bind to the same historical file.
+        retained_previous = base / "previous_ideas.json"
+        if not previous_ideas.is_file():
+            raise RequestInputError(
+                f"{previous_ideas} is not an available file", code="missing_previous_ideas", field="continuation_context",
+                next_action="Restore the original previous idea_set.json from this conversation's retained file or saved result, then rerun prep. Do not recreate it from memory.")
+        if previous_ideas.resolve() != retained_previous.resolve():
+            base.mkdir(parents=True, exist_ok=True)
+            retained_previous.write_bytes(previous_ideas.read_bytes())
+        try:
+            request["continuation_context"] = previous_ideas_context(retained_previous, base)
+        except ValueError as error:
+            raise RequestInputError(str(error), field="continuation_context") from error
     # 输入模式是已提供证据的事实，不能要求模型在投影生成前猜；复用 validator 的唯一判据。
     # 兼容旧 intent 中的 source_mode，但绝不让它提升证据完整度或绕过后续生成门。
     request["source_mode"] = derive_source_mode(request)
@@ -173,7 +204,7 @@ def main() -> int:
     parser.add_argument("--intent", type=Path, required=True, help="the request fields you author, nothing derived")
     parser.add_argument("--output", type=Path, required=True)
     for name in ("creator-profile", "account-review", "account-context", "trend-report", "trend-context",
-                 "competitor-report", "competitor-context", "video-analysis", "comment-context"):
+                 "competitor-report", "competitor-context", "video-analysis", "comment-context", "previous-ideas"):
         parser.add_argument(f"--{name}", type=Path)
     args = parser.parse_args()
     try:
@@ -181,7 +212,8 @@ def main() -> int:
                         account_review=args.account_review, account_context=args.account_context,
                         trend_report=args.trend_report, trend_context=args.trend_context,
                         competitor_report=args.competitor_report, competitor_context=args.competitor_context,
-                        video_analysis=args.video_analysis, comment_context=args.comment_context)
+                        video_analysis=args.video_analysis, comment_context=args.comment_context,
+                        previous_ideas=args.previous_ideas)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(request, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     except (OSError, ValueError, json.JSONDecodeError) as error:

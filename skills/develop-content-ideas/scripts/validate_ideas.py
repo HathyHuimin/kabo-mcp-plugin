@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -46,6 +47,23 @@ def resolve(base: Path, value: str) -> Path:
 
 def file_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def previous_ideas_context(path: Path, base: Path) -> dict[str, Any]:
+    """Project creative history without inheriting its evidence or factual claims."""
+    previous = load(path)
+    errors: list[str] = []
+    validate_json_schema(previous, IDEA_SET_SCHEMA, "previous_ideas", errors)
+    if errors:
+        raise ValueError("; ".join(errors))
+    if previous["status"] != "ready_for_selection" or not previous["ideas"]:
+        raise ValueError("previous_ideas must be a nonempty ready_for_selection IdeaSet")
+    return {
+        "path": os.path.relpath(path.resolve(), base.resolve()), "sha256": file_sha256(path),
+        "idea_set_id": previous["idea_set_id"], "request_id": previous["request_id"],
+        "ideas": [{key: idea[key] for key in ("idea_id", "working_title", "making_direction")}
+                  for idea in previous["ideas"]],
+    }
 
 
 def schema_type_matches(value: Any, expected: str) -> bool:
@@ -523,7 +541,7 @@ def generation_decision(request: dict[str, Any]) -> dict[str, Any]:
     )
     if missing and not fallback_used:
         status = "blocked_missing_required_source"
-    elif not available and not has_direct_topic:
+    elif not available and not has_direct_topic and not request.get("continuation_context"):
         status = "needs_selection_context"
     else:
         status = "ready_for_generation"
@@ -569,14 +587,8 @@ def derive_source_mode(request: dict[str, Any]) -> str:
     return "brief_only"
 
 
-def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
-    """Validate idea inputs, explicit evidence requirements and source alignment."""
-    errors: list[str] = []
-    validate_json_schema(request, REQUEST_SCHEMA, "request", errors)
-    # Semantic checks dereference the schema's objects and arrays. Return all
-    # structural errors first so callers can repair invalid input in one pass.
-    if errors:
-        return errors
+def validate_authored_fields(request: dict[str, Any], errors: list[str]) -> None:
+    """Check structurally valid authored fields without reading any upstream files."""
     try:
         report_language(request)
     except ValueError as exc:
@@ -600,6 +612,10 @@ def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
     basis = request.get("generation_basis") or {}
     direct_topic = basis.get("direct_topic")
     has_direct_topic = has_text(direct_topic)
+    quote = basis.get("continuation_quote")
+    if quote is not None:
+        require(has_brief and has_text(quote) and quote in brief.get("text", ""),
+                "generation_basis.continuation_quote must be copied verbatim from user_brief.text", errors)
     if direct_topic is not None:
         require(has_direct_topic, "generation_basis.direct_topic must contain text or be null", errors)
     if has_direct_topic:
@@ -670,32 +686,19 @@ def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
                 errors,
             )
 
-    context = request.get("idea_context") or {}
-    has_evidence = bool(request.get("upstream_sources") or context.get("creator") or context.get("trend") or context.get("competitor") or context.get("account"))
-    require(has_evidence or has_brief, "at least one evidence source or user brief is required", errors)
-    expected_mode = derive_source_mode(request)
-    require(request.get("source_mode") == expected_mode, f"source_mode must be {expected_mode}", errors)
-
     intent = request.get("task_intent")
     idea_count = request.get("idea_count")
     hook_count = request.get("hook_option_count")
     if intent == "rework_content":
         require(idea_count == 1, "rework_content requires idea_count=1", errors)
         require(isinstance(hook_count, int) and 3 <= hook_count <= 5, "rework_content requires 3..5 Hook options", errors)
-        require(any(source.get("source_type") == "video_analysis" for source in request.get("upstream_sources") or []), "rework_content requires at least one VideoAnalysis source", errors)
     elif intent in {"open_shortlist", "capacity_plan", "brief_only"}:
         require(isinstance(idea_count, int) and 3 <= idea_count <= 10, f"{intent} requires idea_count=3..10", errors)
         require(hook_count in {1, 2}, f"{intent} requires hook_option_count=1 or 2", errors)
 
     if intent == "brief_only":
         require(has_brief, "brief_only requires a provided brief", errors)
-        require(has_direct_topic, "brief_only requires an explicit generation_basis.direct_topic", errors)
-        require(
-            not (basis.get("required_sources") or []),
-            "brief_only must not declare required external sources",
-            errors,
-        )
-        require(not has_evidence, "brief_only must not include upstream artifacts or idea context", errors)
+        require(not (basis.get("required_sources") or []), "brief_only must not declare required external sources", errors)
     if intent == "capacity_plan":
         constraints = request.get("production_constraints") or {}
         require(
@@ -721,6 +724,71 @@ def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
         require(not present, "absent production_constraints must not contain values or assets", errors)
     elif constraints.get("status") in {"partial", "confirmed"}:
         require(bool(present), f"{constraints.get('status')} production_constraints must contain at least one value", errors)
+
+
+def validate_authored_intent(intent: dict[str, Any], *, has_previous_ideas: bool = False) -> list[str]:
+    """Reuse request rules for input feedback before missing artifacts can mask errors.
+
+    Derived fields are neither invented nor validated here: build and full request
+    validation still own their provenance, source mode and evidence gates.
+    """
+    schema = load(REQUEST_SCHEMA)
+    derived = {"upstream_sources", "idea_context", "continuation_context", "source_mode"}
+    authored_schema = {**schema,
+        "required": [key for key in schema["required"] if key not in derived],
+        "properties": {key: value for key, value in schema["properties"].items() if key not in derived}}
+    authored = {key: value for key, value in intent.items() if key not in derived}
+    errors = [f"request schema {failure}" for failure in validate_schema_value(authored, authored_schema, schema, "$")]
+    if not errors:
+        validate_authored_fields(authored, errors)
+        quote = (authored.get("generation_basis") or {}).get("continuation_quote")
+        if has_previous_ideas:
+            require(has_text(quote), "--previous-ideas requires generation_basis.continuation_quote", errors)
+        elif quote is not None:
+            errors.append("generation_basis.continuation_quote requires --previous-ideas with the original IdeaSet JSON")
+    return errors
+
+
+def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
+    """Validate idea inputs, explicit evidence requirements and source alignment."""
+    errors: list[str] = []
+    validate_json_schema(request, REQUEST_SCHEMA, "request", errors)
+    # Semantic checks dereference the schema's objects and arrays. Return all
+    # structural errors first so callers can repair invalid input in one pass.
+    if errors:
+        return errors
+    validate_authored_fields(request, errors)
+    brief = request.get("user_brief") or {}
+    has_brief = brief.get("status") == "provided" and has_text(brief.get("text"))
+    basis = request.get("generation_basis") or {}
+    has_direct_topic = has_text(basis.get("direct_topic"))
+    continuation = request.get("continuation_context")
+    quote = basis.get("continuation_quote")
+    if continuation is not None:
+        require(has_brief and has_text(quote) and quote in brief.get("text", ""),
+                "continuation_context requires a verbatim generation_basis.continuation_quote from user_brief.text", errors)
+        require(continuation["request_id"] != request["request_id"],
+                "continuation_context must refer to an earlier request", errors)
+        try:
+            expected = previous_ideas_context(resolve(request_path.parent, continuation["path"]), request_path.parent)
+            require(continuation == expected, "continuation_context differs from the original previous IdeaSet or its checksum", errors)
+        except (OSError, ValueError) as exc:
+            errors.append(f"continuation_context: {exc}")
+    elif quote is not None:
+        errors.append("generation_basis.continuation_quote requires --previous-ideas with the original IdeaSet JSON")
+    context = request.get("idea_context") or {}
+    has_evidence = bool(request.get("upstream_sources") or context.get("creator") or context.get("trend") or context.get("competitor") or context.get("account"))
+    require(has_evidence or has_brief, "at least one evidence source or user brief is required", errors)
+    expected_mode = derive_source_mode(request)
+    require(request.get("source_mode") == expected_mode, f"source_mode must be {expected_mode}", errors)
+
+    intent = request.get("task_intent")
+    if intent == "rework_content":
+        require(any(source.get("source_type") == "video_analysis" for source in request.get("upstream_sources") or []), "rework_content requires at least one VideoAnalysis source", errors)
+    if intent == "brief_only":
+        require(has_direct_topic or continuation is not None,
+                "brief_only requires an explicit generation_basis.direct_topic or bound continuation_context", errors)
+        require(not has_evidence, "brief_only must not include upstream artifacts or idea context", errors)
 
     validate_upstream_sources(request, request_path, errors)
     validate_context_alignment(request, errors)
@@ -922,12 +990,27 @@ def validate_idea_set(
     errors = validate_request(request, request_path)
     validate_json_schema(idea_set, IDEA_SET_SCHEMA, "idea_set", errors)
     if errors:
+        # Report missing presentation translations together with schema errors:
+        # core allows two generation attempts, so a second round that only then
+        # learns about the translations runs out of attempts.
+        for project in (evidence_gaps, report_value_translations):
+            try:
+                project(idea_set)
+            except (ValueError, TypeError, AttributeError) as exc:
+                errors.append(str(exc))
+                break
         return errors
     decision = generation_decision(request)
 
     require(idea_set.get("request_id") == request.get("request_id"), "idea_set request_id mismatch", errors)
     try:
-        require(report_language(idea_set) == report_language(request), "idea_set report_language mismatch", errors)
+        output_language, request_language = report_language(idea_set), report_language(request)
+        # Catalog lookup uses the primary language, but an explicit script or
+        # region is part of the requested output contract. Preserve the existing
+        # fallback only for already-recognized legacy Chinese omissions.
+        if "report_language" in idea_set and "report_language" in request:
+            output_language, request_language = idea_set["report_language"].lower(), request["report_language"].lower()
+        require(output_language == request_language, "idea_set report_language mismatch", errors)
     except ValueError as exc:
         errors.append(str(exc))
     for project in (evidence_gaps, report_value_translations):
@@ -1004,6 +1087,9 @@ def validate_idea_set(
     require(len(set(ids)) == len(ids), "idea_id values must be unique", errors)
     require(sorted(ranks) == list(range(1, len(ideas) + 1)), "ranks must be unique and sequential", errors)
     require(len(set(titles)) == len(titles), "working titles must be distinct", errors)
+    previous_titles = {normalized(item["working_title"])
+                       for item in (request.get("continuation_context") or {}).get("ideas", [])}
+    require(not previous_titles.intersection(titles), "continuation must not repeat a previous working title", errors)
 
     overview = idea_set.get("overview") or {}
     recommended = overview.get("recommended_candidate_ids") or []
