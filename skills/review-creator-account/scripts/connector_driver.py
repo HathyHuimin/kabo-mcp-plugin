@@ -392,10 +392,12 @@ def hand_over(calls, why=""):
     results = Path("host-results")
     first = len(list(results.glob("*.json"))) + 1 if results.is_dir() else 1
     say(f"Hand-over: make these {len(public)} call(s) now, each as its own individual call (never combined into "
-        "one batch call), all in one response, with the arguments verbatim. Then, in the order below, save each "
-        "complete result unchanged to the file named under it (the host's result export, or the result text as "
-        "returned written with a single-quoted heredoc) and run the command under it at once; links expire in "
-        "10 minutes. When fetch reports no ready download, run the same command with stage in place of fetch.")
+        "one batch call), all in one response, with the arguments verbatim. Each result holds a download link: never "
+        "download it yourself with a shell command or a browser. In the order below, save each result itself, link included and "
+        "unchanged, to the file named under it (the host's result export, or the result text as returned written "
+        "with a single-quoted heredoc) and run the command under it at once: fetch downloads and checks the data; "
+        "links expire in 10 minutes. When fetch reports no ready download, run the same command with stage in "
+        "place of fetch.")
     for number, mapped in enumerate(public, first):
         saved = f"host-results/{number:02d}-{mapped['tool']}.json"
         say(HANDOVER_PREFIX + json.dumps(mapped, ensure_ascii=False))
