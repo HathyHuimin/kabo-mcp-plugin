@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.dont_write_bytecode = True
-from run_paths import resolve_input  # noqa: E402
+from run_paths import missing_input, resolve_input  # noqa: E402
 
 SCHEMA_VERSION = "watch-set.v1"
 WATCHABLE_FORMATS = frozenset(
@@ -278,7 +278,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--low-slots", type=int, default=DEFAULT_LOW_SLOTS)
     args = parser.parse_args(argv)
 
-    analysis = load_json(args.analysis)
+    try:
+        analysis = load_json(resolve_input(args.analysis))
+    except FileNotFoundError as missing:
+        return missing_input(missing)
     payload = select_watch_set(
         analysis,
         named_ids=args.named_content_id,

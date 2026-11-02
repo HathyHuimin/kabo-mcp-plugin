@@ -22,6 +22,7 @@ from public_metrics import public_metric_entry
 from select_accounts import assert_selection_matches_finalize, canonical_handle
 
 SYNTHESIS_VERSION = "competitor-research-synthesis.v3.1"
+SYNTHESIS_STATUSES = ("complete", "partial", "blocked")
 REQUIRED_SYNTHESIS = {
     "schema_version", "report_id", "request_id", "status", "overview",
     "competitors", "featured_content_refs", "patterns", "gaps",
@@ -314,6 +315,10 @@ def compose(
         raise ValueError(f"synthesis missing fields: {', '.join(missing)}")
     if synthesis.get("schema_version") != SYNTHESIS_VERSION:
         raise ValueError(f"synthesis schema_version must be {SYNTHESIS_VERSION}")
+    if synthesis.get("status") not in SYNTHESIS_STATUSES:
+        # Stop here with a correctable message: caught only by validate_output, the model read it as final.
+        raise ValueError("competitor-research-synthesis.json status must be one of complete, partial or "
+                         f"blocked (got {synthesis.get('status')!r}); fix that field and run report again")
     if synthesis.get("request_id") != request.get("request_id"):
         raise ValueError("synthesis request_id does not match request")
     if selection is not None:

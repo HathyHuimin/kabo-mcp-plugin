@@ -26,10 +26,23 @@ invocation passes an argument list, never a shell string, and every one has a ti
 duration cannot be established is refused rather than sampled against a guess -- a plan needs a
 length, and inventing one produces a frame list that looks authoritative and points nowhere.
 
+**What it writes has to survive being carried back by a host.** A host that runs this in a sandbox
+copies the run directory back afterwards, and it refuses a whole step over one file name it cannot
+replay or over a directory that grew past its size limit -- after the script already succeeded.
+So frame files are named by a hash of their id, never by the id itself (the id carries `#` and the
+creator's own file name), each frame is scaled down to a long edge that still reads on-screen text,
+and the frame count and total bytes are capped. The id in the artifact is unchanged.
+
     python3 extract_local_frames.py --media FILE --out-dir DIR --artifact FILE
                                     [--hook-window-s 3.0] [--base-interval-s 1.0]
-                                    [--hook-multiplier 2] [--budget 600] [--jpeg-quality 3]
-                                    [--measure-loudness] [--dry-run]
+                                    [--hook-multiplier 2] [--budget 600] [--max-frames 90]
+                                    [--max-total-bytes 12582912] [--jpeg-quality 3]
+                                    [--measure-loudness] [--measure-signals] [--dry-run]
+
+`--measure-signals` measures where the file cuts, where its audio drops below the speech floor and
+where its picture holds still, with the thresholds the connector uses on a published video, and
+writes them in that operation's shape under `media.signals`. Frames alone cannot answer pacing: a
+cut shorter than the sampling interval falls between two frames, and silence has no pixels.
 """
 
 from __future__ import annotations
@@ -37,6 +50,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -59,6 +73,30 @@ CLOSING_RETRY_OFFSET_S = 0.25
 
 # Loudness integrated over less than roughly this much audio is not a measurement of anything.
 MIN_LOUDNESS_AUDIO_S = 3.0
+
+# A frame is scaled so its longer edge is at most this. 720 still reads a caption on a phone-sized
+# frame; a full-resolution 4K master is ten times the bytes and reads the same words.
+FRAME_LONG_EDGE_PX = 720
+FRAME_SCALE_FILTER = (f"scale='if(gte(iw,ih),min({FRAME_LONG_EDGE_PX},iw),-2)'"
+                      f":'if(gte(iw,ih),-2,min({FRAME_LONG_EDGE_PX},ih))'")
+
+# A sandboxed host collects every file the step wrote and refuses the whole step past a file count
+# or a total size (in production: 128 files and 16 MiB for the run directory, with the run's other
+# files counted too). Both defaults leave room for those. A host that keeps everything can raise
+# them; the plan then thins the body the same honest way it does for --budget.
+DEFAULT_MAX_FRAMES = 90
+DEFAULT_MAX_TOTAL_BYTES = 12 * 1024 * 1024
+
+# Measurement thresholds, the connector's defaults verbatim so one video measured on either path gives
+# the same numbers. Scene-change sensitivity 0.15: at 0.30 a six-cut talking-head clip shot in one
+# room measured zero cuts, which reads as "one take" rather than as a gap.
+SHOT_THRESHOLD = 0.15
+SILENCE_FLOOR_DB = -40
+SILENCE_MIN_S = 0.5
+FREEZE_MIN_S = 1.0
+SIGNAL_TIMEOUT_S = 900
+# Below this a single shot is an ordinary one-take clip; above it, "no cuts" is worth a second look.
+ONE_SHOT_SUSPECT_S = 15.0
 
 # More than this share of the plan missing means the frame track is not a reading of the video any
 # more, and the status says so rather than presenting a quarter-sampled video as sampled.
@@ -291,27 +329,77 @@ def frame_identifier(content_id: str, ordinal: int, seconds: float) -> str:
     return f"{content_id}#frame-{ordinal:03d}-{seconds:.3f}s.jpg"
 
 
-def extract(media: Path, out_dir: Path, plan: dict, content_id: str, quality: int) -> tuple[dict, list, list]:
+def frame_file_name(frame_id: str) -> str:
+    """The file a frame is written to: a hash of its id, never the id itself.
+
+    The id carries `#` and the creator's own file name, which can hold Unicode, brackets or quotes.
+    A host that copies the run directory back accepts only plain names and rejects the whole step
+    over one it cannot replay -- in production that turned 60 successfully written frames into a
+    failed step. Hashing the exact id keeps two files extracted into one directory from colliding,
+    which an ordinal-and-second name would not. The evidence builder names connector frames the
+    same way for the same reason.
+    """
+    return "frame-" + hashlib.sha256(frame_id.encode("utf-8")).hexdigest() + ".jpg"
+
+
+def extraction_order(frame_count: int, hook_frames: int) -> list[int]:
+    """The order frames are written in: the opening, the close, then the body coarse-to-fine.
+
+    Written in time order, a step that runs out of room loses the end of the video -- the ending is
+    one of the four things a creator asks about before posting. Written in this order, running out
+    leaves the hook and the close whole and the body evenly thinner, and the gap the reader has to
+    know about is the widest interval between frames, not a missing final third.
+    """
+    indices = list(range(frame_count))
+    hook = indices[:hook_frames]
+    closing = [frame_count - 1] if frame_count > hook_frames else []
+    body = indices[hook_frames:frame_count - 1] if closing else []
+    ordered: list[int] = []
+    taken: set[int] = set()
+    step = 1
+    while step < len(body):
+        step *= 2
+    while step >= 1:
+        for position in range(0, len(body), step):
+            if position not in taken:
+                taken.add(position)
+                ordered.append(body[position])
+        step //= 2
+    return hook + closing + ordered
+
+
+def extract(media: Path, out_dir: Path, plan: dict, content_id: str, quality: int,
+            max_total_bytes: int = DEFAULT_MAX_TOTAL_BYTES) -> tuple[dict, list, list]:
     out_dir.mkdir(parents=True, exist_ok=True)
     timestamps = plan["_timestamps"]
     items: list[dict] = []
     skipped: list[dict] = []
+    written_bytes = 0
     started = started_at = now()
     sample_args: list[str] = []
 
-    for ordinal, seconds in enumerate(timestamps, start=1):
+    for index in extraction_order(len(timestamps), plan["hook_frames"]):
+        ordinal, seconds = index + 1, timestamps[index]
         is_closing = ordinal == len(timestamps)
         attempts = [seconds]
         if is_closing:
             attempts.append(round(max(0.0, seconds - CLOSING_RETRY_OFFSET_S), 3))
 
+        if written_bytes >= max_total_bytes:
+            # Out of room. The rest are skipped rather than written and then refused with the whole
+            # step: a thinner frame track is a reading, a refused step is nothing at all.
+            skipped.append({"ordinal": ordinal, "t_seconds": seconds,
+                            "reason": "the frame byte budget for this step was used up"})
+            continue
+
         written = None
+        frame_id = frame_identifier(content_id, ordinal, seconds)
         for attempt in attempts:
-            name = frame_identifier(content_id, ordinal, seconds)
-            target = out_dir / name
+            target = out_dir / frame_file_name(frame_id)
             args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                     "-ss", f"{attempt:.3f}", "-i", str(media),
-                    "-frames:v", "1", "-update", "1", "-q:v", str(quality), str(target)]
+                    "-frames:v", "1", "-update", "1", "-vf", FRAME_SCALE_FILTER,
+                    "-q:v", str(quality), str(target)]
             if not sample_args:
                 sample_args = args
             try:
@@ -334,8 +422,10 @@ def extract(media: Path, out_dir: Path, plan: dict, content_id: str, quality: in
             continue
 
         target, _ = written
+        written_bytes += target.stat().st_size
         items.append({
-            "frame_id": target.name,
+            "frame_id": frame_id,
+            "_file": target.name,
             "t_seconds": seconds,
             "sha256": file_digest(target),
             "bytes": target.stat().st_size,
@@ -343,6 +433,8 @@ def extract(media: Path, out_dir: Path, plan: dict, content_id: str, quality: in
             "path": None,  # filled by the caller, relative to the artifact
         })
 
+    items.sort(key=lambda item: item["t_seconds"])
+    skipped.sort(key=lambda entry: entry["ordinal"])
     total = len(timestamps)
     if not items:
         status = "failed"
@@ -419,6 +511,116 @@ def measure_loudness(media: Path, duration_s: float | None) -> tuple[dict | None
     }, step, limitations
 
 
+def shots_from_cuts(cuts: list[float], duration_s: float) -> list[dict]:
+    """Cut times and the length into a shot list; N cuts give N+1 shots."""
+    bounds = [0.0, *[cut for cut in cuts if 0 < cut < duration_s], duration_s]
+    shots = []
+    for start, end in zip(bounds, bounds[1:]):
+        if end <= start:
+            continue
+        shots.append({"index": len(shots), "start_s": round(start, 3), "end_s": round(end, 3),
+                      "duration_s": round(end - start, 3)})
+    return shots
+
+
+def parse_spans(stderr: str, start_key: str, end_pattern: str, duration_s: float) -> list[dict]:
+    """Start/end pairs out of a detector's log, the one the file ends inside closed at its end.
+
+    The trailing span is the one a reader most wants -- a video that ends in silence or on a held
+    frame -- and the detector prints no end line for it because the file stopped first. Here the
+    length is measured, so its end is a fact rather than a guess, and the evidence schema wants a
+    number there.
+    """
+    spans: list[dict] = []
+    for line in stderr.splitlines():
+        start = re.search(start_key + r":\s*(-?[\d.]+)", line)
+        if start:
+            spans.append({"start_s": max(0.0, round(float(start.group(1)), 3)), "end_s": None,
+                          "duration_s": None})
+            continue
+        end = re.search(end_pattern, line)
+        if end and spans and spans[-1]["end_s"] is None:
+            spans[-1]["end_s"] = round(float(end.group(1)), 3)
+            spans[-1]["duration_s"] = round(spans[-1]["end_s"] - spans[-1]["start_s"], 3)
+    if spans and spans[-1]["end_s"] is None:
+        spans[-1]["end_s"] = round(duration_s, 3)
+        spans[-1]["duration_s"] = round(max(0.0, duration_s - spans[-1]["start_s"]), 3)
+    return spans
+
+
+def measure_signals(media: Path, duration_s: float, has_audio: bool) -> tuple[dict, list, list]:
+    """Cuts, silences and held frames, each group standing or falling on its own.
+
+    One group failing leaves that group in `unavailable` and the others measured: a failed silence
+    pass is "the sound was not measured", never "there was no silence".
+    """
+    steps: list[dict] = []
+    limitations: list[str] = []
+    data: dict = {"duration_s": round(duration_s, 3), "measured": [], "unavailable": []}
+
+    def detect(group: str, filter_flag: str, filter_value: str) -> str | None:
+        args = ["-nostdin", "-hide_banner", "-nostats", "-i", str(media),
+                filter_flag, filter_value, "-f", "null", "-"]
+        started = now()
+        try:
+            result = run_tool("ffmpeg", args, SIGNAL_TIMEOUT_S)
+        except (OSError, subprocess.SubprocessError) as error:
+            result, note = None, str(error)[:300]
+        else:
+            note = "" if result.returncode == 0 else (result.stderr or "").strip()[-300:]
+        step = {"step": "local_extraction", "operation": f"measure_{group}", "tool": "ffmpeg",
+                "tool_version": tool_version("ffmpeg"), "invocation_sha256": invocation_digest(args, media),
+                "started_at": started, "status": "completed" if not note else "failed"}
+        if note:
+            step["note"] = note
+        steps.append(step)
+        return None if note or result is None else (result.stderr or "")
+
+    score = max(1, min(99, round(SHOT_THRESHOLD * 100)))
+    log = detect("shots", "-vf", f"scdet=threshold={score}")
+    if log is None:
+        data["unavailable"].append("shots")
+    else:
+        cuts = [round(float(hit), 3) for hit in re.findall(r"lavfi\.scd\.time:\s*([\d.]+)", log)]
+        shots = shots_from_cuts(cuts, duration_s)
+        data["shots"] = {"count": len(shots), "cuts_at_s": cuts, "shots": shots}
+        data["measured"].append("shots")
+        if len(shots) == 1 and duration_s >= ONE_SHOT_SUSPECT_S:
+            limitations.append(
+                f"No cuts were detected across {duration_s:.1f}s at sensitivity {SHOT_THRESHOLD}. "
+                "Cutting inside one location -- same room, same subject, same light -- often scores "
+                "below this, so a single shot here may mean the detector was too blunt rather than "
+                "that the video is one take. Check the frames before describing it as uncut.")
+
+    if not has_audio:
+        data["unavailable"].append("silence")
+        limitations.append("The file carries no audio track, so where speech pauses was not measured.")
+    else:
+        log = detect("silence", "-af", f"silencedetect=n={SILENCE_FLOOR_DB}dB:d={SILENCE_MIN_S}")
+        if log is None:
+            data["unavailable"].append("silence")
+        else:
+            data["silence"] = {"floor_db": SILENCE_FLOOR_DB, "min_s": SILENCE_MIN_S,
+                               "spans": parse_spans(log, "silence_start",
+                                                    r"silence_end:\s*([\d.]+)", duration_s)}
+            data["measured"].append("silence")
+
+    log = detect("freeze", "-vf", f"freezedetect=n=-60dB:d={FREEZE_MIN_S:g}")
+    if log is None:
+        data["unavailable"].append("freeze")
+    else:
+        data["freeze"] = {"min_s": FREEZE_MIN_S,
+                          "spans": parse_spans(log, r"freezedetect\.freeze_start",
+                                               r"freezedetect\.freeze_end:\s*([\d.]+)", duration_s)}
+        data["measured"].append("freeze")
+
+    if data["unavailable"]:
+        limitations.append("These measurements could not be taken on this machine: "
+                           f"{', '.join(data['unavailable'])}. Treat each as unread rather than as "
+                           "measured-and-found-nothing.")
+    return data, steps, limitations
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Sample frames from a video on this machine.")
     parser.add_argument("--media", type=Path, required=True)
@@ -429,8 +631,14 @@ def main() -> int:
     parser.add_argument("--base-interval-s", type=float, default=1.0)
     parser.add_argument("--hook-multiplier", type=int, default=2)
     parser.add_argument("--budget", type=int, default=600)
+    parser.add_argument("--max-frames", type=int, default=DEFAULT_MAX_FRAMES,
+                        help="Cap on frames written; the body is thinned to fit, the hook never is.")
+    parser.add_argument("--max-total-bytes", type=int, default=DEFAULT_MAX_TOTAL_BYTES,
+                        help="Stop writing frames once this many bytes are on disk.")
     parser.add_argument("--jpeg-quality", type=int, default=3)
     parser.add_argument("--measure-loudness", action="store_true")
+    parser.add_argument("--measure-signals", action="store_true",
+                        help="Measure cuts, speech pauses and held frames.")
     parser.add_argument("--dry-run", action="store_true", help="Probe and plan, write no frames.")
     args = parser.parse_args()
 
@@ -445,9 +653,10 @@ def main() -> int:
         # it gets its own exit status: the caller reports it as the gap it is and carries on with
         # whatever else the run has.
         return 4 if state == "denied" else 2
-    if args.hook_multiplier < 1 or args.base_interval_s <= 0 or args.budget < 2:
+    if (args.hook_multiplier < 1 or args.base_interval_s <= 0 or args.budget < 2
+            or args.max_frames < 2 or args.max_total_bytes < 1):
         print("ERROR: --hook-multiplier must be at least 1, --base-interval-s positive, "
-              "--budget at least 2", file=sys.stderr)
+              "--budget and --max-frames at least 2, --max-total-bytes positive", file=sys.stderr)
         return 2
 
     probe_step, payload = probe(media)
@@ -466,7 +675,7 @@ def main() -> int:
 
     content_id = media.stem
     plan = plan_frames(duration, args.hook_window_s, args.base_interval_s,
-                       args.hook_multiplier, args.budget)
+                       args.hook_multiplier, min(args.budget, args.max_frames))
     timestamps = plan.pop("_timestamps")
 
     items: list[dict] = []
@@ -475,7 +684,8 @@ def main() -> int:
         frames_status = "not_attempted"
     else:
         plan["_timestamps"] = timestamps
-        extract_step, items, skipped = extract(media, args.out_dir, plan, content_id, args.jpeg_quality)
+        extract_step, items, skipped = extract(media, args.out_dir, plan, content_id, args.jpeg_quality,
+                                               args.max_total_bytes)
         plan.pop("_timestamps")
         steps.append(extract_step)
         frames_status = "available" if items else "unavailable"
@@ -483,13 +693,32 @@ def main() -> int:
         for item in items:
             # Relative to the artifact, never absolute: this file travels into the evidence object
             # and an operator's home directory has no business travelling with it.
+            file_name = item.pop("_file")
             try:
-                item["path"] = str((args.out_dir.resolve() / item["frame_id"]).relative_to(artifact_parent))
+                item["path"] = str((args.out_dir.resolve() / file_name).relative_to(artifact_parent))
             except ValueError:
-                item["path"] = str(Path(args.out_dir.name) / item["frame_id"])
-        if skipped:
-            limitations.append(f"{len(skipped)} of {len(timestamps)} planned frames could not be "
+                item["path"] = str(Path(args.out_dir.name) / file_name)
+        over_budget = [entry for entry in skipped if "byte budget" in entry["reason"]]
+        unreadable = len(skipped) - len(over_budget)
+        if unreadable:
+            limitations.append(f"{unreadable} of {len(timestamps)} planned frames could not be "
                                "read from the file, so those seconds were not seen.")
+        if over_budget and items:
+            seen = [item["t_seconds"] for item in items]
+            widest = max((later - earlier for earlier, later in zip(seen, seen[1:])), default=0.0)
+            # Only claim what was actually written: a budget used up inside the opening leaves
+            # part of the hook, and the closing frame, unseen.
+            missing = {entry["ordinal"] for entry in skipped}
+            whole = (not any(ordinal <= plan["hook_frames"] for ordinal in missing)
+                     and len(timestamps) not in missing)
+            coverage = ("The opening and the closing frame are whole; the body is thinner"
+                        if whole else
+                        "Not all of the opening and closing frames were written, so do not describe "
+                        "the whole hook or the ending as seen")
+            limitations.append(f"{len(over_budget)} of {len(timestamps)} planned frames were not "
+                               f"written because this step's frame byte budget was used up. {coverage}, "
+                               f"with up to {widest:.3g}s between written frames, so a cut shorter "
+                               "than that may fall between them.")
 
     if args.measure_loudness and facts["has_audio"] and not args.dry_run:
         loudness, step, notes = measure_loudness(media, duration)
@@ -500,6 +729,12 @@ def main() -> int:
             facts["encoding"].update(loudness)
     elif args.measure_loudness and not facts["has_audio"]:
         limitations.append("The file carries no audio track, so nothing about its sound was measured.")
+
+    if args.measure_signals and not args.dry_run:
+        signals, signal_steps, notes = measure_signals(media, duration, facts["has_audio"])
+        steps.extend(signal_steps)
+        limitations.extend(notes)
+        facts["signals"] = signals
 
     artifact = {
         "schema_version": "local-media-extraction.v1",
@@ -523,14 +758,24 @@ def main() -> int:
 
     args.artifact.parent.mkdir(parents=True, exist_ok=True)
     args.artifact.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({
+    summary = {
         "artifact": str(args.artifact),
         "duration_s": facts["duration_s"],
         "planned": len(timestamps),
         "written": len(items),
         "skipped": len(skipped),
         "frames_status": frames_status,
-    }, ensure_ascii=False, indent=2))
+    }
+    if "signals" in facts:
+        signals = facts["signals"]
+        summary["signals"] = {
+            "measured": signals["measured"],
+            "unavailable": signals["unavailable"],
+            "shots": signals.get("shots", {}).get("count"),
+            "silences": len(signals.get("silence", {}).get("spans", [])) if "silence" in signals else None,
+            "held_frames": len(signals.get("freeze", {}).get("spans", [])) if "freeze" in signals else None,
+        }
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0 if (args.dry_run or items) else 1
 
 

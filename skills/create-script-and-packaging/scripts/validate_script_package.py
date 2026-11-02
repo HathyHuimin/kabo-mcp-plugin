@@ -753,7 +753,18 @@ def _validate_request_with_facts(request: Any, request_path: Path, run_root: Pat
         artifact_path = resolve(request_path.parent, ref.get("path", ""))
         require(artifact_path.is_file(), f"video analysis path not found: {ref.get('path')}", errors)
         if artifact_path.is_file():
-            artifact = load(artifact_path)
+            try:
+                artifact = load(artifact_path)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                artifact = None
+            if not isinstance(artifact, dict) or artifact.get("schema_version") != "video-analysis.v1":
+                # A plugin run on 2026-10-29 pointed this at the analysis run's report Markdown, then
+                # at a summary it wrote itself, and at the third mismatch dropped the source to pass.
+                errors.append(f"video analysis source {ref.get('path')} is not a VideoAnalysis: point it at the "
+                              "analysis run's analysis/video_analysis.json (artifact_id = its analysis_id, "
+                              "schema_version video-analysis.v1); a report or a summary is not one. Do not "
+                              "remove the source to pass.")
+                continue
             require(ref.get("artifact_id") == artifact.get("analysis_id"), "video analysis artifact_id mismatch", errors)
             require(ref.get("schema_version") == artifact.get("schema_version"), "video analysis schema_version mismatch", errors)
             validate_sha256(ref, artifact_path, "video analysis", errors)

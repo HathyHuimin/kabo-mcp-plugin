@@ -11,8 +11,8 @@ Exit codes for `core`:
   3  generation budget exhausted or already delivered; not_met recorded
   1  hard failure (missing files, I/O, unexpected state)
 
-`prep` exits 0 with status=needs_correction, touching nothing in the run, when an
-artifact flag points at a non-JSON file such as a Markdown report.
+`prep` permits one correction of invalid inputs before generation; another
+invalid input exits 3. A successful prep or a started core cannot be reset.
 
 Standard library only.
 """
@@ -30,16 +30,28 @@ from typing import Any
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from build_idea_request import build, load as load_json  # noqa: E402
+from build_idea_request import RequestInputError, build, load as load_json  # noqa: E402
 from render_idea_report import concise, full, validate_concise  # noqa: E402
-from validate_ideas import generation_decision, validate_idea_set, validate_request  # noqa: E402
+from validate_ideas import generation_decision, validate_authored_intent, validate_idea_set, validate_request  # noqa: E402
 
 STAGE_SCHEMA = "ideas-stage-timing.v1"
 MAX_GENERATION_ATTEMPTS = 2
 ARTIFACT_FLAGS = (
     "creator-profile", "account-review", "account-context", "trend-report", "trend-context",
-    "competitor-report", "competitor-context", "video-analysis", "comment-context",
+    "competitor-report", "competitor-context", "video-analysis", "comment-context", "previous-ideas",
 )
+
+
+def validation_issue(message):
+    """Turn validator errors into bounded corrections while preserving source requirements."""
+    if "direct_topic" in message:
+        return RequestInputError(message, code="invalid_direct_topic", field="generation_basis.direct_topic",
+            next_action="Copy a literal substantive topic from user_brief.text. For a follow-up, keep direct_topic null and restore the previous IdeaSet with --previous-ideas plus a verbatim continuation_quote. Never rewrite the user's brief to make a topic pass.").issue
+    if "report_language" in message or "language variant" in message or "language extension" in message:
+        return RequestInputError(message,
+            code="invalid_report_language",
+            field="report_language", next_action="Correct the malformed tag while preserving the user's requested language; never silently substitute another language.").issue
+    return RequestInputError(message, code="invalid_request", field=message.split(":", 1)[0] if message.startswith("request.") else "request").issue
 
 
 def utc_now() -> str:
@@ -126,67 +138,121 @@ def non_json_artifacts(args: argparse.Namespace) -> list[dict[str, Any]]:
     return rows
 
 
+def missing_artifacts(args: argparse.Namespace) -> list[dict[str, Any]]:
+    """Identify unavailable authored/upstream files before build performs any writes."""
+    rows = []
+    for name in ("intent", *ARTIFACT_FLAGS):
+        path = getattr(args, name.replace("-", "_"))
+        if path is not None and not path.is_file():
+            if name == "previous-ideas":
+                # Keep the builder's specific error, including when another
+                # independently invalid field would otherwise prevent build.
+                rows.append(RequestInputError(
+                    f"{path} is not an available file", code="missing_previous_ideas", field="continuation_context",
+                    next_action="Restore the original previous idea_set.json from this conversation's retained file or saved result, then rerun prep. Do not recreate it from memory.").issue)
+                continue
+            rows.append(RequestInputError(
+                f"{path} is not an available file", code="missing_artifact", field=f"--{name}",
+                next_action="Restore the original input JSON from this conversation's saved result or file, then rerun prep in this run. Do not fabricate evidence or recreate an upstream artifact from memory.").issue)
+    return rows
+
+
 def run_prep(args: argparse.Namespace) -> int:
     """Build request, validate, decide, and open core timing when ready."""
-    not_json = non_json_artifacts(args)
-    if not_json:
-        print(json.dumps({
-            "status": "needs_correction",
-            "stage": "prep",
-            "issue": {"not_json": not_json},
-            "next_action": "Each listed flag takes the upstream package's JSON artifact, not its Markdown report "
-                           "(for --account-review, review-creator-account's account_review.json, copied into this run). "
-                           "Rerun this same prep command in this run directory with the JSON path. "
-                           "Do not reserve another run or hand-write the artifact.",
-        }, ensure_ascii=False))
-        return 0
     run_dir = args.run_dir.resolve()
-    run_dir.mkdir(parents=True, exist_ok=True)
     timing_path = run_dir / "stage_timing.json"
     started = time.monotonic()
     started_at = utc_now_precise()
     intent_path = args.intent.resolve()
     request_path = (run_dir / "request.json").resolve()
     decision_path = (run_dir / "decision.json").resolve()
-    # A rerun must not consume artifacts from a prior attempt; retain intent and
-    # upstream evidence so prep can rebuild deterministically.
-    for name in ("request.json", "decision.json", "idea_set.json", "revision_brief.json",
-                 "RESULT.md", "IDEA_REPORT_FULL.md", "stage_timing.json"):
-        unlink_if_exists(run_dir / name)
-
+    state_checked = False
+    publishing_request = False
     try:
-        intent = load_json(intent_path)
-        request = build(
-            intent,
-            request_path,
-            creator_profile=args.creator_profile,
-            account_review=args.account_review,
-            account_context=args.account_context,
-            trend_report=args.trend_report,
-            trend_context=args.trend_context,
-            competitor_report=args.competitor_report,
-            competitor_context=args.competitor_context,
-            video_analysis=args.video_analysis,
-            comment_context=args.comment_context,
-        )
+        run_dir.mkdir(parents=True, exist_ok=True)
+        timing = read_timing(timing_path)
+        previous = timing.get("prep") or {}
+        if not isinstance(previous, dict):
+            raise ValueError("invalid prep state; refusing to reset the correction budget")
+        # Correction is legal only before a successful prep. Never erase an
+        # existing decision, draft, delivery or core generation counter.
+        if timing.get("core") is not None or previous.get("status") not in {None, "needs_correction"}:
+            print(json.dumps({"status": "not_met", "stage": "prep", "reason": "prep_restart_forbidden",
+                              "next_action": "Continue from the existing decision/core state; do not reset this run."}))
+            return 3
+        attempts = previous.get("input_attempts", 0)
+        if type(attempts) is not int or attempts not in {0, 1}:
+            raise ValueError("invalid prep input_attempts; refusing to reset the correction budget")
+        if any((run_dir / name).exists() for name in ("request.json", "decision.json", "idea_set.json", "RESULT.md", "IDEA_REPORT_FULL.md")):
+            raise ValueError("existing generation artifacts without an open prep; refusing to overwrite them")
+        state_checked = True
+        attempts += 1
+        issues = missing_artifacts(args)
+        not_json = non_json_artifacts(args)
+        if not_json:
+            issues.extend(RequestInputError(f"{row['path']} is not JSON", code="not_json", field=row["flag"],
+                next_action="Use the original upstream JSON artifact, not its Markdown report. Do not hand-write a replacement.").issue
+                for row in not_json)
+        files_available = not issues
+        intent = None
+        if intent_path.is_file():
+            try:
+                intent = load_json(intent_path)
+                issues.extend(validation_issue(error) for error in dict.fromkeys(
+                    validate_authored_intent(intent, has_previous_ideas=args.previous_ideas is not None)))
+            except RequestInputError as error:
+                issues.append(error.issue)
+            except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                issues.append(RequestInputError(str(error), code="invalid_json").issue)
+        if files_available and intent is not None:
+            try:
+                request = build(
+                    intent, request_path,
+                    creator_profile=args.creator_profile, account_review=args.account_review,
+                    account_context=args.account_context, trend_report=args.trend_report,
+                    trend_context=args.trend_context, competitor_report=args.competitor_report,
+                    competitor_context=args.competitor_context, video_analysis=args.video_analysis,
+                    comment_context=args.comment_context, previous_ideas=args.previous_ideas,
+                )
+                issues.extend(validation_issue(error) for error in dict.fromkeys(validate_request(request, request_path)))
+            except RequestInputError as error:
+                issues.append(error.issue)
+            except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                issues.append(RequestInputError(str(error), code="invalid_json").issue)
+        issues = list({(issue["code"], issue["field"], issue["message"]): issue for issue in issues}.values())
+        if issues:
+            status = "needs_correction" if attempts == 1 else "not_met"
+            ended_at = utc_now_precise()
+            timing["prep"] = {"started_at": started_at, "ended_at": ended_at,
+                              "duration_ms": duration_ms_between(started_at, ended_at),
+                              "status": status, "input_attempts": attempts, "issues": issues}
+            timing["schema_version"] = STAGE_SCHEMA
+            timing["core"] = None
+            write_json(timing_path, timing)
+            print(json.dumps({"status": status, "stage": "prep", "issues": issues,
+                **({"issue": {"not_json": not_json}} if not_json else {}),
+                "correction_remaining": 2 - attempts,
+                "next_action": "Correct the listed inputs once, then rerun prep in the same run directory. Do not generate or deliver an unvalidated substitute."
+                               if attempts == 1 else "Input correction was not completed. Report the unresolved limitation; do not reset prep or deliver an unvalidated substitute."}, ensure_ascii=False))
+            return 0 if attempts == 1 else 3
+        publishing_request = True
         write_json(request_path, request)
-        request_errors = validate_request(request, request_path)
-        if request_errors:
-            raise ValueError("; ".join(dict.fromkeys(request_errors)))
         decision = generation_decision(request)
         write_json(decision_path, decision)
     except (OSError, ValueError, json.JSONDecodeError, KeyError, TypeError) as error:
-        unlink_if_exists(request_path)
-        unlink_if_exists(decision_path)
+        if publishing_request:
+            unlink_if_exists(request_path)
+            unlink_if_exists(decision_path)
         ended_at = utc_now_precise()
         try:
-            write_json(timing_path, {
-                "schema_version": STAGE_SCHEMA,
-                "prep": {"started_at": started_at, "ended_at": ended_at,
-                          "duration_ms": duration_ms_between(started_at, ended_at),
-                          "status": "failed", "error": f"{type(error).__name__}: {error}"},
-                "core": None, "network_retries": [],
-            })
+            if state_checked:
+                write_json(timing_path, {
+                    "schema_version": STAGE_SCHEMA,
+                    "prep": {"started_at": started_at, "ended_at": ended_at,
+                              "duration_ms": duration_ms_between(started_at, ended_at),
+                              "status": "failed", "error": f"{type(error).__name__}: {error}"},
+                    "core": None, "network_retries": timing.get("network_retries", []),
+                })
         except OSError:
             pass
         payload = {
@@ -199,17 +265,17 @@ def run_prep(args: argparse.Namespace) -> int:
 
     ended_at = utc_now_precise()
     duration_ms = int((time.monotonic() - started) * 1000)
-    timing = read_timing(timing_path)
     timing["schema_version"] = STAGE_SCHEMA
     timing["prep"] = {
         "started_at": started_at,
         "ended_at": ended_at,
         "duration_ms": duration_ms,
         "status": decision.get("status"),
+        "input_attempts": attempts,
         "request_path": "request.json",
         "decision_path": "decision.json",
     }
-    # Core must not inherit a previous run's attempt counters when prep restarts.
+    # A new core is opened only once; all prep restarts were rejected above.
     core = empty_core()
     if decision.get("status") in {"ready_for_generation", "blocked_missing_required_source", "needs_selection_context"}:
         # Core wall clock starts when generation is authorized, before the host writes idea_set.json.

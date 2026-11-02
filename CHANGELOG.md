@@ -33,6 +33,11 @@
   合并后的包在生产上冒烟（画中画 TikTok，job `20964b79`，runner V2-r71，73.3 秒，$1.22）：读到画中画格式文件、`all_models` 取到
   `talking_model_choices`、默认出片用 Vivix、终审结论（framing）逐项转述，均通过。旁白参考本轮未测（随 main 的 1.0.5 / 1.0.6 已发布）。
 - `contracts/directory-mcp/` 重新固定到 kabo `f00ff9738`（63 个工具；`get_remake_video` 的 `all_models` 与 `talking_model_choices`、`render_remake_video` 的默认模型与说明，另含 `tiktok_list_account_posts` 的说明变化）。
+- `analyze-content-video` 同步到 creator-skills 0.14.29、`create-script-and-packaging` 同步到 0.2.27（冻结提交 `a9514ba30`）：本地视频抽帧改用哈希文件名、720px、限 90 帧 / 12 MiB 且先写开头和结尾，`--measure-signals` 测剪辑点与停顿进 `media.probed`，宿主机器转写用 `--origin speech_recognition` 记为「听到的」；健康的 job 在本轮内等约 3 分钟；测量、长视频文字、图文帖、剪辑请求拿不到时的处理写进 `references/evidence-reading.md`；脚本的 `video_analysis_sources` 只认 `video_analysis.json`；续集先核实上一集。两个 SKILL.md 正文不增长。
+- review-creator-account-deep 同步上游 0.3.52：没有标准版分析时，在本次运行里用 `fetch_catalog.py` 取一页作品目录（每次运行最多 4 次目录调用，失败调用用 `--failed` 记账，Feed 失败不重试）；后续步骤缺输入时退出码 2 并给出第 1 步的两个入口；标准版复用说明移到 `references/standard-inputs.md`。
+- `develop-content-ideas` 同步 creator-skills 0.1.31（`a9514ba30`）：prep 对各类输入问题（非 JSON / 非 UTF-8 / 缺失文件、非原文主题、错误语言标签）统一返回 `needs_correction`，首轮合并所有可独立核实的问题、限纠正一次；支持「再来 10 个同风格」续轮（`--previous-ideas` 绑定上一轮 `idea_set.json`）；zh/en/fr/ar 之外的报告语言改用 `report_language.py --labels` 列出的 UI 标签译文并逐项校验。`remake-viral-video` 对照上游 0.1.34 无需改动（TikTok 链接由 #20 处理，Wan 3.0 不在当前 `/mcp-pub` 合约中，固定补间数值已在 #40 合入），只更新溯源记录。
+- `review-creator-account` 同步 creator-skills 0.5.53：TikTok 图文（photo）与视频分开建基线，`build_public_snapshot.py` 按原帖 URL 或平台声明的媒体类型识别 `tiktok_photo`/`tiktok_video`，无法判定的记为 unknown 并不进同格式对比；重复记录合并时保留原始帖子 URL。
+- `analyze-creator-competitors` 同步 creator-skills 0.5.89：`report` 先把 synthesis 的 `status` 同义词（completed/done/ok/success、incomplete、failed）规整为 complete/partial/blocked，其它非法值在 compose 入口给出可改提示，不再到校验才失败。`review-creator-account` 锁定上游 0.5.50，其改动（`--export-report` 与 handoff 只认 `.json`）属 Web 宿主交付机制，插件版没有 handoff 导出、`ACCOUNT_REVIEW.md` 本就是本地交付文件，不搬。
 - 三个 trends Skill：逐项核对 creator-skills `92824da5b` 到 `a9514ba30`（冻结点）之间的账号画像系列（#914、#915、#918、#920，15 个提交），脚本与 references 已由 #32、#33 和 1.0.6 全部覆盖，无需补移植；`skills.lock.json` 的来源改记为 IG 0.3.115 / TT 0.1.105 / YT 0.1.103（`a9514ba30`）。
 
 ## 1.0.6（2026-11-02；GitHub Release）
