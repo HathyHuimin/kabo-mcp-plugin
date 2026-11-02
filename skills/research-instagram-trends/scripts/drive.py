@@ -41,8 +41,8 @@ The manual commands these stages replace, unchanged in what they run and write:
     compose_report.py … ; validate_output.py … ; render_creator_report.py …
 
 Connector calls are handed to the model (connector_driver.py): the stage prints each call as a
-named /mcp-pub tool call and stops, the model makes it and stages the complete result with
-`static_host.py stage`, and the same stage run again with `--placed` places that response. With a
+named /mcp-pub tool call and stops, the model makes it and saves the complete result to the file
+named under it, and the same stage run again with `--placed` fetches (or stages) and places it. With a
 profile attached the collect calls carry `include`; when Kabo refuses one only for it, the same
 stage run with `--without-include` hands it over once more without it (attach_creator_profile.py).
 """
@@ -823,19 +823,12 @@ def hand_over_lean(call: dict[str, Any]) -> None:
     call = {**call, "delivery": "download"}
     Path(ENRICH_CALL).write_text(json.dumps(call, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     cd.say(json.dumps(call, ensure_ascii=False, separators=(",", ":")))
-    results = Path("host-results")
-    saved = f"host-results/{(len(list(results.glob('*.json'))) if results.is_dir() else 0) + 1:02d}-enrich_instagram_shortlist.json"
+    [saved] = cd.await_results(["enrich_instagram_shortlist"])
     cd.say(f"This host does not fetch the enrichment for scripts. Call `enrich_instagram_shortlist` exactly once "
            f"with the JSON printed above (also in {ENRICH_CALL}) verbatim as the tool arguments — every item and "
-           "every top-level field, `window` included; do not add, drop or reorder items. Its result holds a download "
-           "link: never download it yourself with a shell command or a browser. Save the result itself, link "
-           "included and unchanged (the host's result export, or the result text as returned written with a "
-           "single-quoted heredoc), and run the command below, which downloads and checks the data; when fetch "
-           "reports no ready download, run it with stage in place of fetch.")
+           "every top-level field, `window` included; do not add, drop or reorder items. " + cd.SAVE_RULE)
     cd.say(f"  save: {saved}")
-    cd.say(f"  then: cd '{Path.cwd()}' && KABO_STATIC_RUN_DIR='{Path.cwd()}' python3 "
-           f"'{cd.SCRIPTS / 'static_host.py'}' fetch --tool enrich_instagram_shortlist --input '{saved}'")
-    cd.say("When the result is fetched or staged, resume: " + cd.resume_command())
+    cd.say_resume()
     raise SystemExit(0)
 
 

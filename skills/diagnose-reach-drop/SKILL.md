@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching public account history also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for account history only: data."
 metadata:
   version: "0.4.10"
-allowed-tools: get_research_data_job get_research_data_download instagram_resolve_profile instagram_list_posts instagram_list_reels youtube_get_channel youtube_list_channel_uploads tiktok_list_account_posts
+allowed-tools: get_research_data_job get_research_data_download collect_account_history
 ---
 
 # Diagnose Reach Drop
@@ -73,16 +73,12 @@ before claiming anything.
 All data comes from the Kabo MCP tools in `allowed-tools`. A missing or unavailable operation is a
 capability gap to report, not something to work around.
 
-| Data | Instagram | YouTube | TikTok |
-|---|---|---|---|
-| Account identity | `instagram_resolve_profile` | `youtube_get_channel` | — |
-| Public history | `instagram_list_posts`, `instagram_list_reels` | `youtube_list_channel_uploads` | `tiktok_list_account_posts` |
+Public account history comes from one `collect_account_history` call that `drive.py fetch` hands
+over: the backend resolves the account and fetches its bounded recent history in that one call.
 
-- **Hand-over.** `drive.py fetch` exits 0 after printing a `call:` line per call. That pause is
-  unfinished work. Make exactly those calls with the arguments verbatim, each as its own individual
-  call, all in one response; then do what it prints under each call (save the result to the named
-  file, run the printed `fetch` command) and finally run the printed resume command. Never retype,
-  paste, hand-write or patch data.
+- **Hand-over.** `drive.py fetch` exits 0 after printing a `call:` line. That pause is unfinished
+  work. Make exactly that call with the arguments verbatim; save the result to the file named under
+  it, then run the printed resume command, which fetches the saved file itself. Never retype, paste, hand-write or patch data.
 - **Anything else** — a refused fetch, an expired link, a queued job or a failed call — follow
   `references/data-calls.md`. An invalid-input error is never retried unchanged: confirm the exact
   handle with the user.

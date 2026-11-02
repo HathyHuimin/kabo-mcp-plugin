@@ -14,14 +14,20 @@ same positions, as the manual workflow did — so every later script reads exact
 read — runs the deterministic steps, and prints exactly what the next judgment reads.
 
     start                  reserve the run directory     -> Request and query-plan schemas
-    discover --region R    4 searches -> candidate set   -> discovery projection + Gate schema
-    content [--comments]   selection -> 5 histories -> Snapshot -> analysis -> synthesis evidence
+    discover --region R    one collect_tiktok_video_candidates call (every intent x both sorts)
+                           -> candidate set -> discovery projection + Gate schema
+    content [--comments]   selection -> one collect_account_history call (up to 5 accounts) ->
+                           Snapshot -> analysis -> synthesis evidence
     comments               comment targets -> list_comments -> audience comments
     report                 Compose -> Validate -> Render -> the Creator report
 
 A stage makes no data calls itself (connector_driver.py): it prints the calls as public MCP tool
 names for the model to make in one response; the same stage run again with `--placed` picks the
-staged responses up.
+staged responses up. The searches and the account histories each run as one backend call
+(kabo-composite-fetch.v1); `static_host.py fetch` stores every single call it made as its own
+evidence, tagged with its group (`intent-<i>-sort-<s>`, `acct-<i>`), and the stage places each
+response under the run key of the intent, sort or account its group names, so every script after
+it reads exactly what it read when the model made each call itself.
 """
 
 from __future__ import annotations
@@ -32,28 +38,15 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import connector_driver as cd  # noqa: E402
 from sampling_policy import frozen_request  # noqa: E402
-from persist_envelope import (  # noqa: E402
-    account_of,
-    in_flight,
-    matches,
-    place,
-    read_json_or_empty,
-    run_dir_of,
-    run_lock,
-    unwrap_envelope,
-    usable,
-    write_json_atomic,
-)
+from persist_envelope import unwrap_envelope, write_json_atomic  # noqa: E402
 
-DISCOVERY = "tiktok-discovery"
-PUBLIC = "tiktok-public"
 REQUEST = "competitor-research-request.json"
 PLAN = "tiktok-query-plan.json"
 DISCOVERY_ENVELOPES = "discovery-envelopes.json"
@@ -74,6 +67,9 @@ SYNTHESIS = "competitor-research-synthesis.json"
 REPORT = "competitor-research-report.json"
 CREATOR_REPORT = "creator-report.md"
 
+# The searches and the account histories each run as one backend call (kabo-composite-fetch.v1).
+COLLECT_CANDIDATES = "collect_tiktok_video_candidates"
+COLLECT_HISTORY = "collect_account_history"
 # search_videos: one call per intent and sort, 30 results each. sort_type 0 is relevance, 1 most
 # liked; the run key carries the route name build_tiktok_candidate_set.py reads it by.
 SORTS = ((0, "relevance"), (1, "most-liked"))
@@ -114,47 +110,48 @@ def fresh_bundle(bundle: str, calls: list[dict[str, Any]]) -> None:
     cd.save_state(bundles=bundles)
 
 
-def record_envelope(path: Path | None, connector: str, operation: str, handle: str | None) -> dict[str, Any] | None:
-    """The host's own record of one request's response, when it is that request's and usable here."""
-    if path is None or not path.is_file():
-        return None
-    try:
-        envelope = unwrap_envelope(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError):
-        return None
-    if (envelope is None or not matches(envelope, connector, operation) or in_flight(envelope)
-            or usable(envelope, True) is not None):
-        return None
-    if handle:
-        account = account_of(envelope)
-        if account and account != handle.strip().lstrip("@").lower():
-            return None  # its data names another account: let the content decide
-    return envelope
+def composite_record(tool: str, wanted: Callable[[dict[str, Any]], bool]) -> dict[str, Any] | None:
+    """The newest staged record of this composite tool that answers the call this stage made.
 
-
-def place_by_record(bundle: str, at: list[list[str]], connector: str, operation: str,
-                    handles: list[str | None]) -> list[int]:
-    """Place each response at its own request's position; returns the positions still unplaced.
-
-    `at[i]` is the position of request i in call order. The write is persist_envelope.py's own
-    (same bundle shape, same serialization), under the same run lock.
+    `static_host.py fetch` / `stage` split a composite result into one evidence file per backend call
+    plus this record (summary, coverage, limitations, calls with their groups and evidence paths).
+    `wanted` checks the record's summary against what was asked, so an earlier collection of the same
+    tool in this run (a rewritten plan) is never taken for this one.
     """
-    records = cd.LAST_RECORDS
-    if records is None or len(records) != len(at):
-        return list(range(len(at)))
-    base = run_dir_of(Path(bundle).resolve()) or Path(bundle).resolve().parent
-    left: list[int] = []
-    with run_lock(base):
-        for index, (segments, (request, path)) in enumerate(zip(at, records)):
-            if request.get("operation") != operation:
-                left.append(index)
-                continue
-            envelope = record_envelope(path, connector, operation, handles[index])
-            if envelope is None:
-                left.append(index)
-                continue
-            write_json_atomic(Path(bundle), place(read_json_or_empty(Path(bundle)), segments, envelope))
-    return left
+    import static_host
+    try:
+        records = static_host.composite_records(tool)
+    except ValueError as error:
+        raise cd.StageError(str(error)) from error
+    for record in reversed(records):
+        if wanted(record):
+            return record
+    return None
+
+
+def composite_calls(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Each backend call of a composite record by its group (the last one of a group), with its
+    envelope as staged and the parameters the backend sent."""
+    calls: dict[str, dict[str, Any]] = {}
+    for call in record.get("calls") or []:
+        path = Path(str(call.get("path") or ""))
+        try:
+            envelope = unwrap_envelope(path.read_text(encoding="utf-8"))
+            meta = json.loads(path.with_suffix(".meta").read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            envelope, meta = None, {}
+        if envelope is None:
+            raise cd.StageError(f"the staged evidence of {record.get('tool')} call {call.get('index')} "
+                                f"({call.get('group')}) is missing or unreadable: {path}")
+        parameters = meta.get("composite_parameters") if isinstance(meta, dict) else None
+        calls[str(call.get("group"))] = {"envelope": envelope,
+                                         "parameters": parameters if isinstance(parameters, dict) else {}}
+    return calls
+
+
+def say_limitations(record: dict[str, Any]) -> None:
+    for line in record.get("limitations") or []:
+        say(f"[drive] {record.get('tool')}: {str(line)[:300]}")
 
 
 # --------------------------------------------------------------------------- start
@@ -188,49 +185,44 @@ def stage_start(args: argparse.Namespace) -> None:
 # --------------------------------------------------------------------------- discover
 
 
-def search_calls(plan: dict[str, Any], publish_time: int, region: str) -> list[dict[str, Any]]:
-    """Two searches per intent, in plan order: sort_type 0, then 1. Individual runs, never a batch:
-    a host-level batch failure would erase each route's own terminal evidence."""
-    calls = []
-    for intent in plan["intents"]:
-        for sort_type, _ in SORTS:
-            calls.append(cd.run_call(DISCOVERY, "search_videos", {
-                "keyword": intent["search_query"], "sort_type": sort_type, "count": SEARCH_COUNT,
-                "publish_time": publish_time, "region": region,
-            }))
-    return calls
+def discovery_call(plan: dict[str, Any], publish_time: int, region: str) -> dict[str, Any]:
+    """Every intent x both sorts as one backend call: the frozen intent phrase as `keyword`, 30 results
+    each, the same `region` and `publish_time` on every search."""
+    return {"tool": COLLECT_CANDIDATES, "arguments": {
+        "intents": [{"keyword": intent["search_query"], "publish_time": publish_time} for intent in plan["intents"]],
+        "sorts": [sort_type for sort_type, _ in SORTS], "count": SEARCH_COUNT, "region": region}}
 
 
-def search_keys(plan: dict[str, Any]) -> list[str]:
-    """One run key per search, in call order. Numbered rather than named after the intent: the
-    candidate builder reads the route from the key (`liked` -> most_liked, `top…` -> ranked board),
-    and an intent id may contain either."""
-    return [f"intent-{number}-{route}" for number, _ in enumerate(plan["intents"], start=1) for _, route in SORTS]
+def search_keys(plan: dict[str, Any]) -> list[tuple[str, str]]:
+    """(run key, composite group) per search, in call order. The key is numbered rather than named
+    after the intent: the candidate builder reads the route from the key (`liked` -> most_liked,
+    `top…` -> ranked board), and an intent id may contain either."""
+    return [(f"intent-{number + 1}-{route}", f"intent-{number}-sort-{sort_type}")
+            for number, _ in enumerate(plan["intents"]) for sort_type, route in SORTS]
 
 
-def rekey_by_query(keys: list[str], keywords: list[str]) -> None:
-    """After placement by fetch order, move any response onto the run of the keyword it answered.
+def place_searches(plan: dict[str, Any]) -> None:
+    """Place every search response under the intent and sort its group names; a failed one stays as
+    that route's evidence. A search the backend returned nothing for stops discovery."""
+    expected = [[intent["search_query"], sort_type] for intent in plan["intents"] for sort_type, _ in SORTS]
 
-    Responses the model made itself are placed in the order the host recorded them, and calls made
-    together in one response may finish in any order. A search response names its own query
-    (`data.query`), so a response placed under another intent's run is moved back; the two sorts of
-    one intent answer the same query and keep their recorded order.
-    """
-    bundle = read_json_or_empty(Path(DISCOVERY_ENVELOPES))
-    runs = bundle.get("runs") if isinstance(bundle, dict) else None
-    if not isinstance(runs, dict) or not all(isinstance(runs.get(key), dict) for key in keys):
-        return
-    queries = [(runs[key].get("data") or {}).get("query") if isinstance(runs[key].get("data"), dict) else None
-               for key in keys]
-    if any(not isinstance(q, str) for q in queries) or queries == keywords or sorted(queries) != sorted(keywords):
-        return
-    pool: dict[str, list[dict[str, Any]]] = {}
-    for key, query in zip(keys, queries):
-        pool.setdefault(str(query), []).append(runs[key])
-    for key, keyword in zip(keys, keywords):
-        runs[key] = pool[keyword].pop(0)
-    write_json_atomic(Path(DISCOVERY_ENVELOPES), bundle)
-    say("[drive] search responses finished out of order; each was placed under the query it answered")
+    def wanted(record: dict[str, Any]) -> bool:
+        searches = (record.get("summary") or {}).get("searches") or []
+        return [[row.get("keyword"), row.get("sort_type")] for row in searches if isinstance(row, dict)] == expected
+
+    record = composite_record(COLLECT_CANDIDATES, wanted)
+    if record is None:
+        raise cd.StageError(f"no complete host record of {COLLECT_CANDIDATES} for this run: fetch (or stage) the "
+                            "result of the call discover handed over, then run discover again with --placed")
+    say(f"[drive] {COLLECT_CANDIDATES}: status={record.get('status')}")
+    say_limitations(record)
+    calls = composite_calls(record)
+    slots = search_keys(plan)
+    missing = [group for _, group in slots if group not in calls]
+    if missing:
+        raise cd.StageError(f"no complete host record of the searches {', '.join(missing)} "
+                            f"({'; '.join(map(str, record.get('limitations') or [])) or 'no reason given'})")
+    write_json_atomic(Path(DISCOVERY_ENVELOPES), {"runs": {key: calls[group]["envelope"] for key, group in slots}})
 
 
 def complete_request() -> dict[str, Any]:
@@ -261,25 +253,15 @@ def stage_discover(args: argparse.Namespace) -> None:
     resolved = json.loads(cd.script("resolve_tiktok_publish_time.py", REQUEST))
     publish_time = resolved["publish_time"]
     plan = cd.load(PLAN)
-    calls = search_calls(plan, publish_time, region)
-    keys = search_keys(plan)
-    keywords = [call["arguments"]["params"]["keyword"] for call in calls]
-    say(f"[drive] search_videos x{len(calls)}: publish_time={publish_time}, region={region}")
+    calls = [discovery_call(plan, publish_time, region)]
+    say(f"[drive] search_videos x{len(plan['intents']) * len(SORTS)} in one backend call: "
+        f"publish_time={publish_time}, region={region}")
 
-    def place_searches() -> None:
+    def place() -> None:
         fresh_bundle(DISCOVERY_ENVELOPES, calls)
-        left = place_by_record(DISCOVERY_ENVELOPES, [["runs", key] for key in keys], DISCOVERY, "search_videos",
-                               [None] * len(keys))
-        if not left:
-            return
-        # Without the host's record of which call staged which response (the model made the calls,
-        # or a record could not be paired): persist_many.py in call order, as the manual step did.
-        cd.script("persist_many.py", "--connector", DISCOVERY, "--operation", "search_videos", "--any-status",
-                  "--into", DISCOVERY_ENVELOPES, "--at", "runs", *[arg for i in left for arg in ("--slot", keys[i])],
-                  *cd.drained())
-        rekey_by_query(keys, keywords)
+        place_searches(plan)
 
-    cd.fetch_round(calls, args, place_searches)
+    cd.fetch_round(calls, args, place)
     cd.script("build_tiktok_candidate_set.py", "--request", REQUEST, "--envelopes", DISCOVERY_ENVELOPES,
               "--output", CANDIDATES)
     cd.script("project_tiktok_accounts.py", "--request", REQUEST, "--candidates", CANDIDATES,
@@ -305,6 +287,32 @@ def build_gate() -> None:
                             "content again")
 
 
+def place_history_record(keys: list[str]) -> None:
+    """Place each account's history under its own handle, from the group the backend fetched it in.
+
+    A failed or unresolved account keeps its failed response as that account's evidence; an account
+    the backend returned nothing for stops the stage, as a missing response always did.
+    """
+    def wanted(record: dict[str, Any]) -> bool:
+        accounts = [row for row in (record.get("summary") or {}).get("accounts") or []
+                    if isinstance(row, dict) and str(row.get("group") or "").startswith("acct-")]
+        return [history_key(str((row.get("input") or {}).get("handle") or "")) for row in accounts] == keys
+
+    record = composite_record(COLLECT_HISTORY, wanted)
+    if record is None:
+        raise cd.StageError(f"no complete host record of {COLLECT_HISTORY} for this run: fetch (or stage) the "
+                            "result of the call content handed over, then run content again with --placed")
+    say(f"[drive] {COLLECT_HISTORY}: status={record.get('status')}")
+    say_limitations(record)
+    calls = composite_calls(record)
+    missing = [key for index, key in enumerate(keys) if f"acct-{index}" not in calls]
+    if missing:
+        raise cd.StageError(f"no complete host record of the account histories of {', '.join(missing)} "
+                            f"({'; '.join(map(str, record.get('limitations') or [])) or 'no reason given'})")
+    write_json_atomic(Path(HISTORIES), {"runs": {key: calls[f"acct-{index}"]["envelope"]
+                                                 for index, key in enumerate(keys)}})
+
+
 def stage_content(args: argparse.Namespace) -> None:
     frozen_request(Path(REQUEST))
     build_gate()
@@ -321,18 +329,14 @@ def stage_content(args: argparse.Namespace) -> None:
             "comparable TikTok account was found for this request; do not write a synthesis.")
         return
     handles = [str(row["handle"]) for row in included]
-    calls = [cd.run_call(PUBLIC, "list_account_posts", {"handle": handle, "limit": HISTORY_LIMIT}) for handle in handles]
     keys = [history_key(handle) for handle in handles]
+    calls = [{"tool": COLLECT_HISTORY, "arguments": {
+        "platform": "tiktok", "accounts": [{"handle": handle} for handle in handles],
+        "history": {"max_items": HISTORY_LIMIT}, "profile": False, "on_identity_miss": "gap"}}]
 
     def place_histories() -> None:
         fresh_bundle(HISTORIES, calls)
-        left = place_by_record(HISTORIES, [["runs", key] for key in keys], PUBLIC, "list_account_posts", list(handles))
-        if not left:
-            return
-        # `--handle` binds each response to its account, as the manual step did.
-        cd.script("persist_many.py", "--connector", PUBLIC, "--operation", "list_account_posts", "--any-status",
-                  "--into", HISTORIES, "--at", "runs", *[arg for i in left for arg in ("--slot", keys[i])],
-                  *[arg for i in left for arg in ("--handle", handles[i])], *cd.drained())
+        place_history_record(keys)
 
     cd.fetch_round(calls, args, place_histories)
     cd.script("build_tiktok_competitor_snapshot.py", "--request", REQUEST, "--selection", SELECTION,
@@ -373,15 +377,14 @@ def stage_comments(args: argparse.Namespace) -> None:
         return
     connector, operation = str(plan["connector_id"]), str(plan["operation"])
     calls = [cd.run_call(connector, operation, target["params"]) for target in targets]
-    slots = [["results", f"[{index}]"] for index in range(len(targets))]
+    slots = range(len(targets))
 
     def place_comments() -> None:
         fresh_bundle(COMMENT_SOURCE, calls)
-        left = place_by_record(COMMENT_SOURCE, slots, connector, operation, [None] * len(slots))
-        for index in left:
+        for index in slots:
             try:
                 cd.script("persist_envelope.py", "--into", COMMENT_SOURCE, "--at", "results", "--at", f"[{index}]",
-                          "--connector", connector, "--operation", operation, "--any-status", *cd.drained())
+                          "--connector", connector, "--operation", operation, "--any-status")
             except cd.StageError as error:
                 say(f"[drive] comment response {index + 1} could not be placed; that post and the ones after it "
                     f"stay not_fetched: {str(error)[:300]}")

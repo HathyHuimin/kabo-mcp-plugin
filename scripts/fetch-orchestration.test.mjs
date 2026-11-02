@@ -23,22 +23,17 @@ export const HANDOVER_CALL = /\b(?:fetch_round|fetch_or_hand_over|hand_over)\(/;
 export const HOST_PROBE = /connector-outbox|\boutbox_dir\b|\bCODEX_THREAD_ID\b|\bturn_token\b/;
 
 const HANDOVER_SITES = {
-  "analyze-creator-competitors": 12,
+  "analyze-creator-competitors": 6,
   "analyze-tiktok-competitors": 3,
-  "diagnose-reach-drop": 5,
+  "diagnose-reach-drop": 1,
   "research-instagram-trends": 5,
-  "research-tiktok-trends": 4,
+  "research-tiktok-trends": 3,
   "research-youtube-trends": 3,
-  "review-creator-account": 8,
+  "review-creator-account": 1,
   "verify-platform-rule": 1,
 };
 
-const HOST_PROBE_FILES = [
-  "skills/diagnose-reach-drop/scripts/connector_driver.py",
-  "skills/research-instagram-trends/scripts/connector_driver.py",
-  "skills/review-creator-account/scripts/connector_driver.py",
-  "skills/verify-platform-rule/scripts/connector_driver.py",
-];
+const HOST_PROBE_FILES = [];
 
 export function handoverSites(files = scripts()) {
   const counts = {};

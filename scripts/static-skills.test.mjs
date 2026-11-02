@@ -30,7 +30,7 @@ test("十五个固定 Skills 完整解包；根目录、宿主身份与唯一 MC
   assert.deepEqual(runtime.skills, ids);
   // 目录面已收敛到插件在用的工具：必需与可选两组恰好覆盖本仓钉住的 tools/list（契约不进包），不多不少。
   const pinnedNames = JSON.parse(await readFile(new URL("../contracts/directory-mcp/tools-list.json", import.meta.url))).tools.map(tool => tool.name).sort();
-  assert.equal(pinnedNames.length, 64);
+  assert.equal(pinnedNames.length, 68);
   assert.deepEqual([...runtime.requiredTools, ...runtime.optionalTools].sort(), pinnedNames);
   assert.ok(runtime.optionalTools.includes("public_video_measure_media_signals"));
   assert.equal(files.some(file => /^(plugin|bin|hooks)\//.test(file.name)), false);
@@ -122,8 +122,10 @@ test("实际 ZIP 中的驱动不下载程序，显式交接公开工具；deep �
   });
   const calls = output.split("\n").filter(line => line.startsWith("call: ")).map(line => JSON.parse(line.slice(6)));
   assert.ok(calls.length > 0);
-  // 交接的数据调用带 delivery:"download"：完整数据由 static_host.py fetch 下载校验。
-  assert.ok(calls.every(call => call.tool.startsWith("youtube_") && Object.keys(call.arguments).join() === "parameters,delivery" && call.arguments.delivery === "download"));
+  // 取数是一次后台组合调用（KS9），带 delivery:"download"：完整数据由 static_host.py fetch 下载、拆开、校验。
+  assert.deepEqual(calls.map(call => call.tool), ["collect_account_history"]);
+  assert.equal(calls[0].arguments.platform, "youtube");
+  assert.equal(calls[0].arguments.delivery, "download");
   // deep 原先在宿主 skill 缓存里找视频 skill（KS4.2 / KS7.1），该脚本已删除。
   await assert.rejects(readFile(path.join(root, "skills/review-creator-account-deep/scripts/resolve_video_skill.py")));
 });

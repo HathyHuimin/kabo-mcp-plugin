@@ -17,6 +17,7 @@ deterministic steps, and prints exactly what the next judgment reads.
     start     --platform P [--query N]   identity search            -> subject candidates
     start     --platform instagram --post URL   seed post + its author's subject stage
     subject   --handle H | --channel-id | --platform youtube --handle @H   subject profile + history  -> caption phrases, schemas
+              (an Instagram handle that does not resolve comes back with account-search candidates: a stop to ask the user)
     discover                             collect + profile search   -> Gate author table
     select                               Gate -> roster -> profiles -> eligibility projection
     content [--comments]                 finalize -> pages -> Assemble/Analyze -> synthesis input
@@ -25,17 +26,23 @@ deterministic steps, and prints exactly what the next judgment reads.
     report                               Compose -> Validate -> Render
 
 A stage makes no data calls itself: it prints the calls as public MCP tool names (`call:` lines)
-for the model to make and stops; the model stages each complete result with `static_host.py
-stage`, and the same stage run again with `--placed` picks those responses up.
+for the model to make and stops; the model saves each complete result to the file named under it,
+and the same stage run again with `--placed` fetches (or stages) those files and picks them up.
 
 The hand-over, the retry of a briefly failed round, the run directory, the stage lock and the state
 file are `connector_driver.py`, the same file every other driver package ships.
+
+Two options save host round trips without changing what is fetched or judged. `--workspace W` on a
+first stage (`start`, `subject`) reserves the run directory itself when none is reserved yet, so the
+run needs no separate `static_host.py init` command. `--result <tool>=<file>` on any stage takes a
+saved result from another file the same way (implies `--placed`); the printed resume needs none.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -74,7 +81,7 @@ from persist_envelope import (  # noqa: E402
     unwrap_typed,
     write_json_atomic,
 )
-from persist_round import PROFILE_OPERATIONS, owner_of, place_round, report as round_report, target_for  # noqa: E402
+from persist_round import PREFIX, PROFILE_OPERATIONS, owner_of, report as round_report, target_for  # noqa: E402
 
 SCRIPTS = cd.SCRIPTS
 POPULAR_TOPIC_MAX_CHARS = COLLECTOR_LIMITS["popular_topic"][1]
@@ -302,63 +309,164 @@ def stage_start(args: argparse.Namespace) -> None:
     script("project_subject_candidates.py", "subject-search.json", show=True)
 
 
-def history_rows(path: str) -> tuple[str | None, int]:
-    """The status of a placed history page and how many rows it holds."""
-    try:
-        envelope = load(path)
-    except (OSError, json.JSONDecodeError):
-        return None, 0
-    rows = (envelope.get("data") or {}).get("rows") if isinstance(envelope, dict) else None
-    return (envelope.get("status") if isinstance(envelope, dict) else None), len(rows) if isinstance(rows, list) else 0
+# --------------------------------------------------------------------------- account histories
+#
+# Profiles and history pages come from one backend call, `collect_account_history` (KS9): the
+# subject's profile and first page, and the selected accounts' profiles with the frozen reserves
+# backfilled — on Instagram with their Reels pages under the window rule, so `content` usually owes
+# none. The backend
+# makes the provider calls, retries an empty first history page once, and returns every call's
+# envelope (`calls[]`); `static_host.py fetch` stores each as its own evidence and writes a record
+# that names, per call, the account group (`acct-<i>`, `reserve-<i>`) and the evidence file.
+
+HISTORY_TOOL = "collect_account_history"
+TOOL_OPERATIONS = {
+    "instagram_resolve_profile": "resolve_profile",
+    "instagram_list_reels": "list_reels",
+    "youtube_get_channel": "get_channel",
+    "youtube_list_channel_uploads": "list_channel_uploads",
+}
+# A YouTube history page: the most one call returns (as for the subject). With 20, an active
+# channel's own history ended inside the window and its cadence was only a lower bound (plugins,
+# 2026-10-27). Still one page; a longer history stays a lower bound.
+YOUTUBE_PAGE = 50
 
 
-def profile_post_count(path: str) -> int:
-    """How many posts the placed profile says the account has; 0 when it does not say."""
-    try:
-        envelope = load(path)
-    except (OSError, json.JSONDecodeError):
-        return 0
-    data = (envelope.get("data") or {}) if isinstance(envelope, dict) else {}
-    rows = data.get("rows") if isinstance(data.get("rows"), list) else []
-    profile = data.get("profile") if isinstance(data.get("profile"), dict) else (
-        rows[0] if rows and isinstance(rows[0], dict) else {})
-    for key in ("post_count", "media_count", "posts_count"):
-        value = profile.get(key)
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
-            return int(value)
-    return 0
+def account_ref(platform: str, account: str) -> dict[str, str]:
+    """One account as the composite takes it: an Instagram handle, a YouTube channel id or @handle."""
+    if platform == "instagram":
+        return {"handle": account.strip().lstrip("@")}
+    if re.fullmatch(r"UC[\w-]{22}", account):
+        return {"channel_id": account}
+    return {"handle": account.strip().lstrip("@")}
 
 
-def retry_empty_history(handle: str, args: argparse.Namespace) -> None:
-    """Ask for the subject's Reels once more when the page came back empty from an account with posts.
+def history_call(platform: str, accounts: list[str], *, profile: bool = True, max_pages: int = 1,
+                 window: tuple[str, str] | None = None, reserves: list[str] | None = None,
+                 identity_candidates: bool = False) -> dict[str, Any]:
+    """The `collect_account_history` call for these accounts.
 
-    One video-started case (2026-09-19): `list_reels` answered `completed` with no rows for an account whose
-    profile listed 234 posts, while the same call returned twelve rows 14 minutes before and 11 after.
-    Without that history the caption phrases came from the seed post alone and discovery drifted off
-    the subject's own wording. A failed page (quota, not found) is not retried here: asking again does
-    not change it, and a rate limit is already retried inside the fetch.
+    Instagram reads Reels only (`list_posts` is never called: Requests on Instagram are Reels).
+    `max_pages` counts every page of one account. With a window, paging follows step 4's Reels
+    budget exactly — the second page while the window is not yet covered or fewer than
+    MIN_WINDOW_REELS in-window Reels came back, a third only while both still hold
+    (`next_reel_page`). With reserves, each account whose profile came back unavailable is
+    replaced once, in order, up to as many usable accounts as were asked for. With
+    `identity_candidates`, an account that does not resolve comes back as `needs_identity` with the
+    account search's candidates for that name, in the same call.
     """
-    status, rows = history_rows("subject-history.json")
-    if status not in USABLE_STATUSES or rows:
-        return
-    posts = profile_post_count("subject-profile.json")
-    if posts <= 0:
-        return
-    calls = [run_call(IG, "list_reels", {"handle": handle})]
-    key = cd.round_key(calls)
-    current = state()
-    if key not in (current.get("rounds") or []):
-        if key not in (current.get("handed") or {}):
-            say(f"subject history: no Reels although the profile lists {posts} posts; asking once more")
-            # The empty page stays counted as placed, so placing by content takes the new response.
-            cd.supersede(Path("subject-history.json"))
-        fetch_round(calls, args, lambda: place_record(
-            "list_reels", "subject-history.json", lambda: script(
-                "persist_many.py", "--connector", IG, "--operation", "list_reels", "--any-status",
-                "--dest", "subject-history.json", "--handle", handle, *drained())))
-    if not history_rows("subject-history.json")[1]:
-        say("note: the subject's Reels came back empty twice; the seed post and profile are the only "
-            "wording from the subject in this run")
+    history: dict[str, Any] = {"max_pages": max_pages}
+    if platform == "instagram":
+        history["instagram_formats"] = {"posts": False, "reels": True}
+    else:
+        history["page_size"] = YOUTUBE_PAGE
+    if window:
+        history.update({"since": window[0], "until": window[1], "min_items_since": MIN_WINDOW_REELS})
+    arguments: dict[str, Any] = {"platform": platform, "accounts": [account_ref(platform, a) for a in accounts],
+                                 "profile": profile, "history": history}
+    if reserves:
+        arguments["reserves"] = [account_ref(platform, r) for r in reserves]
+        arguments["target_count"] = len(accounts)
+    if identity_candidates:
+        arguments["on_identity_miss"] = "candidates"
+    return {"tool": HISTORY_TOOL, "arguments": arguments}
+
+
+def history_record(call: dict[str, Any]) -> dict[str, Any]:
+    """The staged `collect_account_history` record answering this call, newest first, never one used before."""
+    from static_host import composite_records
+
+    wanted = call["arguments"]["accounts"]
+    used = set(state().get("history_records") or [])
+    for record in reversed(composite_records(HISTORY_TOOL)):
+        if record["id"] in used:
+            continue
+        accounts = ((record.get("summary") or {}).get("accounts")) or []
+        asked = [a.get("input") for a in accounts if isinstance(a, dict) and str(a.get("group", "")).startswith("acct-")]
+        if asked and asked != wanted:
+            continue
+        save_state(history_records=[*used, record["id"]])
+        return record
+    raise StageError(f"no staged {HISTORY_TOOL} result for these accounts in this run. Make the handed-over call, "
+                     f"save its result to the file named under it, then run the printed resume command.")
+
+
+def copy_evidence(source: str | Path, target: Path) -> None:
+    target.write_bytes(Path(source).read_bytes())
+    target.chmod(0o600)
+    normalize_response_file(target)
+
+
+def place_history(call: dict[str, Any], targets, record: dict[str, Any] | None = None) -> dict[str, list[Path]]:
+    """Copy each call of the composite to the file `targets(group, operation, page)` names (None: not kept).
+
+    Returns the files written per group. Page numbers count each account's history pages from 1.
+    """
+    record = record or history_record(call)
+    labels = group_accounts(call)
+    written: dict[str, list[Path]] = {}
+    pages: dict[str, int] = {}
+    report: list[dict[str, Any]] = []
+    for item in record.get("calls") or []:
+        operation = TOOL_OPERATIONS.get(str(item.get("tool")))
+        group = str(item.get("group") or "")
+        if operation is None:
+            continue  # an identity search after a miss: the summary carries its candidates
+        page = 0
+        if operation not in PROFILE_OPERATIONS:
+            page = pages[group] = pages.get(group, 0) + 1
+        target = targets(group, operation, page)
+        if target is None:
+            continue
+        if target.is_file() and usable(target) and item.get("status") not in USABLE_STATUSES:
+            # A page read again that failed never replaces the usable page already placed.
+            say(f"[drive] kept {target.name}: the new response failed ({item.get('status')})")
+            continue
+        copy_evidence(item["path"], target)
+        written.setdefault(group, []).append(target)
+        envelope = load(target)
+        report.append({"path": target.name, "operation": operation, "account": labels.get(group, group),
+                       "status": envelope.get("status"), "rows": row_count(envelope), "matched_by": "its request"})
+    say(round_report({"placed": report, "skipped": []}))
+    for account in ((record.get("summary") or {}).get("accounts")) or []:
+        if isinstance(account, dict) and account.get("status") not in ("completed", None):
+            note = f" (replaced by {account['replaced_by']})" if account.get("replaced_by") else ""
+            say(f"[drive] {account.get('group')}: {account.get('status')}{note}")
+    for limitation in record.get("limitations") or []:
+        say(f"[drive] limitation: {limitation}")
+    return written
+
+
+def group_accounts(call: dict[str, Any]) -> dict[str, str]:
+    """group -> the account label (handle or channel id) this call asked for."""
+    arguments = call["arguments"]
+    label = lambda ref: str(ref.get("channel_id") or ref.get("handle") or "")  # noqa: E731
+    found = {f"acct-{i}": label(ref) for i, ref in enumerate(arguments["accounts"])}
+    found.update({f"reserve-{i}": label(ref) for i, ref in enumerate(arguments.get("reserves") or [])})
+    return found
+
+
+def fetch_histories(call: dict[str, Any], args: argparse.Namespace, place) -> bool:
+    """One `collect_account_history` hand-over, placed by `place(call)`; False when it had been done."""
+    return fetch_round([call], args, lambda: place(call))
+
+
+def account_files(call: dict[str, Any]):
+    """Targets for the accounts of a discovery roster: profile-<account>.json, <prefix>-<account>-p<n>.json."""
+    run_dir = run_dir_of(Path.cwd() / ".persist-round.json")
+    if run_dir is None:
+        raise StageError("run drive.py from inside the run directory")
+    labels = group_accounts(call)
+
+    def targets(group: str, operation: str, page: int) -> Path | None:
+        label = labels.get(group)
+        if not label:
+            return None
+        if operation in PROFILE_OPERATIONS:
+            return target_for(run_dir, operation, label)
+        safe = re.sub(r"[^A-Za-z0-9._-]+", "_", label)
+        return run_dir / f"{PREFIX[operation]}-{safe}-p{page}.json"
+    return targets
 
 
 def verify_explicit_youtube_handle() -> None:
@@ -378,26 +486,6 @@ def verify_explicit_youtube_handle() -> None:
         raise StageError("YouTube subject identity mismatch: the profile's public handle differs from the original requested handle")
 
 
-def resolve_youtube_handle(handle: str, args: argparse.Namespace) -> str:
-    """The channel id behind a YouTube @handle, asked with `get_channel` alone.
-
-    `youtube_get_channel` takes a handle on every contract version; the subject round itself then
-    stays on the channel id, as every other YouTube call does.
-    """
-    fetch_round([run_call(YT, "get_channel", {"handle": handle})], args, lambda: place_record(
-        "get_channel", "subject-handle.json", any_status=False, by_content=lambda: script(
-            "persist_many.py", "--connector", YT, "--operation", "get_channel", "--dest", "subject-handle.json",
-            *drained())))
-    profile = load("subject-handle.json")
-    rows = (profile.get("data") or {}).get("rows") or [] if isinstance(profile, dict) else []
-    ids = [row.get("id") for row in rows if isinstance(row, dict)]
-    if profile.get("status") not in USABLE_STATUSES or len(ids) != 1 or not isinstance(ids[0], str) or not ids[0].startswith("UC"):
-        raise StageError(f"YouTube handle {handle} resolved to no single channel; ask the user for the channel link")
-    # The handle is the identity asked for, whatever `start` searched: the profile must prove it.
-    save_state(subject_handle=handle)
-    return ids[0]
-
-
 def stage_subject(args: argparse.Namespace) -> None:
     # Continues the run `start` began when run from it; reserves one when the identity was known.
     cd.reserve_run_directory(args.placed, stage="subject", reuse=True, args=args)
@@ -412,58 +500,65 @@ def stage_subject(args: argparse.Namespace) -> None:
     if platform == "instagram":
         if not args.handle:
             raise StageError("Instagram needs --handle")
-        handle = args.handle.lstrip("@")
-        # Instagram subject history is `instagram-discovery/list_reels` only — never
-        # `instagram-baseline-proxy`: on 2026-09-14 the proxy timed out and the caption extractor saw
-        # zero captions.
-        requests = [
-            {"connector_id": IG, "operation": "resolve_profile", "params": {"handle": handle, "include_post_count": True}},
-            {"connector_id": IG, "operation": "list_reels", "params": {"handle": handle}},
-        ]
-        profile_op, history_op, connector = "resolve_profile", "list_reels", IG
-        save_state(subject_handles=[handle])
+        # Instagram subject history is the Reels feed only — never `instagram-baseline-proxy`: on
+        # 2026-09-14 the proxy timed out and the caption extractor saw zero captions. An empty first
+        # page from an account whose profile lists posts is asked once more inside the call (one
+        # video-started case, 2026-09-19: an empty page, while the same call returned twelve rows 14
+        # minutes before and 11 after).
+        account = args.handle.lstrip("@")
+        save_state(subject_handles=[account])
     else:
         if not args.channel_id and not (args.handle or "").strip():
             raise StageError("YouTube needs --channel-id (the UC… id the candidates printed) or --handle <@handle>")
-        channel_id = args.channel_id or resolve_youtube_handle("@" + args.handle.strip().lstrip("@"), args)
-        # `get_channel` accepts exactly one identity parameter — here the canonical channel id; never
-        # send both in one request. The same one-identity rule holds for `list_channel_uploads`.
-        requests = [
-            {"connector_id": YT, "operation": "get_channel", "params": {"channel_id": channel_id}},
-            # 50, the most one call returns (as for competitors): with 20, an active channel's own
-            # history ended inside the window and its cadence was only a lower bound (plugins,
-            # 2026-10-27). Still one call; a longer history stays a lower bound.
-            {"connector_id": YT, "operation": "list_channel_uploads",
-             "params": {"channel_id": channel_id, "max_results": 50}},
-        ]
-        profile_op, history_op, connector = "get_channel", "list_channel_uploads", YT
-        save_state(platform="youtube", subject_handles=[channel_id, *([args.handle] if args.handle else [])])
-    dests = {profile_op: "subject-profile.json", history_op: "subject-history.json"}
+        # One identity per call: the canonical channel id when known, else the @handle, which the
+        # backend resolves to its channel before reading the uploads by channel id.
+        account = args.channel_id or args.handle.strip().lstrip("@")
+        if not args.channel_id:
+            # The handle is the identity asked for, whatever `start` searched: the profile must prove it.
+            save_state(subject_handle="@" + account)
+        save_state(platform="youtube")
+    # On Instagram the same call answers a handle that does not resolve with the account search's
+    # candidates for it, so a run that starts from a named handle needs no separate identity-search
+    # round first (plugins and Web, 2026-11-02: that round cost three model steps on every run).
+    call = history_call(platform, [account], identity_candidates=platform == "instagram")
 
-    def place_subject() -> None:
-        # By its own request first. Placing by staging order re-placed the first subject's response
-        # when the stage ran again for a second handle, because the file being rewritten does not
-        # count as taken: on one product case, 2026-09-18, three `subject` runs all printed the same handle and the
-        # model had to start a new run directory (about 65 s).
-        records = cd.LAST_RECORDS or []
-        if len(records) == len(dests) and all(path is not None and request.get("operation") in dests
-                                              for request, path in records):
-            for request, path in records:
-                target = Path(dests[str(request["operation"])])
-                target.write_bytes(path.read_bytes())
-                target.chmod(0o600)
-                normalize_response_file(target)
-            return
-        identity = ["--handle", handle] if platform == "instagram" else []
-        for operation, dest in dests.items():
-            script("persist_many.py", "--connector", connector, "--operation", operation, "--any-status",
-                   "--dest", dest, *identity, *drained())
+    def place_subject(call: dict[str, Any]) -> None:
+        def targets(group: str, operation: str, page: int) -> Path | None:
+            if group != "acct-0" or page > 1:
+                return None
+            return Path("subject-profile.json" if operation in PROFILE_OPERATIONS else "subject-history.json")
+        record = history_record(call)
+        place_history(call, targets, record)
+        accounts = ((record.get("summary") or {}).get("accounts")) or []
+        subject = next((a for a in accounts if isinstance(a, dict) and a.get("group") == "acct-0"), {})
+        search = next((item for item in record.get("calls") or []
+                       if item.get("tool") == "instagram_search_accounts" and item.get("group") == "acct-0"), None)
+        if search is not None:
+            copy_evidence(search["path"], Path("subject-search.json"))
+        save_state(subject_identity={"status": subject.get("status"), "searched": search is not None,
+                                     "candidates": subject.get("candidates") or []})
 
-    fetch_round(batch_calls(requests), args, place_subject)
-    if platform == "instagram":
-        retry_empty_history(handle, args)
-    else:
+    fetch_histories(call, args, place_subject)
+    if (state().get("subject_identity") or {}).get("status") == "needs_identity":
+        ask_for_identity(account)
+        return
+    if not Path("subject-profile.json").is_file() or not usable(Path("subject-profile.json")):
+        status = load("subject-profile.json").get("status") if Path("subject-profile.json").is_file() else "not fetched"
+        if platform == "youtube" and not args.channel_id:
+            raise StageError(f"YouTube handle @{account} resolved to no single channel; ask the user for the channel link")
+        raise StageError(f"the subject profile did not resolve ({status}); ask the user for the exact public handle")
+    if platform == "youtube":
+        rows = (load("subject-profile.json").get("data") or {}).get("rows") or []
+        channel = str((rows[0] or {}).get("id") or account) if rows and isinstance(rows[0], dict) else account
+        save_state(subject_handles=[channel, *([args.handle] if args.handle else [])])
         verify_explicit_youtube_handle()
+    if not Path("subject-history.json").is_file():
+        raise StageError("the subject's history page did not come back in the account-history result; "
+                         "no complete host record of it")
+    history = load("subject-history.json")
+    if history.get("status") in USABLE_STATUSES and not ((history.get("data") or {}).get("rows")):
+        say("note: the subject's first history page came back empty; the seed post and profile are "
+            "the only wording from the subject in this run")
     sources = [*([args.seed] if args.seed else []), "subject-history.json"]
     save_state(subject_history=sources)
     script("project_subject_candidates.py", "subject-profile.json", show=True)
@@ -499,6 +594,30 @@ def stage_subject(args: argparse.Namespace) -> None:
         for text in texts[:SUBJECT_CAPTIONS]:
             say("- " + " ".join(str(text).split())[:SUBJECT_CAPTION_CHARS])
     show_schema("competitor-research-request.schema.json", "competitor-discovery-intents.schema.json")
+
+
+def ask_for_identity(handle: str) -> None:
+    """The named handle did not resolve: print the accounts its search returned and stop for the user.
+
+    The subject is the user's to confirm here, not the model's to pick: the handle the user gave
+    names no public account, so any candidate is a guess at what they meant.
+    """
+    identity = state().get("subject_identity") or {}
+    say(f"@{handle} did not resolve to a public Instagram profile.")
+    if Path("subject-search.json").is_file():
+        say("An account search for that name returned:")
+        script("project_subject_candidates.py", "subject-search.json", show=True)
+    elif identity.get("candidates"):
+        say("An account search for that name returned:")
+        for number, candidate in enumerate(identity["candidates"], start=1):
+            name = f" | {candidate['full_name']}" if candidate.get("full_name") else ""
+            verified = " verified" if candidate.get("is_verified") else ""
+            say(f"{number}. [@{candidate.get('handle')}{name}]{verified}")
+    else:
+        say("No candidate account came back for that name.")
+    say("Stop here and ask the user which public account they mean — one of these, or the exact handle — "
+        "without choosing one yourself and without starting discovery. Their answer is a new request: "
+        "start a new run for it.")
 
 
 def complete_request() -> dict[str, Any]:
@@ -600,7 +719,6 @@ def stage_discover(args: argparse.Namespace) -> None:
     since, until = window_of(request)
     locale = request.get("locale") or {}
     plan_calls: list[dict[str, Any]] = []
-    later_searches: list[dict[str, Any]] = []
     # The collector is called exactly once per run, and on Instagram together with the planned profile
     # searches: both read only the frozen intents, so neither waits for the other.
     if platform == "instagram":
@@ -618,13 +736,12 @@ def stage_discover(args: argparse.Namespace) -> None:
         if locale.get("region"):
             collect["region"] = locale["region"]
         calls = [{"tool": "collect_instagram_trend_candidates", "arguments": collect}]
-        searches = batch_calls([{"connector_id": IG, "operation": "search_profiles", "params": {"query": c["query"]}}
-                                for c in plan_calls])
-        # Profile-search responses are placed into plan slots in the order they were staged, and the
-        # host runs the calls of one round concurrently: only one batch per round keeps that order.
-        # The planner emits at most four queries, so this is one round today.
-        calls += searches[:1]
-        later_searches = searches[1:]
+        # The planner emits at most four profile searches; they go out in the collector's round, each
+        # as its own call, and each plan slot takes its own search's response.
+        if len(plan_calls) > cd.BATCH_LIMIT:
+            raise StageError(f"{PLAN} names {len(plan_calls)} profile searches; at most {cd.BATCH_LIMIT} are planned")
+        calls += batch_calls([{"connector_id": IG, "operation": "search_profiles", "params": {"query": c["query"]}}
+                              for c in plan_calls])
     else:
         # The YouTube collector names each intent's phrase `query`; the plan names it `search_query`.
         youtube_intents = [{"intent_id": i["intent_id"], "query": i.get("query") or i["search_query"]}
@@ -673,20 +790,7 @@ def stage_discover(args: argparse.Namespace) -> None:
         capture(first_searches)
         place_searches()
 
-    if platform == "instagram" and later_searches:
-        def place_first() -> None:
-            script("persist_envelope.py", "--schema", schema, "--dest", CANDIDATES, *drained())
-            capture(first_searches)
-
-        if not fetch_round(calls, args, place_first):
-            search_records.extend([None] * first_searches)
-        for search in later_searches:
-            count = len(cd.requests_of(search))
-            if not fetch_round([search], args, lambda count=count: capture(count)):
-                search_records.extend([None] * count)
-        place_searches()  # every slot at once: by record where one was named, else in staging order
-    else:
-        fetch_round(calls, args, place_discovery)
+    fetch_round(calls, args, place_discovery)
     if platform == "instagram":
         if plan_calls:
             script("persist_profile_envelopes.py", PLAN, "profile-discovery-source.json")
@@ -702,96 +806,6 @@ def stage_discover(args: argparse.Namespace) -> None:
             "or `<n> r` (reject), every number exactly once.")
 
 
-def profile_requests(platform: str, handles: list[str]) -> list[dict[str, Any]]:
-    requests = []
-    for handle in handles:
-        if platform == "instagram":
-            # Instagram profile identity is `instagram-discovery/resolve_profile` only.
-            requests.append({"connector_id": IG, "operation": "resolve_profile",
-                             "params": {"handle": handle, "include_post_count": True}})
-            requests.append({"connector_id": IG, "operation": "list_reels", "params": {"handle": handle}})
-        else:
-            # One identity parameter per call: the canonical channel id. persist_round.py files each
-            # response under the id the response names, so a returned canonical channel id must equal
-            # the requested `channel.id` exactly to fill that account; a mismatch leaves it unfilled
-            # and the reserve replacement below takes over. `list_channel_uploads` once per included
-            # channel, `max_results: 50`.
-            requests.append({"connector_id": YT, "operation": "get_channel", "params": {"channel_id": handle}})
-            requests.append({"connector_id": YT, "operation": "list_channel_uploads",
-                             "params": {"channel_id": handle, "max_results": 50}})
-    return requests
-
-
-def operations_of(platform: str) -> list[str]:
-    return ["resolve_profile", "list_reels"] if platform == "instagram" else ["get_channel", "list_channel_uploads"]
-
-
-def place(operations: list[str]) -> dict[str, Any]:
-    run_dir = run_dir_of(Path.cwd() / ".persist-round.json")
-    if run_dir is None:
-        raise StageError("run drive.py from inside the run directory")
-    moved = drained()
-    result = place_round(run_dir, operations, Path(moved[1]).resolve() if moved else None)
-    say(round_report(result))
-    return result
-
-
-def place_records(operations: list[str]) -> None:
-    """Place each response under the account its own request named; the rest by content (`place`).
-
-    An empty or failed history page names no account, and matching those by fetch order put one
-    account's rate-limited page on another and three copies of one empty page on a third (one product case,
-    2026-09-18). The host's record of which call staged which file makes that guess unnecessary.
-    """
-    records = cd.LAST_RECORDS
-    if records is None:  # the model made these calls itself (--placed): only their content says whose
-        place(operations)
-        return
-    run_dir = run_dir_of(Path.cwd() / ".persist-round.json")
-    if run_dir is None:
-        raise StageError("run drive.py from inside the run directory")
-    placed: list[dict[str, Any]] = []
-    leftover = False
-    with run_lock(run_dir):
-        for request, path in records:
-            operation = str(request.get("operation"))
-            if operation not in operations:
-                continue
-            params = request.get("params") or {}
-            account = str(params.get("handle") or params.get("channel_id") or "").lstrip("@")
-            if path is None or not account:
-                leftover = True
-                continue
-            body = path.read_bytes()
-            raw_record = json.loads(body)
-            envelope = response_record(raw_record, path)
-            owner = owner_of(envelope)
-            if owner is not None and owner[0].lower() != account.lower():
-                leftover = True  # its rows name someone else: let the content decide
-                continue
-            target = target_for(run_dir, operation, account)
-            if operation in PROFILE_OPERATIONS and target.exists():
-                continue
-            target.write_bytes(body)
-            target.chmod(0o600)
-            if envelope != raw_record:
-                write_json_atomic(target, envelope)
-            placed.append({"path": target.name, "operation": operation, "account": account,
-                           "status": envelope.get("status"), "rows": row_count(envelope),
-                           "matched_by": "content" if owner is not None else "its request"})
-    say(round_report({"placed": placed, "skipped": []}))
-    if leftover:
-        try:
-            place(operations)
-        except ValueError as error:
-            say(f"[drive] nothing further to place by content: {str(error)[:200]}")
-
-
-def profile_round(platform: str, handles: list[str], args: argparse.Namespace) -> None:
-    """Fetch and place profile + history for these accounts."""
-    fetch_round(batch_calls(profile_requests(platform, handles)), args, lambda: place_records(operations_of(platform)))
-
-
 def project_eligibility(platform: str, envelope_args: list[str]) -> None:
     """Project the eligibility input; a profile shortfall caused by lookups lost on the way says so."""
     try:
@@ -803,7 +817,7 @@ def project_eligibility(platform: str, envelope_args: list[str]) -> None:
 
 def lost_profiles(platform: str, problem: str) -> StageError:
     """This stop, explained as a network or data-service interruption when profile lookups were lost on the way."""
-    if not cd.lost_in_transit(operations_of(platform)):
+    if not cd.lost_in_transit([HISTORY_TOOL]):
         return StageError(problem)
     return StageError(f"{problem}\nSome profile lookups of this run were lost on the way (the network or the data "
                       f"service failed) and stayed lost after one retry. {cd.LOST_NOTE}")
@@ -876,26 +890,39 @@ def stage_select(args: argparse.Namespace) -> None:
     selected = [str(h) for h in summary.get("selected_handles") or []]
     reserves = [str(h) for h in summary.get("reserve_handles") or []]
     say(f"selected: {', '.join(selected) or '(none)'}; reserves: {', '.join(reserves) or '(none)'}")
+    # Profiles and history of every selected account in one call, with step 3's replacement rule
+    # inside it: one frozen reserve for every selected account whose profile came back unavailable,
+    # in order, up to the reserves discovery froze. On Instagram the history is already step 4's
+    # Reels budget under the frozen window (`next_reel_page`), so `content` has nothing left to fetch
+    # and a run needs one hand-over fewer: eligibility reads only the profiles, and an account it
+    # excludes never reaches the Snapshot.
+    fetched: list[str] = []
     if selected:
-        profile_round(platform, selected, args)
+        call = history_call(platform, selected, reserves=reserves, **content_paging(platform, request))
+
+        def place_selected(call: dict[str, Any]) -> None:
+            groups = place_history(call, account_files(call))
+            labels = group_accounts(call)
+            fetched.extend(labels[g] for g in sorted(groups) if g.startswith("reserve-"))
+            save_state(fetched_reserves=fetched)
+
+        if not fetch_histories(call, args, place_selected):
+            fetched = list(state().get("fetched_reserves") or [])
     profiles = usable_profiles()
-    # One frozen reserve for every selected account whose profile came back unusable, up to the
-    # reserves discovery froze — the replacement rule of step 3.
     # Decided once: a stage run again (after a hand-over, or after a fix) keeps the replacements it
-    # chose, even though they now have usable profiles of their own.
+    # chose. A requested account is never replaced: a reserve the call fetched in its place stays
+    # out of the eligibility projection.
     decided = state().get("replacements") or {}
     if decided.get("selected") == selected:
         replacements = list(decided.get("handles") or [])
     else:
         pinned = set(summary.get("provided_handles") or [])
         missing = [h for h in selected if h.lower() not in profiles and h not in pinned]
-        replacements = reserves[:len(missing)]
+        replacements = [h for h in reserves if h in fetched][:len(missing)]
         save_state(replacements={"selected": selected, "handles": replacements})
     missing = [h for h in selected if h.lower() not in profiles]
     if replacements:
-        say(f"unusable profiles: {', '.join(missing)}; resolving reserves {', '.join(replacements)}")
-        profile_round(platform, replacements, args)
-        profiles = usable_profiles()
+        say(f"unusable profiles: {', '.join(missing)}; replaced by reserves {', '.join(replacements)}")
     save_state(used_reserves=replacements)
     order = [h for h in [*selected, *replacements] if h.lower() in profiles]
     envelope_args = [arg for h in order for arg in ("--profile-envelope", profiles[h.lower()])]
@@ -905,6 +932,13 @@ def stage_select(args: argparse.Namespace) -> None:
                                       "No substitute accounts were used.")
     project_eligibility(platform, envelope_args)
     show_schema("competitor-eligibility.schema.json")
+
+
+def content_paging(platform: str, request: dict[str, Any]) -> dict[str, Any]:
+    """Instagram: the Reels history `content` would fetch (step 4's budget under the window), read with the profile."""
+    if platform != "instagram":
+        return {}
+    return {"max_pages": REEL_PAGES_MAX, "window": window_of(request)}
 
 
 def pages_of(prefix: str, label: str) -> list[Path]:
@@ -1008,7 +1042,8 @@ def stage_content(args: argparse.Namespace) -> None:
     if len(comparable) < 3 and unused and not state().get("second_reserve_round"):
         extra = unused[:1]
         say(f"fewer than three direct/adjacent accounts; resolving reserve {extra[0]}")
-        profile_round(platform, extra, args)
+        call = history_call(platform, extra, **content_paging(platform, request))
+        fetch_histories(call, args, lambda call: place_history(call, account_files(call)))
         profiles = usable_profiles()
         save_state(used_reserves=[*used, *[h.lower() for h in extra]], second_reserve_round=True)
         if extra[0].lower() not in profiles:
@@ -1031,20 +1066,19 @@ def stage_content(args: argparse.Namespace) -> None:
     envelopes: list[Path] = []
     incomplete = False
     if platform == "instagram":
-        # Retrieval rounds: every account that still owes a page gets it in the same round.
-        for _ in range(REEL_PAGES_MAX):
-            owed = []
-            for handle in included:
-                cursor = next_reel_page(pages_of("reels", handle), since, until)
-                if cursor is not None:
-                    owed.append({"connector_id": IG, "operation": "list_reels",
-                                 "params": {"handle": handle, "max_id": cursor}})
-                elif not pages_of("reels", handle):
-                    owed.append({"connector_id": IG, "operation": "list_reels", "params": {"handle": handle}})
-            if not owed:
-                break
-            if not fetch_round(batch_calls(owed), args, lambda: place_records(["list_reels"])):
-                break
+        # `select` read every selected account's Reels under step 4's budget already. An included
+        # account that still owes a page (or has none: one placed by an older run of `select`) gets
+        # its Reels history in one call, read again from the first page so its cursors are its own:
+        # the window rule of `next_reel_page`, at most REEL_PAGES_MAX pages. Its pages replace the
+        # ones `select` placed. Decided once: a stage run again keeps what that call returned.
+        if not state().get("content_history"):
+            owed = [h for h in included if not pages_of("reels", h)
+                    or next_reel_page(pages_of("reels", h), since, until) is not None]
+            if owed:
+                call = history_call(platform, owed, profile=False, max_pages=REEL_PAGES_MAX,
+                                    window=(since_text, until_text))
+                fetch_histories(call, args, lambda call: place_history(call, account_files(call)))
+            save_state(content_history=True)
         by_page: dict[int, list[Path]] = {}
         for handle in included:
             pages = pages_of("reels", handle)
@@ -1212,6 +1246,73 @@ def stage_report(args: argparse.Namespace) -> None:
     say('Your reply is this report, even when the question was short: at most one short sentence of your own, then the report above complete and unchanged (translated only where the Skill says), then this creator_report line.')
 
 
+# --------------------------------------------------------------------------- fewer host commands
+
+
+def reserve_from_workspace(args: argparse.Namespace) -> None:
+    """`--workspace` on a first stage: reserve the run directory, as `static_host.py init` would.
+
+    Only when no run is reserved yet — neither KABO_STATIC_RUN_DIR nor a run directory around the
+    current one — so the printed resume command, which runs inside the run, never reserves another.
+    """
+    workspace, args.workspace = args.workspace, None  # not part of what the request asked
+    if not workspace:
+        return
+    import static_host
+
+    try:
+        static_host.run_dir()
+        return
+    except (ValueError, OSError):
+        pass
+    try:
+        run = static_host.init(workspace)
+    except (ValueError, OSError) as error:
+        raise StageError(f"could not reserve a run directory in {workspace}: {error}") from None
+    os.environ["KABO_STATIC_RUN_DIR"] = str(run)
+    say(f"run directory: {run}")
+    say("Run every later command of this request from that directory, as the printed commands do.")
+
+
+def take_results(items: list[str]) -> None:
+    """`--result <tool>=<file>`: take saved results the way the resume takes the files its hand-over named."""
+    pairs: list[tuple[str, Path]] = []
+    for item in items:
+        tool, sep, name = item.partition("=")
+        if not sep or not tool.strip() or not name.strip():
+            raise StageError(f"--result takes <tool>=<saved result file>, not {item!r}")
+        pairs.append((tool.strip(), Path(name.strip())))
+    missing = [str(path.resolve()) for _, path in pairs if not path.is_file()]
+    if missing:
+        raise StageError(f"no saved result at {', '.join(missing)}: save the complete result there, then run this "
+                         "command again")
+    cd.take_saved_results(pairs)
+
+
+def hand_over_with_note(calls: list[dict[str, Any]], why: str = "") -> None:
+    """The shared hand-over, plus a reminder that the results feed the resume, not the reply."""
+    try:
+        shared_hand_over(calls, why)
+    except SystemExit:
+        say("These results are this run's inputs, not the reply: whatever they show, the next step after the "
+            "calls is the resume, never an answer from the returned data.")
+        raise
+
+
+shared_hand_over = cd.hand_over
+cd.hand_over = hand_over_with_note
+
+
+def with_results(stage):
+    def run(args: argparse.Namespace) -> None:
+        items, args.result = list(getattr(args, "result", None) or []), None
+        if items:
+            take_results(items)
+            args.placed = True
+        stage(args)
+    return run
+
+
 STAGES = {
     "start": stage_start,
     "subject": stage_subject,
@@ -1241,10 +1342,29 @@ def main() -> int:
     sub.choices["content"].add_argument(
         "--comments", action="store_true",
         help="also fetch audience comments before the synthesis evidence is printed")
+    for name in ("start", "subject"):
+        sub.choices[name].add_argument(
+            "--workspace", help="reserve the run directory in this workspace when none is reserved yet")
     for command in sub.choices.values():
         command.add_argument("--placed", action="store_true",
                              help="the connector calls were already made by hand; place their responses")
-    return cd.run_stage(STAGES, parser.parse_args(), first=("start", "subject"),
+        command.add_argument("--result", action="append", metavar="TOOL=FILE",
+                             help="a saved result of the last hand-over to fetch or stage first (implies --placed)")
+    args = parser.parse_args()
+    # The printed resume command repeats this command's arguments: never the results it already took.
+    sys.argv = [arg for index, arg in enumerate(sys.argv)
+                if not (arg == "--result" or arg.startswith("--result=")
+                        or (index > 0 and sys.argv[index - 1] == "--result"))]
+    if args.stage in ("start", "subject"):
+        try:
+            reserve_from_workspace(args)
+        except StageError as error:
+            say(f"drive.py {args.stage} stopped: {error}")
+            return 2
+    else:
+        args.workspace = None
+    return cd.run_stage({name: with_results(stage) for name, stage in STAGES.items()}, args,
+                        first=("start", "subject"),
                         model_files=(REQUEST, INTENTS, GATE_SCORES, GATE, ELIGIBILITY,
                                      "competitor-research-synthesis.json"))
 

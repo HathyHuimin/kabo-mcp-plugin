@@ -1,9 +1,10 @@
 # Subject, account scope and the frozen Request
 
-Read this whole file before running `start`. It covers the first two judgments of a run: which
-public identity is the subject, and the frozen `CompetitorResearchRequest`
+Read this whole file before the first command of a run. It covers the first two judgments of a
+run: which public identity is the subject, and the frozen `CompetitorResearchRequest`
 (`references/competitor-research-request.schema.json`). Commands carry the run directory and use
-`<skill directory>` exactly as `SKILL.md` defines them.
+`<skill directory>` exactly as `SKILL.md` defines them; the first command of a run runs from the
+user's workspace and reserves the run with `--workspace '<user workspace>'`.
 
 ## Account-selection input
 
@@ -40,13 +41,18 @@ requested identities before adding automatic candidates.
 ## Resolving the subject
 
 Resolve the subject before competitor discovery. If the user explicitly provides a platform
-handle, resolve that handle once.
+handle (an `@handle` or a profile link), resolve that handle once: the first command is the
+`subject` stage for it (below, with `--workspace`), with no identity search before it. On
+Instagram, a handle that does not resolve comes back from that same call with the accounts an
+account search for it returned; the stage prints them and stops. Ask the user which account they
+mean — one of those, or the exact handle — and do not choose one yourself: the handle they gave
+names no public account, so any candidate is a guess at what they meant.
 
 **From a public Instagram post.** When the user supplies a public Instagram post URL instead of a
 competitor list, run this and nothing else first:
 
 ```sh
-cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' start --platform instagram --post '<that URL>'
+cd '<user workspace>' && python3 '<skill directory>/scripts/drive.py' start --workspace '<user workspace>' --platform instagram --post '<that URL>'
 ```
 
 It hands over `lookup_instagram_post` (`{"post": "<that URL>", "delivery": "download"}`), places
@@ -60,7 +66,7 @@ or unparsed shortcode. Keep the visible mechanism in `subject.description`.
 **From a product or creator name.** Run:
 
 ```sh
-cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' start --platform <instagram|youtube> --query '<the name as the user wrote it>'
+cd '<user workspace>' && python3 '<skill directory>/scripts/drive.py' start --workspace '<user workspace>' --platform <instagram|youtube> --query '<the name as the user wrote it>'
 ```
 
 The Instagram identity search accepts only letters, digits, `.` and `_`, at most 30 characters: when
@@ -76,22 +82,28 @@ stripping punctuation from a product name.
 
 **From a niche only.** When the user names no account, product or creator at all — only their
 niche, such as «I make <niche> videos on YouTube» — there is no identity to search: run `start
---platform <instagram|youtube>` without `--query`, skip the `subject` stage, and freeze the
+--workspace '<user workspace>' --platform <instagram|youtube>` without `--query`, skip the `subject` stage, and freeze the
 Request from the user's own words with no `account_ref` and no market they did not state. Never
 search the niche and adopt one of its channels as the user: in testing, doing so turned
 an English-language niche into a Chinese one — the adopted channel's market — and discovery
 missed every labelled competitor.
 
 **Subject stage.** Once the subject identity is known — chosen from those candidates, given by the
-user, or taken from the seed post's author — run:
+user, or taken from the seed post's author — run it in the run directory `start` reserved:
 
 ```sh
 cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' subject --handle <instagram handle>
 cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' subject --channel-id <UC… channel id>
 ```
 
-It retrieves the subject profile and one bounded page of the subject's own recent public items,
-prints the profile, writes and prints `caption_phrases`, then prints the Request and intents
+When the user gave the handle, it is the run's first command instead, from the user's workspace:
+
+```sh
+cd '<user workspace>' && python3 '<skill directory>/scripts/drive.py' subject --workspace '<user workspace>' --handle <instagram handle>
+```
+
+It retrieves the subject profile and one bounded page of the subject's own recent public items in
+one `collect_account_history` call, prints the profile, writes and prints `caption_phrases`, then prints the Request and intents
 schemas.
 
 - If that history is failed, unsupported or empty, write one data gap and continue competitor
@@ -110,7 +122,7 @@ schemas.
 
 If no returned candidate supports the requested identity, stop as unresolved instead of assigning
 an unrelated market. When only a YouTube @handle is known, run `subject --platform youtube --handle
-<@handle>`: the driver resolves it to its channel id with `youtube_get_channel` first (a bare
+<@handle>`: the same call resolves it to its channel before reading the uploads (a bare
 `--handle` without `--platform youtube` means Instagram). For an explicit YouTube @handle, the
 driver preserves that handle and requires the fetched profile's canonical public handle to match it; a bio mention or promotion of
 the product does not establish that identity. A mismatch or missing handle proof stops before

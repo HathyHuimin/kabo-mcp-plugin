@@ -144,7 +144,7 @@ sentences of interpretation and one or two sentences of Creator differentiation;
 Comments are a pre-synthesis step. When the user did not ask what selected accounts have not done
 or what the audience wants, skip them entirely. When they did, run `drive.py content --comments`
 in place of `content`: it runs the whole comment block (targets → `instagram_list_comments` or
-`youtube_list_comments` → persist) before printing the evidence, hands over the histories and then
+`youtube_list_comments` → persist) before printing the evidence, hands over any histories still owed and then
 the comments, and prints `audience-comments.json`. If you decide only after `content` has finished,
 run `drive.py comments` as its own command. Complete any comment hand-over before writing the
 synthesis, never after the report exists.

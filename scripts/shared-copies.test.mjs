@@ -1,5 +1,5 @@
 // 瘦身后各 Skill 共用的两段内容按副本分发（KS4.2）：references/data-calls.md 整份，以及
-// connector_driver.py 里打印交接（每条调用的存放文件、fetch 命令与续跑命令）的那一段。
+// connector_driver.py 里交接与续跑的那一段（每条调用的存放文件与一条续跑命令，续跑自己 fetch / stage 点名的文件）。
 // 副本必须逐字相同：改一份就同步改所有副本，否则同一个交接在不同 Skill 里说法不一。
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";

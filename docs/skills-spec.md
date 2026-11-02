@@ -179,6 +179,18 @@ skill 内容（`SKILL.md`、`references/`、脚本输出）一律用英文。本
     完整内联。模型挑候选仍读内联 items；脚本凭下载副本拿完整数据。下载字节是
     去掉 `download` 的整份出参，`fetch` 按 `schema_version` 判形状；`stage` 也接受它，落盘前去掉
     含签名链接的 `download`。
+  - **组合取数工具（`kabo-composite-fetch.v1`，KS9）**：`collect_account_history`、
+    `collect_tiktok_video_candidates`、`collect_youtube_recent_videos`、`render_official_pages` 一次调用做完
+    一段多轮取数，出参 `{schema_version, tool, status, calls:[{tool, parameters, group, result}], summary, coverage, limitations}`，
+    `calls[i].result` 与单个数据工具的结果信封完全相同。`stage` / `fetch --tool <组合工具>`（下载字节是去掉
+    `download` 的整份出参）把 `calls[]` 逐项拆开，每项按 `calls[i].tool` 走单工具 `stage` 的同一套校验，落成
+    同样的 `<id>.json` + `<id>.meta`（正文与单独 stage 逐字节相同，下游解析不变），旁注另记 `composite_tool`、
+    `composite_id`、`composite_index`、`composite_group`、`composite_parameters`；再写一份整体记录
+    `<composite_id>.json` + `.meta`（旁注 `tool` 为组合工具、`schema_version` 为 `kabo-composite-fetch.record.v1`），
+    正文是 `status / summary / coverage / limitations` 与按调用顺序的 `calls[{index, tool, group, status, evidence_id}]`。
+    驱动用 `static_host.composite_records(tool)` 读它（每项带证据文件的绝对 `path`）。任何一项校验不过、
+    调用的工具不是本 Skill 声明的数据工具、或组合工具名不在上面四个之内，整份拒收、什么都不写。
+    同一份组合再落一次时逐项与记录都按 sha256 去重，指回上次那份。
   - 链接过期：对同一只读工具（`get_research_data_job` / `read_research_data_artifacts`）再调一次即重签；
     同步数据工具的结果用信封里的 `evidence_ref` 调 `get_research_data_download`（不重跑、
     不占额度；新链接的 sha256 与 bytes 可能和旧的不同，只按新返回的值校验）；重签本身失败时退回带

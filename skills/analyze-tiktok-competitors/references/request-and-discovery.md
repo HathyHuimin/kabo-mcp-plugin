@@ -70,10 +70,11 @@ endpoint — the provider rejects it or returns empty pages for Chinese keywords
 
 `discover` validates the plan (a rejection names the field to fix) and resolves `publish_time` from
 the frozen Request: one of the enum days `0|1|7|30|90|180`; for `recent_30d` it is `30`; with
-latest-N sampling it is `0`. It then hands over `tiktok_discovery_search_videos` once with
-`sort_type` 0 and once with `sort_type` 1 for each intent, each call made on its own, never
-batched: the frozen intent phrase as `keyword`, `count` 30, and the same `region` and
-`publish_time` on every call. It places every response into `discovery-envelopes.json`, builds one
+latest-N sampling it is `0`. It then hands over one `collect_tiktok_video_candidates` call; the
+backend runs a video search with `sort_type` 0 and one with `sort_type` 1 for each intent: the
+frozen intent phrase as `keyword`, `count` 30, and the same `region` and `publish_time` on every
+search. It places every response, under the intent and sort it answered, into
+`discovery-envelopes.json`, builds one
 strict candidate set, and prints the discovery projection as a numbered account table (the subject
 and locale on the first line, then one line per account with its handle, name and visible posts)
 and the Gate line format. A failed route is kept as that route's evidence; do not repeat a search.

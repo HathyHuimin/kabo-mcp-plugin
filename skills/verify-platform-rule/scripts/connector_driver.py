@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""The mechanical half of a skill driver: hand connector calls to the model, place, run scripts.
+"""The mechanical half of a skill driver: hand calls over, place responses, run scripts.
 
 A skill's `drive.py` runs everything between two model judgments — which connector call follows, where
 each response is placed, which deterministic script runs next — and prints only what the next judgment
-reads. This module is the part of that which does not depend on the skill: fetch rounds recorded by what
-they asked for, the hand-over of each round to the model as `call:` lines naming public MCP tools
-(`--placed` picks the staged responses up), one more hand-over of a round whose calls briefly failed,
-the run directory, the stage lock and the stage state file. `outbox_dir()` names no outbox in this
-package, so scripts never fetch by themselves: every round is handed over.
+reads. This module is the part of that which does not depend on the skill: fetch rounds recorded by
+what they asked for, the hand-over of each round to the model as named public MCP tool calls
+(`--placed` picks the staged responses up), one more hand-over of a round the data service briefly
+failed, the run directory, the stage lock and the stage state file.
 
 Where a stage runs. The first stage of a run (`start`, or `fetch`) works in the run `static_host.py
 init` reserved; running it again there is accepted only as the same request (the same arguments, with
@@ -26,7 +25,6 @@ import re
 import subprocess
 import sys
 import time
-import uuid
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,24 +40,14 @@ SCRIPTS = Path(__file__).resolve().parent
 SKILL_DIR = SCRIPTS.parent
 REFERENCES = SKILL_DIR / "references"
 
-REQUEST_SCHEMA = "kabo-connector-request.v1"
-SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
-# The host takes at most four calls per request file and the platform at most four requests per
-# `data_connector_batch_run`; both limits are enforced there, so they are mirrored here.
-CALLS_PER_REQUEST = 4
 BATCH_LIMIT = 4
-# The platform's per-account ceiling on discovery requests in flight.
-IN_FLIGHT_LIMIT = 8
 # A rate-limited request is retried once, after at most this long.
 RETRY_WAIT_MAX = 5.0
-# A host with the outbox renames a request within one poll (250 ms); one that has none never does.
-CLAIM_SECONDS = 4.0
-RESPONSE_SECONDS = 900.0
 HANDOVER_PREFIX = "call: "
 STATE = ".drive.json"
 LOCK = ".drive.lock"
 # A lock whose owner process is gone is stale at once. A live owner holds it for as long as a stage
-# can run (a fetch waits at most RESPONSE_SECONDS); past that, the pid is taken for another process
+# can run; past that, the pid is taken for another process
 # that reused the number. Only a lock whose owner cannot be read (written this instant) is judged by
 # its age alone.
 UNREADABLE_LOCK_SECONDS = 60.0
@@ -68,17 +56,14 @@ LIVE_LOCK_SECONDS = 1800.0
 # Inside the run directory, so the placement scripts count it as taken.
 SUPERSEDED = ".superseded"
 
-# The host's record of each request of the last fetch, paired with the file it staged (None when it
-# could not say which). Read it as `connector_driver.LAST_RECORDS`, after `fetch_round`.
+# Pairs each request of the last fetch with the file holding its response. The stages never fetch
+# themselves (the model makes every call), so there is no such pairing and this stays None: every
+# response is placed by content, from this run's staged copies, in call order.
 LAST_RECORDS: list[tuple[dict[str, Any], Path | None]] | None = None
 
 
 class StageError(Exception):
     """A stage cannot go on; the message says what to fix."""
-
-
-class NoOutbox(Exception):
-    """This host does not fetch for scripts."""
 
 
 class Busy(Exception):
@@ -87,46 +72,6 @@ class Busy(Exception):
 
 def say(text: str = "") -> None:
     print(text, flush=True)
-
-
-def outbox_dir() -> Path | None:
-    return None
-
-
-def response_dir(requests: Path) -> Path:
-    """Where the host answers: its own directory, which commands here can read but not change."""
-    return requests.parent.parent / "connector-outbox-host" / requests.name
-
-
-TURN_FILE = "turn.json"
-TURN_SCHEMA = "kabo-connector-turn.v1"
-TURN_TOKEN = re.compile(r"^[0-9a-f]{32}$")
-# This process's turn token, per outbox, read once: a stage started in one turn keeps that turn's
-# token, so a request it writes late, after that turn ended, never lands on the next turn.
-_TURN_TOKENS: dict[str, str | None] = {}
-
-
-def turn_token() -> str | None:
-    """The host's token for the turn this stage runs in (`connector-outbox-host/<thread>/turn.json`).
-
-    A host that issues none (an older one) has no file: requests then go without a token, as before.
-    """
-    directory = outbox_dir()
-    if directory is None:
-        return None
-    key = str(directory)
-    if key not in _TURN_TOKENS:
-        token = None
-        try:
-            value = json.loads((response_dir(directory) / TURN_FILE).read_text(encoding="utf-8"))
-            candidate = value.get("turn_token") if isinstance(value, dict) else None
-            if (value.get("schema") == TURN_SCHEMA and value.get("thread_id") in (None, directory.name)
-                    and isinstance(candidate, str) and TURN_TOKEN.match(candidate)):
-                token = candidate
-        except (OSError, ValueError, AttributeError):
-            token = None
-        _TURN_TOKENS[key] = token
-    return _TURN_TOKENS[key]
 
 
 def run_call(connector: str, operation: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -147,92 +92,6 @@ def batch_calls(requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return calls
 
 
-def weight(call: dict[str, Any]) -> int:
-    """Platform requests a call keeps in flight: a batch its requests, a collector the whole allowance."""
-    if call.get("tool") == "data_connector_batch_run":
-        return len(call["arguments"].get("requests") or [])
-    return 1 if call.get("tool") == "data_connector_run" else IN_FLIGHT_LIMIT
-
-
-def fetch(calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Have the host make these calls in waves the account can carry; one result per call, in order.
-
-    The platform keeps at most eight discovery requests in flight per account; larger inputs are split
-    into waves to avoid avoidable rate limits.
-    """
-    results: list[dict[str, Any]] = []
-    wave: list[dict[str, Any]] = []
-    for call in calls:
-        if wave and sum(map(weight, wave)) + weight(call) > IN_FLIGHT_LIMIT:
-            results += send(wave)
-            wave = []
-        wave.append(call)
-    if wave:
-        results += send(wave)
-    return results
-
-
-def send(calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """One wave: all of these calls at once; returns one result per call, in order."""
-    directory = outbox_dir()
-    if directory is None:
-        raise NoOutbox()
-    directory.mkdir(parents=True, exist_ok=True)
-    token = turn_token()
-    ids = []
-    for start in range(0, len(calls), CALLS_PER_REQUEST):
-        request_id = uuid.uuid4().hex[:16]
-        request: dict[str, Any] = {"schema": REQUEST_SCHEMA, "calls": calls[start:start + CALLS_PER_REQUEST]}
-        if token:
-            request["turn_token"] = token
-        body = json.dumps(request)
-        temp = directory / f".{request_id}.tmp"
-        temp.write_text(body, encoding="utf-8")
-        temp.rename(directory / f"{request_id}.request.json")
-        ids.append(request_id)
-    deadline = time.monotonic() + CLAIM_SECONDS
-    while time.monotonic() < deadline and all((directory / f"{i}.request.json").exists() for i in ids):
-        time.sleep(0.1)
-    if all((directory / f"{i}.request.json").exists() for i in ids):
-        # Nothing was taken. Withdraw by renaming, which cannot race the host: a request it takes in
-        # the same instant is no longer there to rename, and is then waited for like any other.
-        taken = []
-        for request_id in ids:
-            try:
-                (directory / f"{request_id}.request.json").rename(directory / f".{request_id}.withdrawn")
-                (directory / f".{request_id}.withdrawn").unlink(missing_ok=True)
-            except FileNotFoundError:
-                taken.append(request_id)
-        if not taken:
-            raise NoOutbox()
-        raise StageError("the host accepted only some connector request files; wait for those calls "
-                         "to finish, then run this stage again with --placed")
-    # A host that took one request takes the rest as its per-conversation queue frees up.
-    responses: list[dict[str, Any]] = []
-    deadline = time.monotonic() + RESPONSE_SECONDS
-    answers = response_dir(directory)
-    for request_id in ids:
-        path = answers / f"{request_id}.response.json"
-        while not path.exists():
-            if time.monotonic() > deadline:
-                raise StageError("the host accepted the connector calls but never answered; run this stage "
-                                 "again with --placed once the calls have finished")
-            time.sleep(0.2)
-        responses.append(json.loads(path.read_text(encoding="utf-8")))
-        try:
-            path.unlink(missing_ok=True)
-        except OSError:
-            pass  # read-only here by design; the host clears answered responses itself
-    refused = [r for r in responses if r.get("status") != "done"]
-    if refused and len(refused) == len(responses):
-        # None of these calls ran: a host whose allowlist predates them. The model makes them
-        # instead, exactly as on a host without the outbox.
-        raise NoOutbox(f"it refused these calls: {refused[0].get('reason')}")
-    if refused:
-        raise StageError(f"the host refused some of the connector calls: {refused[0].get('reason')}")
-    return [result for response in responses for result in response.get("results") or []]
-
-
 def requests_of(call: dict[str, Any]) -> list[dict[str, Any]]:
     arguments = call.get("arguments") or {}
     if call.get("tool") == "data_connector_batch_run":
@@ -242,94 +101,10 @@ def requests_of(call: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
-def records_of(calls: list[dict[str, Any]], results: list[dict[str, Any]]) -> list[tuple[dict[str, Any], Path | None]]:
-    """Each connector request with the host's own record of its response, where the host says which.
-
-    The host stages a call's Envelopes in request order and reports their file names, so a request
-    and its record pair up exactly when the counts agree. When they do not (a record too large to
-    stage), that call's requests get None and are placed the old way, by content.
-    """
-    records: list[tuple[dict[str, Any], Path | None]] = []
-    for call, result in zip(calls, results):
-        requests = requests_of(call)
-        files = [Path(batch.get("directory") or "") / name
-                 for batch in result.get("staged") or [] for name in batch.get("names") or []]
-        paired = len(files) == len(requests) and all(f.is_file() for f in files)
-        records += [(request, files[i] if paired else None) for i, request in enumerate(requests)]
-    return records
-
-
 # Failures worth one retry before a stage reads them as an answer, with the default wait in seconds:
 # a rate limit, and a transient upstream outage (HTTP 503 seen on Instagram Feed reads, 2026-10-15,
 # that ended two whole account reviews although the same read succeeded minutes later).
 RETRIED_ONCE = {"rate_limited": 1.0, "service_unavailable": 3.0}
-
-
-# A call the host could not complete at all: it answered `error` and staged no response, so the
-# request or its answer was lost between this machine and the platform (a dropped connection, a
-# gateway error, a platform reply with no result). The platform may well have done the work; nothing
-# of it reached this run. Read-only calls are sent again once, alone, after this many seconds.
-LOST_RETRY_WAIT = 2.5
-# The calls a stage may send twice: they only read. Anything else (a job submission, a write) is never
-# repeated here, whatever came back.
-READ_ONLY_TOOLS = frozenset({"data_connector_run", "data_connector_batch_run",
-                             "collect_instagram_trend_candidates", "collect_youtube_trend_candidates",
-                             "enrich_instagram_shortlist", "enrich_youtube_shortlist"})
-# Fixed wording for a round that stopped because calls were lost on the way even after that retry.
-# The host model relays it to the user in the user's own language.
-LOST_NOTE = ("Tell the user: the network or the data service was briefly interrupted. This is not a "
-             "problem with their request or anything they entered, and not something any social platform "
-             "did; do not guess another cause. Ask them to try again in a few minutes.")
-
-
-def staged_count(result: dict[str, Any]) -> int:
-    return sum(len(batch.get("names") or []) for batch in result.get("staged") or [] if isinstance(batch, dict))
-
-
-def lost(call: dict[str, Any], result: dict[str, Any]) -> bool:
-    """Whether the host lost this read-only call on the way: an error with no staged response at all."""
-    return (call.get("tool") in READ_ONLY_TOOLS and result.get("status") == "error"
-            and staged_count(result) == 0 and not result.get("receipt"))
-
-
-def retry_lost(calls: list[dict[str, Any]], results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Send the calls the host lost on the way once more, alone; a recovered call's result replaces its error."""
-    again = [i for i, (call, result) in enumerate(zip(calls, results)) if lost(call, result)]
-    if not again:
-        return results
-    time.sleep(LOST_RETRY_WAIT)
-    try:
-        retried = fetch([calls[i] for i in again])
-    except NoOutbox:
-        retried = []  # the host took nothing this time: those calls stay lost
-    results = list(results)
-    for i, result in zip(again, retried):
-        if result.get("status") != "refused":  # a refused retry was never made; keep the original error
-            results[i] = result
-    still = [i for i in again if lost(calls[i], results[i])]
-    say(f"[drive] {len(again)} call(s) came back with nothing (lost on the way); retried once, "
-        f"{len(again) - len(still)} recovered")
-    if still:
-        remember_lost([str(request.get("operation") or "") for i in still for request in requests_of(calls[i])]
-                      + [str(calls[i].get("tool")) for i in still])
-    return results
-
-
-def remember_lost(operations: list[str]) -> None:
-    """Record in this run's state which operations (and tools) were lost on the way, for a later stop to explain."""
-    if run_dir_of(Path.cwd() / STATE) is None:
-        return
-    known = [str(op) for op in state().get("lost_operations") or []]
-    save_state(lost_operations=sorted({*known, *(op for op in operations if op)}))
-
-
-def lost_in_transit(operations: list[str] | None = None) -> bool:
-    """Whether this run lost calls on the way that the retry did not recover (of these operations, if named)."""
-    try:
-        known = set(state().get("lost_operations") or [])
-    except StageError:
-        return False
-    return bool(known if operations is None else known & set(operations))
 
 
 def rate_limited(path: Path | None) -> float | None:
@@ -384,138 +159,150 @@ def resume_command() -> str:
             + " ".join(f"'{arg}'" if re.search(r"[^\w./=:-]", arg) else arg for arg in stage) + " --placed")
 
 
+# 交接点名的结果文件（绝对路径，按调用顺序）与续跑已取走的文件（路径 -> 内容 sha256），记在本次运行的状态里。
+AWAITING = "awaiting_results"
+TAKEN = "taken_results"
+# 每轮交接都打印，所以要短。实测里模型把组合结果里的 calls[] 逐个拿去 get_research_data_download、
+# 用命令行参数传 base64 写文件（参数过长）、在错的目录里跑 stage——这里各说一次。
+SAVE_RULE = ("Save each result as is, download link included, to the absolute path under it; write the file with "
+             "your file-write tool or a single-quoted heredoc, never by passing the result as a command-line argument. "
+             "A result that lists `calls` is saved whole, as one file: never call get_research_data_download and "
+             "never download anything yourself.")
+
+
+def await_results(tools: list[str]) -> list[Path]:
+    """Name one file under this run's host-results/ per handed-over call, in call order, and remember them.
+
+    The paths are absolute, so a save from another working directory still lands in this run; the
+    resume takes exactly these files (`take_handed_results`).
+    """
+    results = Path.cwd() / "host-results"
+    first = len(list(results.glob("*.json"))) + 1 if results.is_dir() else 1
+    files = [results / f"{number:02d}-{tool}.json" for number, tool in enumerate(tools, first)]
+    save_state(**{AWAITING: [{"tool": tool, "file": str(file)} for tool, file in zip(tools, files)]})
+    return files
+
+
+def say_resume() -> None:
+    say("Then run this one command right away (it fetches and checks every saved result; links expire in 10 "
+        "minutes): " + resume_command())
+
+
 def hand_over(calls, why=""):
-    # 每条调用后面直接打印要存的文件名与 fetch 命令，结尾打印续跑命令：模型照抄即可，不必自己拼路径
-    # （实测里模型猜过不存在的参数、写错过运行目录，最后绕开脚本自己复制、下载，跳过了整条存证）。
+    # 每条调用下面打印要存的绝对路径，结尾只打印一条续跑命令：续跑自己 fetch（没有就绪下载时 stage）
+    # 每个存好的结果，模型不再单独跑 static_host.py。
     from static_host import public_calls
     public = [mapped for call in calls for mapped in public_calls(call)]
-    results = Path("host-results")
-    first = len(list(results.glob("*.json"))) + 1 if results.is_dir() else 1
-    say(f"Hand-over: make these {len(public)} call(s) now, each as its own individual call (never combined into "
-        "one batch call), all in one response, with the arguments verbatim. Each result holds a download link: never "
-        "download it yourself with a shell command or a browser. In the order below, save each result itself, link included and "
-        "unchanged, to the file named under it (the host's result export, or the result text as returned written "
-        "with a single-quoted heredoc) and run the command under it at once: fetch downloads and checks the data; "
-        "links expire in 10 minutes. When fetch reports no ready download, run the same command with stage in "
-        "place of fetch.")
-    for number, mapped in enumerate(public, first):
-        saved = f"host-results/{number:02d}-{mapped['tool']}.json"
+    files = await_results([mapped["tool"] for mapped in public])
+    say(f"Hand-over: make these {len(public)} call(s) now, each as its own call (never combined into one batch "
+        "call), all in one response, with the arguments verbatim. " + SAVE_RULE)
+    for mapped, file in zip(public, files):
         say(HANDOVER_PREFIX + json.dumps(mapped, ensure_ascii=False))
-        say(f"  save: {saved}")
-        say(f"  then: cd '{Path.cwd()}' && KABO_STATIC_RUN_DIR='{Path.cwd()}' python3 "
-            f"'{SCRIPTS / 'static_host.py'}' fetch --tool {mapped['tool']} --input '{saved}'")
-    say("When every result above is fetched or staged, resume: " + resume_command())
+        say(f"  save: {file}")
+    say_resume()
     raise SystemExit(0)
+
+
+def take_saved_results(pairs: list[tuple[str, Path]]) -> None:
+    """Fetch each saved result (stage it when it holds no ready download), in order, each file once.
+
+    The same `static_host` fetch and stage the model used to run by hand. Every file is read before
+    any is taken; a file already taken with the same bytes is skipped, so a resume run again does not
+    download an expired link a second time.
+    """
+    import static_host
+
+    read = []
+    for tool, path in pairs:
+        try:
+            with path.open("rb") as stream:
+                read.append((tool, path, stream.read(static_host.MAX_BYTES + 1)))
+        except OSError as error:
+            raise StageError(f"cannot read {path} ({error.strerror or error}); save the complete {tool} result "
+                             "there, then run the same resume command again") from None
+    taken = dict(state().get(TAKEN) or {})
+    for tool, path, raw in read:
+        digest = hashlib.sha256(raw).hexdigest()
+        if taken.get(str(path)) == digest:
+            continue
+        try:
+            result, how = static_host.fetch(tool, raw), "fetched"
+            if result.get("fetched") == 0:
+                result, how = static_host.stage(tool, raw), "staged"
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            raise StageError(f"{path} does not hold a usable {tool} result ({error}). Save the complete {tool} "
+                             "result there as returned (a result that lists `calls` whole, download link included), "
+                             "then run the same resume command again") from None
+        taken[str(path)] = digest
+        save_state(**{TAKEN: taken})
+        held = result.get("duplicate")
+        say(f"[drive] {path.name}: {how} {tool}"
+            + (" (already held)" if held is True or (held and not result.get("staged")) else ""))
+
+
+def take_handed_results(calls: list[dict[str, Any]], handed_at: str, placed: bool, optional: bool = False) -> None:
+    """Before a handed-over round is placed, take the results its hand-over named.
+
+    Each named file that exists is fetched or staged (`take_saved_results`). Nothing is taken when the
+    host already recorded a response for every call of the round some other way (a result fetched by
+    hand, a link renewed after it expired). With `--placed`, a named file that does not exist stops the
+    stage with its path, unless the round is `optional` (its placement goes on without the answers
+    that did not come back, and names them).
+    """
+    awaited = [(str(item["tool"]), Path(str(item["file"]))) for item in state().get(AWAITING) or []
+               if isinstance(item, dict) and item.get("tool") and item.get("file")]
+    if not awaited or made_since(calls, handed_at):
+        return
+    missing = [(tool, path) for tool, path in awaited if not path.is_file()]
+    if missing and placed and optional:
+        say("[drive] nothing saved at " + ", ".join(str(path) for _, path in missing) + "; placing what came back")
+    elif missing and placed:
+        raise StageError("no saved result at " + "; ".join(f"{path} (save the complete {tool} result there)"
+                                                           for tool, path in missing)
+                         + ". Save each result as is, download link included, then run the same resume command again")
+    take_saved_results([pair for pair in awaited if pair not in missing])
 
 
 def fetch_or_hand_over(calls: list[dict[str, Any]], placed: bool,
                        hand_over_calls: Callable[[], None] | None = None, optional: bool = False) -> None:
-    """Fetch through the outbox; without one, print the calls for the model and stop the stage.
+    """Print the calls for the model and stop the stage; with `placed`, go on to placement.
 
     `hand_over_calls` prints the hand-over its own way instead (it ends the stage itself).
 
     `optional` says this round's subjects can go without an answer: its caller places what came back
-    and names the subjects that got nothing. Only a round whose placement does that passes it.
+    and names the subjects that got nothing. The stages never fetch themselves, so it changes nothing
+    here; it is kept so every caller states which rounds may come back thin.
 
-    If local persistence fails after a fetch, retry the write, never switch Connector operations or
-    refetch the account: the stage is run again with `--placed`, which skips this fetch.
+    If local persistence fails after the calls were made, never switch Connector operations or
+    refetch the account: the stage is run again with `--placed`, which places what was staged.
     """
-    global LAST_RECORDS
-    LAST_RECORDS = None
     if placed:
         return
-    started = time.monotonic()
-    try:
-        results = fetch(calls)
-    except NoOutbox as why:
-        if hand_over_calls is not None:
-            hand_over_calls()
-        hand_over(calls, str(why))
-    # Before anything reads a lost call as «no profile» or «no more history», and before a stage
-    # spends a reserve in its place.
-    results = retry_lost(calls, results)
-    failed = [r for r in results if r.get("status") == "refused"]
-    if failed and not optional:
-        raise StageError(f"connector call refused: {failed[0].get('message')}")
-    if failed:
-        # Refusing here is a thinner answer, not a broken run, so the round goes on to place what
-        # did come back. Raising instead threw away the responses that had already returned: a turn
-        # whose retrieval budget ran out on the first batch of a round delivered nothing at all,
-        # though the stage was written to carry on with the subjects it had.
-        say(f"[drive] the host refused {len(failed)} of {len(results)} call(s) in this round "
-            f"({str(failed[0].get('message') or '')[:200]}); placing what did come back")
-    records = records_of(calls, results)
-    # A rate-limited or briefly unavailable request is retried once, alone, before anything reads it as «no profile» or
-    # «no more history»; its retry's record replaces the failed one.
-    again = [i for i, (_, path) in enumerate(records) if rate_limited(path) is not None]
-    if again:
-        time.sleep(min(RETRY_WAIT_MAX, max(rate_limited(records[i][1]) or 1 for i in again)))
-        retry_calls = [run_call(records[i][0]["connector_id"], records[i][0]["operation"], records[i][0].get("params") or {})
-                       for i in again]
-        retried = records_of(retry_calls, fetch(retry_calls))
-        for i, (_, path) in zip(again, retried):
-            if path is not None:
-                supersede(records[i][1])
-                records[i] = (records[i][0], path)
-        say(f"[drive] retried {len(again)} rate-limited or unavailable request(s); "
-            f"{sum(rate_limited(records[i][1]) is None for i in again)} recovered")
-    LAST_RECORDS = records
-    kept = sum(staged_count(r) for r in results)
-    if results and kept == 0 and all(r.get("status") == "error" for r in results):
-        # Nothing came back at all, even after the retry: the data service or the network failed, not
-        # an artifact of this run. Placing would only report a missing response, which reads like a
-        # call never sent.
-        raise StageError(f"every connector call failed on the way ({str(results[0].get('message') or '')[:200]}), "
-                         "and the driver already sent them once more; nothing was fetched and nothing is wrong "
-                         "with this run's files. Stop here without trying other tools. " + LOST_NOTE)
-    for index, (call, result) in enumerate(zip(calls, results)):
-        if result.get("status") == "error":
-            staged = staged_count(result)
-            after = " (nothing came back, after one retry)" if lost(call, result) else ""
-            say(f"[drive] call {index + 1} ({result.get('tool')}) reported an error"
-                f"{f' ({staged} response(s) kept)' if staged else after}: {str(result.get('message') or '')[:300]}")
-    say(f"[drive] fetched {len(calls)} call(s) in {time.monotonic() - started:.1f}s")
+    if hand_over_calls is not None:
+        hand_over_calls()
+    hand_over(calls)
 
 
 def place_record(operation: str, dest: str | Path, by_content: Callable[[], Any], nth: int = 0,
                  any_status: bool = True) -> None:
-    """Place the response to this round's `nth` request of `operation` at `dest`.
+    """Place the response to this round's request of `operation` at `dest`, by content.
 
-    From the host's own record of that request when the fetch named one — the final attempt, after a
-    rate-limit retry — byte for byte, which is what `persist_envelope.py --dest` copies. Otherwise (the
-    model made the call, `--placed`) `by_content` places it, by what the staging area holds. Without
-    `any_status` a record that is not a completed response goes to `by_content` too, which refuses it
-    the way it always did.
+    `by_content` places it from this run's staged copies (`persist_envelope.py --dest`). A
+    rate-limited response the model retried is followed by its retry: set the limited one aside as
+    superseded and take the next. `nth` and `any_status` are the caller's; `by_content` already
+    carries both.
     """
-    records = [path for request, path in (LAST_RECORDS or []) if request.get("operation") == operation]
-    record = records[nth] if nth < len(records) else None
-    if record is None or not record.is_file():
-        by_content()
-        # By content, a rate-limited response the model retried is followed by its retry: set the
-        # limited one aside as superseded and take the next, as the outbox path does.
-        for _ in range(3):
-            if rate_limited(Path(dest)) is None:
-                return
-            kept = Path(dest).read_bytes()
-            supersede(Path(dest))
-            try:
-                by_content()
-            except StageError:
-                Path(dest).write_bytes(kept)  # no retry was made: the limited response is the answer
-                return
-        return
-    if not any_status:
-        try:
-            envelope = pe.unwrap_envelope(record.read_text(encoding="utf-8")) or {}
-        except (OSError, UnicodeDecodeError):
-            envelope = {}
-        if envelope.get("status") not in USABLE_STATUSES:
-            by_content()
+    by_content()
+    for _ in range(3):
+        if rate_limited(Path(dest)) is None:
             return
-    target = Path(dest)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(record.read_bytes())
-    target.chmod(0o600)
+        kept = Path(dest).read_bytes()
+        supersede(Path(dest))
+        try:
+            by_content()
+        except StageError:
+            Path(dest).write_bytes(kept)  # no retry was made: the limited response is the answer
+            return
 
 
 def round_key(calls: list[dict[str, Any]]) -> str:
@@ -652,6 +439,9 @@ def fetch_round(calls: list[dict[str, Any]], args: argparse.Namespace, place_res
     if key in done:
         return False
     handed = dict(current.get("handed") or {})
+    if key in handed:
+        # 交接点名的结果文件由续跑自己 fetch / stage，模型只存文件、跑一条续跑命令。
+        take_handed_results(calls, str(handed[key]), args.placed, optional)
     if not args.placed and key in handed:
         if made_since(calls, str(handed[key])):
             say("[drive] the calls handed over earlier were made; placing their responses (as --placed would)")
@@ -980,7 +770,6 @@ def run_stage(stages: dict[str, Callable[[argparse.Namespace], None]], args: arg
     """
     global MODEL_FILES
     MODEL_FILES = model_files
-    turn_token()  # read once, as the stage starts
     try:
         if args.stage not in first:
             guard_run_directory(args.stage, model_files)

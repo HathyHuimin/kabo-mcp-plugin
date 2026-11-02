@@ -11584,6 +11584,1855 @@
         "securitySchemes": [
           {
             "scopes": [
+              "data"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Account profiles + paged posts; reserves backfill. Top-level. Uses daily quota.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "accounts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "channel_id": {
+                  "pattern": "^UC[\\w-]{22}$",
+                  "type": "string"
+                },
+                "handle": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "max_items": {
+                  "maximum": 100,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "user_id": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "maxItems": 12,
+            "minItems": 1,
+            "type": "array"
+          },
+          "delivery": {
+            "enum": [
+              "inline",
+              "download"
+            ],
+            "type": "string"
+          },
+          "history": {
+            "additionalProperties": false,
+            "default": {},
+            "properties": {
+              "instagram_formats": {
+                "additionalProperties": false,
+                "properties": {
+                  "balance": {
+                    "const": "fewer_rows_first",
+                    "default": "fewer_rows_first",
+                    "type": "string"
+                  },
+                  "per_format_max": {
+                    "maximum": 100,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "posts": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "reels": {
+                    "default": true,
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "max_items": {
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "max_pages": {
+                "maximum": 40,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "min_items_since": {
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "page_size": {
+                "maximum": 50,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "since": {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              "until": {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "on_identity_miss": {
+            "default": "gap",
+            "enum": [
+              "candidates",
+              "gap"
+            ],
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube",
+              "tiktok"
+            ],
+            "type": "string"
+          },
+          "profile": {
+            "default": true,
+            "type": "boolean"
+          },
+          "reserves": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "channel_id": {
+                  "pattern": "^UC[\\w-]{22}$",
+                  "type": "string"
+                },
+                "handle": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "maxItems": 12,
+            "type": "array"
+          },
+          "target_count": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "platform",
+          "accounts"
+        ],
+        "type": "object"
+      },
+      "name": "collect_account_history",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "calls": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "attempts": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "group": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "parameters": {
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "result": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "connector_id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "credential_values_recorded": {
+                      "const": false,
+                      "type": "boolean"
+                    },
+                    "data": {},
+                    "error_code": {
+                      "enum": [
+                        "authentication_required",
+                        "invalid_session",
+                        "forbidden",
+                        "subscription_required",
+                        "not_found",
+                        "diagnosis_not_found",
+                        "topic_required",
+                        "validation_error",
+                        "conflict",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "service_unavailable",
+                        "not_implemented",
+                        "internal_error"
+                      ],
+                      "type": "string"
+                    },
+                    "evidence_ref": {
+                      "type": "string"
+                    },
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "limitations": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "observation_refs": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "operation": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "provider": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "quota": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "consumed": {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "remaining": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "source": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "unit": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "remaining",
+                        "unit"
+                      ],
+                      "type": "object"
+                    },
+                    "raw_sha256": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "retrieved_at": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    "retry_after_seconds": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "retryable": {
+                      "type": "boolean"
+                    },
+                    "run_id": {
+                      "type": "string"
+                    },
+                    "schema_version": {
+                      "const": "1.0",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "completed",
+                        "completed_partial",
+                        "blocked_setup",
+                        "unsupported",
+                        "failed"
+                      ],
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "schema_version",
+                    "connector_id",
+                    "operation",
+                    "provider",
+                    "status",
+                    "summary",
+                    "limitations",
+                    "credential_values_recorded"
+                  ],
+                  "type": "object"
+                },
+                "tool": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tool",
+                "parameters",
+                "group",
+                "attempts",
+                "result"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "coverage": {
+            "additionalProperties": {},
+            "properties": {
+              "deadline_reached": {
+                "type": "boolean"
+              },
+              "provider_calls": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "unfinished": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "deadline_reached",
+              "unfinished",
+              "provider_calls"
+            ],
+            "type": "object"
+          },
+          "download": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "bytes": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "content_type": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "expires_at": {
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "envelope",
+                      "artifact"
+                    ],
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "ready",
+                    "type": "string"
+                  },
+                  "url": {
+                    "format": "uri",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "kind",
+                  "url",
+                  "expires_at",
+                  "sha256",
+                  "bytes",
+                  "content_type"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "enum": [
+                      "too_large",
+                      "not_found",
+                      "service_unavailable"
+                    ],
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "unavailable",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "reason"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "kabo-composite-fetch.v1",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "partial",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": {},
+            "properties": {},
+            "type": "object"
+          },
+          "tool": {
+            "enum": [
+              "collect_account_history",
+              "collect_tiktok_video_candidates",
+              "collect_youtube_recent_videos",
+              "render_official_pages"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "tool",
+          "status",
+          "calls",
+          "summary",
+          "coverage",
+          "limitations"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "data"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Collect account histories"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "data"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "TikTok search per intent and sort, plus optional daily board (empty: day before). Top-level. Uses daily quota.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "default": 30,
+            "maximum": 30,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "delivery": {
+            "enum": [
+              "inline",
+              "download"
+            ],
+            "type": "string"
+          },
+          "include": {
+            "items": {
+              "const": "content_signals",
+              "type": "string"
+            },
+            "maxItems": 1,
+            "minItems": 1,
+            "type": "array"
+          },
+          "intents": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "keyword": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "publish_time": {
+                  "anyOf": [
+                    {
+                      "const": 0,
+                      "type": "number"
+                    },
+                    {
+                      "const": 1,
+                      "type": "number"
+                    },
+                    {
+                      "const": 7,
+                      "type": "number"
+                    },
+                    {
+                      "const": 30,
+                      "type": "number"
+                    },
+                    {
+                      "const": 90,
+                      "type": "number"
+                    },
+                    {
+                      "const": 180,
+                      "type": "number"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "keyword"
+              ],
+              "type": "object"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "type": "array"
+          },
+          "region": {
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "sorts": {
+            "default": [
+              0,
+              1
+            ],
+            "items": {
+              "anyOf": [
+                {
+                  "const": 0,
+                  "type": "number"
+                },
+                {
+                  "const": 1,
+                  "type": "number"
+                }
+              ]
+            },
+            "maxItems": 2,
+            "minItems": 1,
+            "type": "array"
+          },
+          "top_contents": {
+            "additionalProperties": false,
+            "properties": {
+              "date": {
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                "type": "string"
+              },
+              "fallback_days": {
+                "default": 1,
+                "maximum": 3,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "date"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "intents"
+        ],
+        "type": "object"
+      },
+      "name": "collect_tiktok_video_candidates",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "calls": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "attempts": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "group": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "parameters": {
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "result": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "connector_id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "credential_values_recorded": {
+                      "const": false,
+                      "type": "boolean"
+                    },
+                    "data": {},
+                    "error_code": {
+                      "enum": [
+                        "authentication_required",
+                        "invalid_session",
+                        "forbidden",
+                        "subscription_required",
+                        "not_found",
+                        "diagnosis_not_found",
+                        "topic_required",
+                        "validation_error",
+                        "conflict",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "service_unavailable",
+                        "not_implemented",
+                        "internal_error"
+                      ],
+                      "type": "string"
+                    },
+                    "evidence_ref": {
+                      "type": "string"
+                    },
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "limitations": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "observation_refs": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "operation": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "provider": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "quota": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "consumed": {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "remaining": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "source": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "unit": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "remaining",
+                        "unit"
+                      ],
+                      "type": "object"
+                    },
+                    "raw_sha256": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "retrieved_at": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    "retry_after_seconds": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "retryable": {
+                      "type": "boolean"
+                    },
+                    "run_id": {
+                      "type": "string"
+                    },
+                    "schema_version": {
+                      "const": "1.0",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "completed",
+                        "completed_partial",
+                        "blocked_setup",
+                        "unsupported",
+                        "failed"
+                      ],
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "schema_version",
+                    "connector_id",
+                    "operation",
+                    "provider",
+                    "status",
+                    "summary",
+                    "limitations",
+                    "credential_values_recorded"
+                  ],
+                  "type": "object"
+                },
+                "tool": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tool",
+                "parameters",
+                "group",
+                "attempts",
+                "result"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "coverage": {
+            "additionalProperties": {},
+            "properties": {
+              "deadline_reached": {
+                "type": "boolean"
+              },
+              "provider_calls": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "unfinished": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "deadline_reached",
+              "unfinished",
+              "provider_calls"
+            ],
+            "type": "object"
+          },
+          "download": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "bytes": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "content_type": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "expires_at": {
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "envelope",
+                      "artifact"
+                    ],
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "ready",
+                    "type": "string"
+                  },
+                  "url": {
+                    "format": "uri",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "kind",
+                  "url",
+                  "expires_at",
+                  "sha256",
+                  "bytes",
+                  "content_type"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "enum": [
+                      "too_large",
+                      "not_found",
+                      "service_unavailable"
+                    ],
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "unavailable",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "reason"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "kabo-composite-fetch.v1",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "partial",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": {},
+            "properties": {},
+            "type": "object"
+          },
+          "tool": {
+            "enum": [
+              "collect_account_history",
+              "collect_tiktok_video_candidates",
+              "collect_youtube_recent_videos",
+              "render_official_pages"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "tool",
+          "status",
+          "calls",
+          "summary",
+          "coverage",
+          "limitations"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "data"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Collect TikTok video candidates"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "data"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "YouTube searches, deduped, then video details in 50-id chunks. Top-level. Uses daily quota.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "delivery": {
+            "enum": [
+              "inline",
+              "download"
+            ],
+            "type": "string"
+          },
+          "details": {
+            "default": true,
+            "type": "boolean"
+          },
+          "max_results": {
+            "default": 50,
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "queries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "order": {
+                  "enum": [
+                    "date",
+                    "rating",
+                    "viewCount",
+                    "relevance",
+                    "title"
+                  ],
+                  "type": "string"
+                },
+                "published_after": {
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "type": "string"
+                },
+                "published_before": {
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "type": "string"
+                },
+                "q": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "region_code": {
+                  "maxLength": 8,
+                  "minLength": 2,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "q"
+              ],
+              "type": "object"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "queries"
+        ],
+        "type": "object"
+      },
+      "name": "collect_youtube_recent_videos",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "calls": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "attempts": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "group": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "parameters": {
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "result": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "connector_id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "credential_values_recorded": {
+                      "const": false,
+                      "type": "boolean"
+                    },
+                    "data": {},
+                    "error_code": {
+                      "enum": [
+                        "authentication_required",
+                        "invalid_session",
+                        "forbidden",
+                        "subscription_required",
+                        "not_found",
+                        "diagnosis_not_found",
+                        "topic_required",
+                        "validation_error",
+                        "conflict",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "service_unavailable",
+                        "not_implemented",
+                        "internal_error"
+                      ],
+                      "type": "string"
+                    },
+                    "evidence_ref": {
+                      "type": "string"
+                    },
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "limitations": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "observation_refs": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "operation": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "provider": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "quota": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "consumed": {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "remaining": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "source": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "unit": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "remaining",
+                        "unit"
+                      ],
+                      "type": "object"
+                    },
+                    "raw_sha256": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "retrieved_at": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    "retry_after_seconds": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "retryable": {
+                      "type": "boolean"
+                    },
+                    "run_id": {
+                      "type": "string"
+                    },
+                    "schema_version": {
+                      "const": "1.0",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "completed",
+                        "completed_partial",
+                        "blocked_setup",
+                        "unsupported",
+                        "failed"
+                      ],
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "schema_version",
+                    "connector_id",
+                    "operation",
+                    "provider",
+                    "status",
+                    "summary",
+                    "limitations",
+                    "credential_values_recorded"
+                  ],
+                  "type": "object"
+                },
+                "tool": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tool",
+                "parameters",
+                "group",
+                "attempts",
+                "result"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "coverage": {
+            "additionalProperties": {},
+            "properties": {
+              "deadline_reached": {
+                "type": "boolean"
+              },
+              "provider_calls": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "unfinished": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "deadline_reached",
+              "unfinished",
+              "provider_calls"
+            ],
+            "type": "object"
+          },
+          "download": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "bytes": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "content_type": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "expires_at": {
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "envelope",
+                      "artifact"
+                    ],
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "ready",
+                    "type": "string"
+                  },
+                  "url": {
+                    "format": "uri",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "kind",
+                  "url",
+                  "expires_at",
+                  "sha256",
+                  "bytes",
+                  "content_type"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "enum": [
+                      "too_large",
+                      "not_found",
+                      "service_unavailable"
+                    ],
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "unavailable",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "reason"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "kabo-composite-fetch.v1",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "partial",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": {},
+            "properties": {},
+            "type": "object"
+          },
+          "tool": {
+            "enum": [
+              "collect_account_history",
+              "collect_tiktok_video_candidates",
+              "collect_youtube_recent_videos",
+              "render_official_pages"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "tool",
+          "status",
+          "calls",
+          "summary",
+          "coverage",
+          "limitations"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "data"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Collect recent YouTube videos"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "data"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Render 1-32 official help pages at once. Top-level. No quota.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "delivery": {
+            "enum": [
+              "inline",
+              "download"
+            ],
+            "type": "string"
+          },
+          "pages": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "source_id": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "url": {
+                  "format": "uri",
+                  "maxLength": 2000,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "pages"
+        ],
+        "type": "object"
+      },
+      "name": "render_official_pages",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "calls": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "attempts": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "group": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "parameters": {
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "result": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "connector_id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "credential_values_recorded": {
+                      "const": false,
+                      "type": "boolean"
+                    },
+                    "data": {},
+                    "error_code": {
+                      "enum": [
+                        "authentication_required",
+                        "invalid_session",
+                        "forbidden",
+                        "subscription_required",
+                        "not_found",
+                        "diagnosis_not_found",
+                        "topic_required",
+                        "validation_error",
+                        "conflict",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "service_unavailable",
+                        "not_implemented",
+                        "internal_error"
+                      ],
+                      "type": "string"
+                    },
+                    "evidence_ref": {
+                      "type": "string"
+                    },
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "limitations": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "observation_refs": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "operation": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "provider": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "quota": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "consumed": {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "remaining": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "source": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "unit": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "remaining",
+                        "unit"
+                      ],
+                      "type": "object"
+                    },
+                    "raw_sha256": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "retrieved_at": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    "retry_after_seconds": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "retryable": {
+                      "type": "boolean"
+                    },
+                    "run_id": {
+                      "type": "string"
+                    },
+                    "schema_version": {
+                      "const": "1.0",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "completed",
+                        "completed_partial",
+                        "blocked_setup",
+                        "unsupported",
+                        "failed"
+                      ],
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "schema_version",
+                    "connector_id",
+                    "operation",
+                    "provider",
+                    "status",
+                    "summary",
+                    "limitations",
+                    "credential_values_recorded"
+                  ],
+                  "type": "object"
+                },
+                "tool": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tool",
+                "parameters",
+                "group",
+                "attempts",
+                "result"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "coverage": {
+            "additionalProperties": {},
+            "properties": {
+              "deadline_reached": {
+                "type": "boolean"
+              },
+              "provider_calls": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "unfinished": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "deadline_reached",
+              "unfinished",
+              "provider_calls"
+            ],
+            "type": "object"
+          },
+          "download": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "bytes": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "content_type": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "expires_at": {
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "envelope",
+                      "artifact"
+                    ],
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "ready",
+                    "type": "string"
+                  },
+                  "url": {
+                    "format": "uri",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "kind",
+                  "url",
+                  "expires_at",
+                  "sha256",
+                  "bytes",
+                  "content_type"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "enum": [
+                      "too_large",
+                      "not_found",
+                      "service_unavailable"
+                    ],
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "unavailable",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "reason"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "kabo-composite-fetch.v1",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "partial",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": {},
+            "properties": {},
+            "type": "object"
+          },
+          "tool": {
+            "enum": [
+              "collect_account_history",
+              "collect_tiktok_video_candidates",
+              "collect_youtube_recent_videos",
+              "render_official_pages"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "tool",
+          "status",
+          "calls",
+          "summary",
+          "coverage",
+          "limitations"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "data"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Render official pages"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
               "video"
             ],
             "type": "oauth2"
