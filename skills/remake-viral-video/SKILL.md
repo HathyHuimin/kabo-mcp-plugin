@@ -15,9 +15,9 @@ through `start_remake_video`, `get_remake_video` and `render_remake_video`. If t
 available on this connection, say that video remakes are not available here and stop; never draw,
 record or assemble a video another way.
 
-A remake takes about half an hour, most of it waiting on the runner. When the host supports one,
-run this Skill in a foreground sub-agent and wait for its final result before replying; never run
-it in the background and tell the user the video will come later. Without a foreground sub-agent,
+A remake takes about half an hour, mostly waiting on the runner. When the host supports one,
+run this Skill in a foreground sub-agent, wait for its final result and relay all of it (path,
+spend, review); never run it in the background and promise the video later. Without a foreground sub-agent,
 follow the same steps in the main thread.
 
 ## What this covers
