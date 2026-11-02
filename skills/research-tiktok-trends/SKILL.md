@@ -3,7 +3,7 @@ name: research-tiktok-trends
 description: "Research what is trending on TikTok: hot videos and repeatable mechanisms in a niche or like a given TikTok video, the daily trending sound board with today's fastest risers, sounds that fit named video scenes, rising search terms and content gaps, or viral videos from the last seven days. Use for what is hot, rising or worth copying on TikTok now. Not for private analytics, TikTok Shop research, an account-history audit or full scripts."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read to read the Creator's saved account profile and workspace:write to save edits to it the user asks for."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download creator_trends_get_tiktok_sound_board tiktok_discovery_search_videos tiktok_discovery_search_sounds tiktok_discovery_list_top_contents tiktok_discovery_list_search_insights tiktok_discovery_get_search_insight_trend lookup_tiktok_video tiktok_list_account_posts list_connected_accounts get_creator_profile update_content_preferences
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download creator_trends_get_tiktok_sound_board tiktok_discovery_search_videos tiktok_discovery_search_sounds tiktok_discovery_list_search_insights tiktok_discovery_get_search_insight_trend lookup_tiktok_video collect_tiktok_video_candidates collect_account_history list_connected_accounts get_creator_profile update_content_preferences
 ---
 
 # Research TikTok Trends
@@ -79,7 +79,7 @@ batch call. Never retype, paste or edit returned data.
   - sound board, rising search terms (`list_search_insights`) and short window: that deliverable
     cannot be completed; say so and stop, never build from the remaining calls;
   - the workflow's searches and ranked board: `discover` places a failed response as that route's
-    answer, and stops when nothing could be staged for one: the scan cannot be completed;
+    answer, and stops when the collection holds no response for one: the scan cannot be completed;
   - an optional search-term trend call (`get_search_insight_trend`): skip it, as
     `references/search-terms.md` says;
   - a scene-soundtrack call: render the other scenes and say next to that scene that its search

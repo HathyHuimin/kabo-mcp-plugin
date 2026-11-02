@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import Ajv from "ajv";
 
 // 插件跟上服务端 2026-10-22 上线的目录面改动：lookup_tiktok_video、
 // 延迟媒体调用的 idempotency_key、get_research_data_download 重签与聚合工具的
@@ -15,6 +16,13 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const scripts = (id) => path.join(root, "skills", id, "scripts");
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const pinned = new Map(JSON.parse(await readFile(path.join(root, "contracts/directory-mcp/tools-list.json"), "utf8")).tools.map((tool) => [tool.name, tool]));
+// 交出的组合取数入参整份照钉住的 inputSchema 校验（format 不在这里校验：日期由驱动按 UTC 生成）。
+const inputValidators = new Map();
+const validateInput = (name) => {
+  if (!inputValidators.has(name))
+    inputValidators.set(name, new Ajv({ allErrors: true, strict: false, logger: false, validateFormats: false }).compile(pinned.get(name).inputSchema));
+  return inputValidators.get(name);
+};
 
 function python(args, { cwd = root, run } = {}) {
   return execFileSync("python3", ["-B", ...args], {
@@ -366,13 +374,11 @@ test("trends 驱动带画像：交出的 include 都在钉住的 inputSchema 里
   for (const line of tiktok.lines) {
     const call = JSON.parse(line.slice(6));
     const schema = pinned.get(call.tool).inputSchema;
-    for (const field of Object.keys(call.arguments)) assert.ok(schema.properties[field], `${call.tool}.${field}`);
-    const parameters = schema.properties.parameters.properties;
-    for (const field of Object.keys(call.arguments.parameters)) assert.ok(parameters[field], `${call.tool}.parameters.${field}`);
-    if (call.tool === "tiktok_discovery_search_videos") {
-      assert.deepEqual(call.arguments.parameters.include, ["content_signals"]);
-      for (const value of call.arguments.parameters.include) assert.ok(parameters.include.items.enum.includes(value));
-    } else assert.equal(call.arguments.parameters.include, undefined);
+    // 组合取数工具的入参在顶层；整份交出的入参照钉住的 inputSchema 校验。
+    assert.equal(call.tool, "collect_tiktok_video_candidates");
+    assert.ok(validateInput(call.tool)(call.arguments), JSON.stringify(validateInput(call.tool).errors));
+    assert.deepEqual(call.arguments.include, ["content_signals"]);
+    assert.equal(schema.properties.include.items.const, "content_signals");
   }
   const instagram = await discoverOutput(t, "research-instagram-trends", true);
   assert.equal(instagram.lines.length, 2);
@@ -398,13 +404,13 @@ test("trends 驱动带画像：交出的 include 都在钉住的 inputSchema 里
 
 test("trends 驱动不带画像：交出的调用与移植前逐字节相同", async (t) => {
   const tiktok = await discoverOutput(t, "research-tiktok-trends", false);
-  // D-1 榜单的时间戳随运行日期变，取驱动打印的那一个。
-  const board = Number(tiktok.output.match(/ranked board D-1: \S+ \(period_end_timestamp (\d+)\)/)[1]);
+  // D-1 榜单的日期随运行日期变，取驱动打印的那一个。一次组合调用做完原先两轮的四条搜索与日榜（含 D-2 回退）。
+  const board = tiktok.output.match(/ranked board D-1: (\S+) \(period_end_timestamp \d+\)/)[1];
   assert.deepEqual(tiktok.lines, [
-    'call: {"tool": "tiktok_discovery_search_videos", "arguments": {"parameters": {"keyword": "fuse bead craft ideas", "sort_type": 0, "count": 30, "region": "US", "publish_time": 180}, "delivery": "download"}}',
-    'call: {"tool": "tiktok_discovery_search_videos", "arguments": {"parameters": {"keyword": "perler bead fruit", "sort_type": 0, "count": 30, "region": "US", "publish_time": 180}, "delivery": "download"}}',
-    `call: {"tool": "tiktok_discovery_list_top_contents", "arguments": {"parameters": {"period_end_timestamp": ${board}, "period_dimension": 3, "country_code": "US", "limit": 100}, "delivery": "download"}}`,
+    `call: {"tool": "collect_tiktok_video_candidates", "arguments": {"intents": [{"keyword": "fuse bead craft ideas", "publish_time": 180}, {"keyword": "perler bead fruit", "publish_time": 180}], "sorts": [0, 1], "count": 30, "region": "US", "top_contents": {"date": "${board}", "fallback_days": 1}, "delivery": "download"}}`,
   ]);
+  const composite = JSON.parse(tiktok.lines[0].slice(6));
+  assert.ok(validateInput(composite.tool)(composite.arguments), JSON.stringify(validateInput(composite.tool).errors));
   assert.doesNotMatch(tiktok.output, /--without-include/);
 
   const instagram = await discoverOutput(t, "research-instagram-trends", false);

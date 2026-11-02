@@ -32,13 +32,14 @@ account-relative multiple, is not a short-window copy ask: it stays in this work
   exactly as printed.
 - **Hand-over.** A stage that needs data exits 0 after printing one `call:` line per call, each
   followed by the file to save its result in and the `fetch` command to run, and ends with the
-  resume command. Do exactly that (see *Data calls* in `SKILL.md`). A stage can hand calls over more
-  than once (`discover` hands over its first round, then its second); each time, do what it prints.
-  Do not make data calls a stage has not printed.
+  resume command. Do exactly that (see *Data calls* in `SKILL.md`). `discover` and `rank` each hand
+  over one backend call that runs that stage's whole retrieval; `start --video` hands over the source
+  video. Do not make data calls a stage has not printed.
 - Failed calls: see `references/data-calls.md` and *Data calls* in `SKILL.md`.
-- If the data service briefly failed (`rate_limited`, `service_unavailable`) on calls you made, the
+- If the data service briefly failed (`rate_limited`, `service_unavailable`) on a call you made, the
   stage sets that round aside and hands the whole round over once more; make it again and resume
-  with `--placed`. A second failure is placed as the answer.
+  with `--placed`. A second failure is placed as the answer. The backend calls of `discover` and
+  `rank` retry such failures themselves.
 - A stage can still be running when the command first returns output; when your shell tool lets
   you choose how long to wait, give each `drive.py` command 120 s. Wait for that same command to
   finish; never start a stage a second time while it runs.
@@ -119,20 +120,18 @@ ASK
 - takes `publish_time` from `scripts/resolve_search_publish_time.py`: the narrowest catalog value
   that reaches back from now to the window's start. When it prints `reaches_since: false`, keep the
   coverage incomplete (in `data_gaps`);
-- for each intent, `tiktok_discovery_search_videos` once with `sort_type: 0` and once with
-  `sort_type: 1`, `count: 30`, that `publish_time` and the region, with the frozen intent phrase as
-  `keyword` (never `query`, `search_query` or `q`). Every route is its own call; do not batch them,
-  because a batch failure erases the per-route terminal evidence this report must preserve;
-- the regional ranked board (`tiktok_discovery_list_top_contents`, `period_dimension: 3`,
-  `limit: 100`) for UTC D-1, dated 00:00 UTC of that day; when that completed board is empty, it
-  tries D-2 once and stops;
-- two rounds of calls — the `sort_type: 0` searches with the D-1 board, then the `sort_type: 1`
-  searches with the D-2 board when it is needed — so that no round sends the same keyword twice;
-- places every Envelope into `discovery-envelopes.json` and writes each request's provenance into
-  `discovery-requests.json` (`connector_id`, `operation` and `request_id` from the staged response,
-  and the params that were sent). Missing or conflicting request provenance is a failed
-  collection, not a reason to guess a route or query. Do not switch providers after partial or
-  failed results;
+- hands over one `collect_tiktok_video_candidates` call that runs the whole collection in the
+  backend: for each intent, a video search with `sort_type: 0` and one with `sort_type: 1`,
+  `count: 30`, that `publish_time` and the region, with the frozen intent phrase as `keyword`; and
+  the regional ranked board (`period_dimension: 3`, `limit: 100`) for UTC D-1, dated 00:00 UTC of
+  that day, trying D-2 once when that completed board is empty. Make that one call with its
+  arguments verbatim; the backend makes every search and board call on its own, each kept as its own
+  evidence;
+- places every response into `discovery-envelopes.json` under the intent, sort or board day it
+  answered, and writes each request's provenance into `discovery-requests.json` (`connector_id`,
+  `operation` and `request_id` from the staged response, and the params the backend sent). Missing
+  or conflicting request provenance is a failed collection, not a reason to guess a route or query.
+  Do not switch providers after partial or failed results;
 - canonical-deduplicates and applies the exact timestamp window locally with
   `scripts/build_tiktok_candidate_set.py`, and prints the numbered Gate table
   (`scripts/project_relevance_gate_input.py … --output trend-relevance-gate-input.json --table`).
@@ -196,11 +195,11 @@ correction to change a frozen Gate.
 ## 4. Rank and account histories
 
 `rank` builds the deterministic shortlist with `scripts/build_tiktok_ranking_input.py` and hands
-over `tiktok_list_account_posts` once with `limit: 30` for every exact handle in its
-`history_requests`, in the listed order (highest-ranked accounts first), each as its own call. It
-places each history under its own handle (lowercase, without `@`) in
-`account-history-envelopes.json`. A history that did not come back (a call that failed or was
-refused) leaves that account with absolute plays only, and nothing retries it later in the request.
+over one `collect_account_history` call that fetches the latest 30 posts of every exact handle in
+its `history_requests`, in the listed order (highest-ranked accounts first). It places each history
+under its own handle (lowercase, without `@`) in `account-history-envelopes.json`. A history that
+did not come back (an account that failed or did not resolve, or the whole call refused) leaves
+that account with absolute plays only, and nothing retries it later in the request.
 Never replace a failed account with a new search or hand-picked account. It then builds account
 baselines (`scripts/build_tiktok_enrichment.py`), the Snapshot and deterministic analysis once
 (`scripts/build_trend_workflow_snapshot.py`, `scripts/analyze_public_snapshot.py --mode trend`),

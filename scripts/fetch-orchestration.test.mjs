@@ -27,7 +27,7 @@ const HANDOVER_SITES = {
   "analyze-tiktok-competitors": 3,
   "diagnose-reach-drop": 5,
   "research-instagram-trends": 5,
-  "research-tiktok-trends": 4,
+  "research-tiktok-trends": 3,
   "research-youtube-trends": 3,
   "review-creator-account": 8,
   "verify-platform-rule": 1,

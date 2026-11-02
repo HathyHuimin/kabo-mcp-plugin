@@ -65,6 +65,10 @@ ROUTE_ALIASES = {"tiktok-discovery/get_video_by_share_url": {"tiktok-discovery/g
 # lookup 的 data 不是路线原生形状，而是这份投影；消费方按它判形状，不按 connector_id。
 PROJECTIONS = {"lookup_tiktok_video": "kabo.tiktok_video.v1"}
 
+# 本 Skill 交给模型的组合取数工具（热门视频的发现（各意图 × 两种排序 + 日榜）与入围作者的历史）：一次调用由后台做完那段多轮取数，
+# 结果按 calls[] 拆成单工具证据（见下方 COMPOSITE 段）。入参在顶层、不套 parameters。
+COMPOSITE_CALLS = {"collect_tiktok_video_candidates", "collect_account_history"}
+
 
 def run_dir():
     raw = os.environ.get("KABO_STATIC_RUN_DIR")
@@ -112,6 +116,8 @@ def public_calls(call):
                 raise ValueError("lookup_tiktok_video needs the video link")
             return [{"tool": name, "arguments": {"video": video, "delivery": "download"}}]
         return [{"tool": name, "arguments": {"parameters": args["params"], "delivery": "download"}}]
+    if tool in COMPOSITE_CALLS:
+        return [{"tool": tool, "arguments": {**args, "delivery": "download"}}]
     raise ValueError("Unsupported public MCP operation: " + tool)
 
 

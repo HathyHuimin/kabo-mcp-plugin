@@ -186,9 +186,9 @@ test("他平台和 null 画像不附加；零分类画像仍附加基础字段",
     const discovered = drive(RTT, run, "discover", "--policy", "default_1y");
     assert.equal(discovered.exit, 0, discovered.stderr);
     if (label === "no signature content") {
-      const searches = callsOf(discovered.stdout).filter((call) => call.tool === "tiktok_discovery_search_videos");
-      assert.ok(searches.length > 0);
-      for (const call of searches) assert.deepEqual(call.arguments.parameters.include, ["content_signals"]);
+      const searches = callsOf(discovered.stdout).filter((call) => call.tool === "collect_tiktok_video_candidates");
+      assert.equal(searches.length, 1);
+      for (const call of searches) assert.deepEqual(call.arguments.include, ["content_signals"]);
     } else {
       assert.deepEqual(callsOf(discovered.stdout), baseline, label);
       assert.doesNotMatch(discovered.stdout, /--without-include/, label);
@@ -202,7 +202,7 @@ test("他平台和 null 画像不附加；零分类画像仍附加基础字段",
   }
 });
 
-test("RTT discover 带画像：搜索带 include；被拒后 --without-include 只重交带 include 的调用，后面的轮次自动不带", async (t) => {
+test("RTT discover 带画像：组合取数带 include；被拒后 --without-include 去掉 include 重交，再跑也不带", async (t) => {
   const temp = await workspace(t);
   const run = await newRun(temp, RTT);
   assert.equal(drive(RTT, run, "start", "--profile", await profileFile(temp, toolResult(await fixture("tiktok")))).exit, 0);
@@ -210,10 +210,12 @@ test("RTT discover 带画像：搜索带 include；被拒后 --without-include �
   const first = drive(RTT, run, "discover", "--policy", "default_1y");
   assert.equal(first.exit, 0, first.stderr);
   const calls = callsOf(first.stdout);
-  const searches = calls.filter((call) => call.tool === "tiktok_discovery_search_videos");
-  assert.equal(searches.length, 2);
-  for (const call of searches) assert.deepEqual(call.arguments.parameters.include, ["content_signals"]);
-  assert.equal(calls.filter((call) => call.tool === "tiktok_discovery_list_top_contents").length, 1);
+  // 一次组合调用做完全部搜索（两种排序）与日榜；include 在顶层。
+  assert.deepEqual(calls.map((call) => call.tool), ["collect_tiktok_video_candidates"]);
+  const searches = calls;
+  assert.deepEqual(searches[0].arguments.include, ["content_signals"]);
+  assert.deepEqual(searches[0].arguments.sorts, [0, 1]);
+  assert.equal(searches[0].arguments.top_contents.fallback_days, 1);
   assert.match(first.stdout, /run this same command with --without-include instead of --placed/);
   // 画像字段由脚本抄进 Request；语言只是检索标签，不写进 locale。
   const request = JSON.parse(await readFile(path.join(run, "trend-research-request.json"), "utf8"));
@@ -224,16 +226,16 @@ test("RTT discover 带画像：搜索带 include；被拒后 --without-include �
 
   const fallback = drive(RTT, run, "discover", "--policy", "default_1y", "--without-include");
   assert.equal(fallback.exit, 0, fallback.stderr);
-  assert.match(fallback.stdout, /Kabo refused `include` on search_videos/);
+  assert.match(fallback.stdout, /Kabo refused `include` on collect_tiktok_video_candidates/);
   const again = callsOf(fallback.stdout);
-  // 只重交被拒的两条搜索，不带 include；已作答的榜单不再交一次。
-  assert.deepEqual(again, searches.map((call) => ({ ...call, arguments: { ...call.arguments, parameters: Object.fromEntries(Object.entries(call.arguments.parameters).filter(([key]) => key !== "include")) } })));
+  // 被拒的组合调用去掉 include 重交一次，其余入参不变。
+  assert.deepEqual(again, searches.map((call) => ({ ...call, arguments: Object.fromEntries(Object.entries(call.arguments).filter(([key]) => key !== "include")) })));
   const state = JSON.parse(await readFile(path.join(run, ".drive.json"), "utf8"));
-  assert.deepEqual(state.include_refused, ["search_videos"]);
+  assert.deepEqual(state.include_refused, ["collect_tiktok_video_candidates"]);
   // 再不带 --placed 跑：同一轮照常交出，被拒的操作不再带 include，也不再提示。
   const rerun = drive(RTT, run, "discover", "--policy", "default_1y");
   assert.equal(rerun.exit, 0, rerun.stderr);
-  for (const call of callsOf(rerun.stdout)) assert.equal(call.arguments.parameters.include, undefined);
+  for (const call of callsOf(rerun.stdout)) assert.equal(call.arguments.include, undefined);
   assert.doesNotMatch(rerun.stdout, /--without-include/);
 });
 
@@ -376,8 +378,8 @@ test("RTT discover 有效画像：Request 抄入排除话题、市场与本人�
     const discovered = drive(RTT, run, "discover", "--policy", "default_1y", ...extra);
     assert.equal(discovered.exit, 0, discovered.stderr + discovered.stdout);
     const request = JSON.parse(await readFile(path.join(run, "trend-research-request.json"), "utf8"));
-    const searches = callsOf(discovered.stdout).filter((call) => call.tool === "tiktok_discovery_search_videos");
-    return { request, regions: [...new Set(searches.map((call) => call.arguments.parameters.region))] };
+    const searches = callsOf(discovered.stdout).filter((call) => call.tool === "collect_tiktok_video_candidates");
+    return { request, regions: [...new Set(searches.map((call) => call.arguments.region))] };
   };
   const { request, regions } = await discover({ region: null, language: null });
   assert.deepEqual(regions, ["MX"]);
