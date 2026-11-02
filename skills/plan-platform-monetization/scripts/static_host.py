@@ -68,6 +68,10 @@ def run_dir():
             raise ValueError("Set KABO_STATIC_RUN_DIR to this request's reserved directory, or run the command from inside it")
     if not (run / ".static-run.json").is_file():
         raise ValueError("Not a reserved static Skill run")
+    # 有的宿主只在两次执行之间保留文件、不保留空目录(Web Agent 的沙箱工作区):init 建的
+    # 空子目录下一步就不在了。每次进入运行目录都补齐,已有的不动。
+    for name in ("snapshot", "snapshot/.host-evidence", "analysis", "report", "owner", "host-results"):
+        (run / name).mkdir(mode=0o700, parents=True, exist_ok=True)
     return run
 
 
