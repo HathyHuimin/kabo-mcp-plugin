@@ -4,6 +4,7 @@
 
 ## 未发布
 
+- `analyze-creator-competitors` 同步 creator-skills 0.5.89：`report` 先把 synthesis 的 `status` 同义词（completed/done/ok/success、incomplete、failed）规整为 complete/partial/blocked，其它非法值在 compose 入口给出可改提示，不再到校验才失败。`review-creator-account` 锁定上游 0.5.50，其改动（`--export-report` 与 handoff 只认 `.json`）属 Web 宿主交付机制，插件版没有 handoff 导出、`ACCOUNT_REVIEW.md` 本就是本地交付文件，不搬。
 - 三个 trends Skill：逐项核对 creator-skills `92824da5b` 到 `a9514ba30`（冻结点）之间的账号画像系列（#914、#915、#918、#920，15 个提交），脚本与 references 已由 #32、#33 和 1.0.6 全部覆盖，无需补移植；`skills.lock.json` 的来源改记为 IG 0.3.115 / TT 0.1.105 / YT 0.1.103（`a9514ba30`）。
 
 ## 1.0.6（2026-11-02；GitHub Release）
