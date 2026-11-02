@@ -341,7 +341,9 @@ def main(argv: list[str] | None = None) -> int:
                       "if_a_call_failed": " ".join([*rerun, "--failed", "<operation>"]),
                       "if_quota_used_up": " ".join([*rerun, "--budget-exhausted"]),
                       "next_action": "Make each request as its own individual call to its tool with exactly its "
-                                     "arguments, save each complete result as its save_as file and run its fetch "
+                                     "arguments, save each complete result as its save_as file (it is a small download "
+                                     "result: write the text the call returned with a heredoc; every call counts toward "
+                                     "catalog_call_cap, so never call a tool again just to save its result) and run its fetch "
                                      "command (static_host.py stage on the same file when fetch reports no ready "
                                      "download). Then run every persist command in order and run rerun. If a call "
                                      "failed without returning any record (fetch and stage refuse it as an error with "
