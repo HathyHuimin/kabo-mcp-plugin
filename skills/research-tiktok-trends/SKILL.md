@@ -180,10 +180,12 @@ knowledge.
 2. Call `creator_trends_get_tiktok_sound_board` exactly once with
    `{"parameters": {}, "delivery": "download"}`: the defaults are the whole published board, the
    ranked rows plus today's and yesterday's fastest risers. Pass `limit` (integer 1–50) only when
-   the user asked for a specific number of rows; it truncates the ranked rows and leaves the risers
-   as they are. Pass `include_rising: false` only when the user said they do not want the risers. Do
-   not repeat a completed call, and never substitute another tool. A failed or unavailable call is
-   not an empty board: report the missing board capability and stop.
+   the user asked for fewer rows than the board holds; it truncates the ranked rows and leaves the
+   risers as they are. Asked for more rows than the board returned, say in one sentence how many
+   it holds; never refetch, page or fill the gap. Pass `include_rising: false` only when the user
+   said they do not want the risers. Do not repeat a completed call, and never substitute another
+   tool. A failed or unavailable call is not an empty board: report the missing board capability and
+   stop.
 3. Save the small result and fetch it (`static_host.py fetch --tool
    creator_trends_get_tiktok_sound_board`; only when fetch reports no ready download, export the
    complete result through the host and `stage` it), then persist and render it; this is the
@@ -194,10 +196,9 @@ knowledge.
    ```
 
 Deliver the printed `creator-report.md` with no rewrite beyond the label translation in *Deliver
-once*. The renderer keeps the
-returned order, numbers the rows by that order, copies every number as given and adds nothing.
-Never re-rank, filter, dedupe or merge the ranked rows and the riser lists, never recompute growth,
-and never add a row, count or growth figure the board does not carry.
+once*: the renderer keeps the returned order and copies every number as given. Never re-rank,
+filter, dedupe or merge the ranked rows and riser lists, recompute growth, or add a row, count or
+growth figure the board does not carry.
 
 Always say which day the board is from (`fetchedAt`, which the renderer prints). When `stale` is
 true, say plainly that today's board has not been built yet and this is the last published one: a
@@ -230,13 +231,14 @@ writing the plan. When the user asks to change their saved profile, follow
 
 1. `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' start [--video "<the TikTok URL as the user gave it>" | --profile '<the saved profile file>']`
 2. Write `trend-research-request.json` and `tiktok-trend-query-plan.json`, then
-   `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO>] [--region <code>]`
+   `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO>] [--region <code>] --question-file -` with the ask verbatim on standard input
 3. Score every numbered Gate line by judgment into `trend-relevance-gate.tsv`, then
    `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' rank`
 4. Write `trend-research-synthesis.json`, then
    `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' report --language <the user's chat language>`.
    This is the final step: it composes, validates and renders `creator-report.md` and prints
    `creator_report: <absolute path>` followed by the report.
+   If `report` returns `needs_correction`, follow its instruction once in the same run.
 
 ### Idea handoff
 

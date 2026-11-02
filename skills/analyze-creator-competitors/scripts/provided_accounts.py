@@ -8,6 +8,11 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 CHANNEL_ID = re.compile(r"UC[\w-]{22}", re.ASCII)
+# First path segments that are Instagram routes, never usernames (`/p/posts` is a post, not @p).
+INSTAGRAM_ROUTES = {"p", "reel", "reels", "tv", "explore", "stories", "accounts", "direct"}
+PROFILE_TABS = {"instagram": {"reels", "tagged", "posts"},
+                "youtube": {"featured", "videos", "shorts", "streams", "playlists", "podcasts",
+                            "community", "posts", "about"}}
 
 
 def reference_params(platform: str, reference: str) -> dict[str, str]:
@@ -19,6 +24,14 @@ def reference_params(platform: str, reference: str) -> dict[str, str]:
         if url.scheme not in {"http", "https"} or url.hostname not in hosts[platform] or url.username or url.port:
             raise ValueError(f"Account reference must belong to {platform}: {reference}")
         parts = [unquote(part) for part in url.path.split("/") if part]
+        # A profile tab (`/@name/shorts`, `/name/reels/`) still names that one account.
+        if len(parts) == 2 and parts[1].lower() in PROFILE_TABS[platform] and (
+                (platform == "instagram" and parts[0].lower() not in INSTAGRAM_ROUTES)
+                or parts[0].startswith("@")):
+            parts = parts[:1]
+        elif (platform == "youtube" and len(parts) == 3 and parts[0] == "channel"
+              and parts[2].lower() in PROFILE_TABS[platform]):
+            parts = parts[:2]
         if platform == "youtube" and len(parts) == 2 and parts[0] == "channel":
             value = parts[1]
         elif len(parts) == 1 and (platform == "instagram" or parts[0].startswith("@")):

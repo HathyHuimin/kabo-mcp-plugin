@@ -13,7 +13,25 @@
 - `verify-platform-rule` 依赖 `/mcp-pub` 恢复的 `official_page_render_page`（kabo#1817，未合入）；`contracts/directory-mcp/`
   暂时固定到该 PR 的 head `9ed1ec61a`（已合入 kabo main；64 个工具，相对 main 只增这一个），kabo 合入后须按合入 commit 重新固定。
   四个新 Skill 在本机 Codex 连生产 /mcp-pub 实测：发布时间、变现已交付；平台规则核对待 kabo#1817 部署。
+- 仓库规则进 CI：恢复 `scripts/repo-rules.test.mjs`（供应商名、宿主专属机制、用例编号、溯源文档、字节码），并新增两条：Skill 的 Markdown 不写版本代号与日期；带脚本的 Skill 在正文开头写明前台子 agent 执行（KS2.4）。`analyze-creator-competitors`、`research-instagram-trends`、`research-youtube-trends` 的 references 去掉测量 / 观察日期，结论与数字不变。CodeRabbit 补三条判断规则：description 不写执行规则、交付契约前置、能交给校验脚本的例外不再加进正文。
+- 规范清理（不改行为）：`create-script-and-packaging`、`develop-content-ideas` 的标题去掉 V3/V4 版本来历；`analyze-content-video` 版式说明与 `review-creator-account-deep` 等待说明去掉来历与日期，只留结论。
+- `analyze-creator-competitors` 同步到 creator-skills 0.5.88（`c414fac55`）：重复竞品保留第一条、不再整份报告失败，主页 tab 链接按账号接受；
+  缺 `competitor-eligibility.json`（或写错文件名）、缺 intents 文件时返回 `needs_correction`、不关闭 run；长表 Gate 漏打不超过 1/20 行时补 0 分并注明；
+  `popular_topic` 只给类目 lane；YouTube `@handle` 用 `subject --platform youtube --handle` 先经 `youtube_get_channel` 解析成频道 id，裸 `@handle` 不再静默当 Instagram；
+  证据与回复逐账号给出发帖频率（下限写「至少 N 条」），YouTube 主体历史一次取 50 条，备用账号分类后 `content` 不沿用 `--placed`；
+  回复写明用户要的账号数与每次 6 个的自动发现上限，无 pattern 时仍列重点内容；`content --comments` 一次取评论，`comments` 保留为别名，schema 先于大段证据紧凑打印。
+- 用 `static_host.py` 的 Skill：`stage` 拒收「状态是完成、却没有 `data`」的结果（宿主保存下载结果时丢了 `download`、只剩摘要），指回保存完整结果后 `fetch`。以前这种摘要会被当成证据放置，到后面的脚本才报错，补下载的完整结果也不再被读到。
+- `review-creator-account` 同步上游 0.5.49：首次 `report` 就通过（从未返回 needs_revision）即为最终步，不再跑
+  `verify-report`；`verify-report` 在 `report` 之前运行会直接提示先跑 `report`；YouTube 频道简介与订阅数进入身份；
+  被拒的 YouTube handle 改提示用 `--channel-id`；`fetch` 先打印紧凑 schema 再打印输入。`review-creator-account-deep`
+  第 1 步同步认 `report` 为最终步时打印的 `creator_report:`。
+- TikTok 竞品（`analyze-tiktok-competitors`）同步 creator-skills 0.1.72：重复的竞品账号保留第一条、不再整份报告失败；展示译文按 id 匹配、只读 `text`，头字段可省略，单条译文不合规时退回原文并列在 `kept_source_text`（驱动会转出），不再整份失败；`search_query` 写明两到五个词。
 - 用 `static_host.py fetch` 下载 Kabo 签名链接的 Skill：Python 默认信任库不存在时（macOS 上 python.org 装的 Python 没跑过 Install Certificates），`fetch` 改用 certifi 或系统自带的 CA 包，证书照常校验。以前这种机器上每次下载都报证书失败，模型只能自己用 curl 下载再 `stage`。
+- 三个 trends Skill：`report` 阶段 Compose/Validate 拒收 synthesis 时，把 run 还原并返回 `needs_correction`（exit 0），在同一个 run 里修一次；第二次拒收才结束。同步自 creator-skills `4231cfa36`（#902，上游 IG 0.3.108 / TT 0.1.98 / YT 0.1.96）。只搬了这一处修复，`skills.lock.json` 的 `derivedFromVersion` 不变。
+- 三个 trends Skill：Gate 打分表头在没指定地区和语言时加 `locale_fit_rule`，写明问句语言只决定回复语言，不要因为内容语言压低 `locale_fit`。同步自 creator-skills `e4b807f4`（#906，上游 IG 0.3.109 / TT 0.1.99 / YT 0.1.97）。
+- 三个 trends Skill：`locale.region` / `locale.language` 只取用户明确点名的市场或内容语言，问句语言只决定回复语言，没点名时两项留空。同步自 creator-skills `77dd6179`（#909，上游 IG 0.3.110 / TT 0.1.100 / YT 0.1.98），写在各自的 references 里，SKILL.md 正文不增加。
+- 三个 trends Skill：`discover` 新增 `--question-file`（`-` 从标准输入读用户原话）；`locale.region` / `locale.language` 不为空时必须在 `locale.named_in_ask` 里逐字引用原话中的片段，否则返回 `needs_correction`，只给一次修正机会。同步自 creator-skills `92824da5`（#919，上游 IG 0.3.111 / TT 0.1.101 / YT 0.1.99）。
+- 三个 trends Skill：补齐 creator-skills `d2de2e4e` 到 `92824da5`（#919，IG 0.3.111 / TT 0.1.101 / YT 0.1.99）之间其余适用的改动（#879、#889、#891、#892、#894、#898）。没有 pattern 时报告在「Test this first」前列出排名前五条（Featured posts，同账号样本 ≥5 条才显示倍数）；TikTok 搜索热度小幅上涨不再显示成 1.0×；七天内问「哪些跑赢自身常态」或其他同账号倍数时留在 Workflow（`--policy user_named_span`）；IG 音频榜要逐首创意时按榜单顺序每首去重给一条；要的行数超过榜单时一句话说明榜单行数、不重拉（IG、TT）；TikTok 单次快照下 `current_high_performance` 要引用 ≥1.5× 自身常态或公开指标前四分之一的内容，否则用 `recurring_pattern`；IG 补充取数的 `content_key` 带 `instagram:` 前缀，拒收时原样重发一次再 `rank --placed`；Gate 打分说明写明没点名市场或内容语言时不因语言压低 `locale_fit`；IG description 写明题材内跑赢自身常态归本 Skill。规则写在 references（TikTok 的开场规则拆到新增的 `references/synthesis-openings.md`），IG SKILL.md 正文不增加。上游之后的账号画像系列（#914、#915、#918、#920）已由 #32、#33 移植进 main，本条不重复；cwd 措辞、manifest 等宿主相关改动不移植。
 
 ## 1.0.5（2026-10-30）
 

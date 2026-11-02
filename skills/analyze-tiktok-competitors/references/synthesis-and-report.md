@@ -92,7 +92,11 @@ This call is non-final. It runs Compose and Validate and exclusively creates
 slots cover only actual displayed labels, mechanical proofs, sample/shortage explanations, basis and
 source-title excerpts. Read all of them and fill **only each `text`** in that same JSON.
 
-- All ids, source/ref/hash, templates, facts, order and exact slot coverage are read-only.
+- Keep every slot id exactly once and add none. Slots are matched by id and only `text` is read,
+  so the simplest write-back is `{"id": …, "text": …}` per slot; the renderer recomputes
+  source/ref/hash, templates and facts from the bound report and ignores copies of them. Leave the
+  top-level `schema_version`, `language` and `report_sha256` as printed, or omit them; never change
+  their values.
 - Translate the entire source excerpt faithfully rather than rename or summarize its title. For
   identity text copy `source_template` exactly.
 - Preserve each `{fact_N}` / `{quote}` placeholder exactly once; their numbers, dates, accounts,
@@ -109,8 +113,11 @@ cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill di
 
 Its deliverable is `creator-report.md` in the run directory; `report/creator-report.md` is not
 created. Do not move or copy a report, or reopen a failed or closed run, to satisfy a different
-path. Compose, Validate, hash or presentation failures are fatal: preserve the first failure and
-stop. Neither call fetches again, and preparation is not task completion. A bare `drive.py report`
+path. Compose, Validate, hash or presentation binding failures (a changed header value, or a
+missing, duplicate or unknown slot id) are fatal: preserve the first failure and stop. A slot whose
+`text` drops or repeats a placeholder, or writes a digit, date, handle or URL outside its
+placeholders (including a month name turned into a number), is not fatal: that slot is shown in its
+source text and listed under `kept_source_text`, and the report is delivered as rendered. Neither call fetches again, and preparation is not task completion. A bare `drive.py report`
 remains for old integrations but does not establish full user-language delivery when a displayed
 source is foreign.
 

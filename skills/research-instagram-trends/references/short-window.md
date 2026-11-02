@@ -7,8 +7,9 @@ this request; every command runs from that run directory with `KABO_STATIC_RUN_D
 Use this path when the requested window is seven days or shorter (the last day, the last 48 hours,
 this week — named in any language) and the user wants recent viral Reels to copy. Every longer
 window, and every ask for repeated mechanisms or account-relative multiples, uses the Workflow with
-its window policies. In this path do **not** stop because short-window Search is unsupported or
-the pool is thin. Do **not** create a `TrendResearchRequest` or `TrendResearchReport`. Do **not**
+its window policies (a seven-day-or-shorter ask for account-relative multiples with
+`--policy user_named_span`). In this path do **not** stop because short-window Search is unsupported
+or the pool is thin. Do **not** create a `TrendResearchRequest` or `TrendResearchReport`. Do **not**
 call `collect_instagram_trend_candidates` or `enrich_instagram_shortlist`: a collect on a
 short-window ask is a failed delivery, not a reason to stop.
 

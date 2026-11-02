@@ -217,7 +217,9 @@ def compose(
             continue
         creator = creators[ref]
         if ref in selected_accounts or any(row["account_ref"] == ref for row in omitted_zero_sample_accounts):
-            raise ValueError(f"duplicate competitor account_ref: {ref}")
+            # A repeated account (the same ref twice, or a handle that resolves to an id already
+            # listed) adds no evidence; keep its first entry instead of discarding the whole report.
+            continue
         sample_size = sum(
             1 for content in contents.values()
             if str(content.get("creator_id")) == ref and str(content.get("content_id")) in evidence_ids

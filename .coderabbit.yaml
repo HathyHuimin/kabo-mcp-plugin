@@ -1,6 +1,8 @@
 # Keep this file additive. Unset keys stay at org/UI defaults.
-# Rules ported from kabo-sh/kabo and kabo-sh/creator-skills. Every check here is advisory for now
-# (mode: warning); nothing blocks merging until the maintainers decide to turn a check into a gate.
+# Rules ported from kabo-sh/kabo and kabo-sh/creator-skills. Every check here is advisory
+# (mode: warning). The mechanical subset (vendor names, host mechanics, case ids, provenance, version
+# labels and dates in Skill Markdown, the foreground note, bytecode) also runs in CI as
+# scripts/repo-rules.test.mjs and fails the build.
 language: "en-US"
 
 reviews:
@@ -36,6 +38,18 @@ reviews:
         - Design-provenance material inside a Skill package: source-composition notes, private-repo
           coordinates (kabo-sh/kabo@...), apps/web/src/app/tools/... path maps, or narratives of how the
           package was distilled. These belong in PR descriptions or maintainer docs.
+        - Provenance markers in Skill Markdown: version labels of the source package ("V3", "V4 rules") and
+          dated incident notes ("measured 2026-09-14 on ..."). Keep the rule and the measured numbers, drop
+          when and in which version they were found.
+        Flag as **major**:
+        - A description that carries execution rules (fallback order, what to refuse, never-do lists)
+          instead of what the Skill does and when to use it (docs/skills-spec.md KS1.2). Those rules
+          belong in the body.
+        - A report-producing Skill whose delivery contract (deliver the validated report in full, do not
+          summarize or rewrite numbers, end with the creator_report line) is missing or sits after the
+          opening section of SKILL.md (KS3.3). Models start replying before they reach a late rule.
+        - A change that grows SKILL.md with another exception or never-do rule that the Skill's validator
+          could enforce instead; ask for the check in the script and a one-line pointer in prose.
         Do not flag /mcp-pub tool names, connector_id / operation values, package script commands
         (including --placed), capability-phrased branches, or script source.
 

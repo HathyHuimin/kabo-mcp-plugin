@@ -166,8 +166,8 @@ Read `references/complete-review.md` whole before step 1: it holds the retrieval
 composition rules `drive.py` applies, the linked-post option and the recovery rules. `drive.py`
 runs every mechanical step; your one judgment is the synthesis. Make only the calls it prints; do
 not place or copy Envelopes, rerun scripts it ran, or open the files it wrote: its printed output
-is your synthesis input. Wait for each `drive.py` command to finish and never start it a second
-time while it runs. In a complete review every command before `verify-report` is non-final.
+is your synthesis input. Wait for each `drive.py` command to finish; never start it again while
+it runs.
 
 1. **Fetch.** Pass the platform, the handle the user named (`--channel-id UC…` instead for a
    YouTube channel URL that names no handle), the exact window only when the user asked for one,
@@ -197,7 +197,7 @@ time while it runs. In a complete review every command before `verify-report` is
    first fetch command there with that handle. Carry nothing over from the earlier run except what
    the creator said. If no candidate clearly is the account, tell the user it was not found and ask
    for the exact handle. **Never review a different account in the requested one's place.** When
-   `fetch` finishes, it prints the compact synthesis input and the synthesis schema.
+   `fetch` finishes, it prints the synthesis schema, then the compact synthesis input.
 
 2. **Growth (only when asked).** For a growth or future-number question, run
    `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' growth --language <synthesis language>`
@@ -216,19 +216,20 @@ time while it runs. In a complete review every command before `verify-report` is
    KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' report --allow-authoring-correction --output-dir report
    ```
 
-   Only an explicit `needs_revision` result permits correcting the named authored fields in this
-   same open run; it writes no report. Never replace a mistyped ID with a guessed near match.
+   Only `needs_revision` permits correcting the named authored fields in this same open run; it
+   writes no report. Never replace a mistyped ID with a guessed near match.
 
-4. **Verify and deliver.** After `report` returns the complete validated report, run the final
-   step, a read-only recomputation with both validators:
+4. **Verify and deliver.** When `report` prints that the report is final, it is the final step;
+   skip `verify-report`. Only a run that got `needs_revision` ends with this read-only
+   recomputation by both validators, once `report` returns a validated report:
 
    ```sh
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' verify-report --output-dir report
    ```
 
-   Its deliverable is `report/ACCOUNT_REVIEW.md`; it prints `creator_report: <path>` and the file.
-   A rendered file alone, or a `needs_revision` response, is not a completed delivery: do not
-   emit, return or claim success until this step succeeds. No source or approval error permits a
+   Deliverable: `report/ACCOUNT_REVIEW.md`; the final step prints `creator_report: <path>`
+   then the file. A rendered file or a `needs_revision` response is not delivery: emit, return or
+   claim success only after the final step succeeds. No source or approval error permits a
    fallback or a new run. Deliver as *Output boundary* says.
 
 ## What may not be claimed
@@ -259,7 +260,7 @@ time while it runs. In a complete review every command before `verify-report` is
 
 ## Output boundary
 
-Deliver `ACCOUNT_REVIEW.md` once, immediately after `verify-report` succeeds, and keep audit files
+Deliver `ACCOUNT_REVIEW.md` once, immediately after the final step succeeds, and keep audit files
 as files. The whole delivery is in the user's requested language (`output_language`), including
 headings, the identity introduction, fixed labels and metric descriptions. If the rendered file
 already matches that language, relay it unchanged or send its printed path where the host shows

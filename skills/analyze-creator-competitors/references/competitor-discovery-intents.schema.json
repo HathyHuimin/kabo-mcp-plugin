@@ -38,8 +38,7 @@
         "additionalProperties": false,
         "required": [
           "intent_id",
-          "search_query",
-          "popular_topic"
+          "search_query"
         ],
         "properties": {
           "intent_id": {
@@ -58,8 +57,16 @@
           "popular_topic": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 80
+            "maxLength": 80,
+            "description": "Optional, category lanes only: a two-to-four-term Instagram topic for Popular Search. Omit it to reuse a search_query of up to four terms. Workflow lanes carry none: a buyer workflow phrase is not an Instagram topic, and Popular Search returns not found for it."
           }
+        },
+        "if": {
+          "properties": {"intent_id": {"enum": ["local_workflow", "english_workflow"]}},
+          "required": ["intent_id"]
+        },
+        "then": {
+          "not": {"required": ["popular_topic"]}
         }
       }
     }

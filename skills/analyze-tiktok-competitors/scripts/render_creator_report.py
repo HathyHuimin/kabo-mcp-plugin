@@ -402,6 +402,8 @@ def main() -> int:
         else:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(markdown, encoding="utf-8")
+            if display is not None and display.kept_source:
+                print(json.dumps({"status": "ok", "kept_source_text": display.kept_source}, ensure_ascii=False))
         return 0
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as error:
         print(json.dumps({"status": "failed", "error": f"{type(error).__name__}: {error}"}, ensure_ascii=False))

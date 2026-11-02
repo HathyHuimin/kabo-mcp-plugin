@@ -12,7 +12,7 @@ freeze category, workflow or audience-problem intents before retrieval.
 The two are unrelated: `locale.language` also carries the language the Report is written in, and
 a Creator asking in Chinese about English-language Instagram content is the ordinary case, not an
 edge case. Resolving «local» from the chat language spends half the discovery budget searching a
-language the target content is not published in — measured 2026-09-04 on one creator subject, a
+language the target content is not published in — measured on one creator subject, a
 `zh-CN` request produced two Chinese local lanes, the whole run returned four accounts and zero
 labelled competitors, while the same subject with all four lanes in English had reached four to
 five.
@@ -26,7 +26,7 @@ five.
   country's language, or prices in its currency — the brand actively sells there: whichever
   account you resolve as the subject, set `subject.market` and `locale.region` to that country
   and write the two local lanes in its language, while the two English lanes cover the global
-  side. Measured 2026-09-19 on one product with a global English account and a country account in
+  side. Measured on one product with a global English account and a country account in
   another language with local-currency pricing: runs that resolved the global account and left the
   market empty wrote four English lanes and delivered no local-market competitor at all in three
   of five runs; runs that kept the market delivered five or six.
@@ -41,8 +41,10 @@ Instagram auto-discovery uses exactly four complementary intents with the canoni
 concrete product-category noun phrase, one local-language buyer workflow/problem phrase, one
 canonical English product-category phrase, and one canonical English workflow phrase.
 
-- Each is a compact two-to-five-term category or workflow phrase, and each `popular_topic` stays
-  at two to four terms. A Chinese, Japanese or Korean lane may instead be one 2–20-character
+- Each is a compact two-to-five-term category or workflow phrase. Only the two category lanes may
+  carry a `popular_topic`, of two to four terms (omit it to reuse a `search_query` of up to four
+  terms); workflow lanes carry none — a buyer workflow phrase is not an Instagram topic, and
+  Popular Search returns not found for it. A Chinese, Japanese or Korean lane may instead be one 2–20-character
   phrase without spaces; do not insert spaces just to pass the validator.
 - Do not reuse the same `search_query` on two lanes. Do not write sentence-like queries that stack
   audience, product and market into one clause.
@@ -92,12 +94,12 @@ ground the category lanes in those verbatim phrases, not in the product descript
   `search_query`.
 - When fewer than three phrases qualify, use all of them verbatim and fill the remaining category
   lanes with head-token qualifier variants of those phrases, not with a description-derived brand
-  or course phrase, and not by padding with the phrases that did not qualify. Measured
-  2026-09-14: two pinned form phrases plus a description-derived inspiration phrase recalled
+  or course phrase, and not by padding with the phrases that did not qualify. Measured:
+  two pinned form phrases plus a description-derived inspiration phrase recalled
   adjacent-category accounts and only one labelled same-form account. Then fill any remaining
   lanes from the description rule.
 - Caption phrases serve only the form noun: never lift a style, aesthetic or lifestyle qualifier
-  from the captions (such as `minimalist`) into any lane. Measured 2026-09-19 on one creator: a
+  from the captions (such as `minimalist`) into any lane. Measured on one creator: a
   lane carrying a lifestyle qualifier lifted from the captions retrieved bloggers with almost no
   Reels in the window and both Reports came back with no patterns, while the plain
   profession-noun lane had delivered in every earlier run.
@@ -124,7 +126,7 @@ keeps at least one of the two: the subject's channel word or its product-form no
   messages, selling in Germany, gets a local category lane like `Terminbuchung Bot Telegram
   Deutschland` — not `Automatisierung Tool Deutschland` (a generalised benefit) and not `Instagram
   DM Termine Deutschland` (the searched platform).
-- Measured 2026-10-15 on one local-market product: once nothing held the local category lane to the
+- Measured on one local-market product: once nothing held the local category lane to the
   subject's own words, the planner wrote `<automation> <searched platform> <market>`; profile
   search returned only global English tools, the delivered six held no local account and 17
   analysable posts, where the earlier `<product-form noun> <other channel> <market>` lanes had
@@ -137,13 +139,13 @@ with compact market tokens stripped, plus one compact local variant: the first c
 local workflow plus the last token of the local category. Profile search matches account names and
 bios, not captions, so the workflow lane's first word decides which sellers that variant finds.
 
-- Measured 2026-09-09 on one local-market product: the variant shaped `<function noun> <channel>`
+- Measured on one local-market product: the variant shaped `<function noun> <channel>`
   returned about seven comparable local products in ten rows and barely overlapped the raw
   category query.
 - A raw multi-word workflow phrase was mixed; a gerund-headed workflow phrase (`replying to
   messages` in the local language) returned greeting and faith accounts, and its verb-head variant
   returned zero, so the planner skips a variant whose workflow head ends in `-ndo` or `-ing`.
-- Measured 2026-09-18 on the same subject: workflow lanes headed by a broad role or buyer-outcome
+- Measured on the same subject: workflow lanes headed by a broad role or buyer-outcome
   word (`agent …`, `reply to customers …`) found adjacent agent and auto-reply services with no
   Reels in the window, and both Reports came back with no usable evidence, while runs whose
   workflow lane began with the subject's own function noun delivered.
@@ -159,7 +161,7 @@ local-language `search_query` must still carry one compact market token — the 
 demonym as local captions spell it — so retrieval can match local captions; English lanes stay
 global. Declare the token(s) you used in the plan's top-level `market_tokens` so profile search
 strips exactly those words; when caption phrases pin the lanes, keep those phrases verbatim and
-omit `market_tokens`. Measured 2026-09-08 on one local-market product: four market-free intents
+omit `market_tokens`. Measured on one local-market product: four market-free intents
 never put a single local product account into the pool.
 
 ## YouTube: one or two intents

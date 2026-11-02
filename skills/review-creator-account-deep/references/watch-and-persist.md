@@ -49,7 +49,7 @@ numbered attempt filenames below.
 A job id is not a result. Read each with `get_research_data_job`, `wait_s` (up to 30) and
 `"delivery": "download"` (call the media tools with it too), and keep
 polling until it reaches a terminal state; never restart a queued job. A media round takes minutes,
-not seconds: measured 2026-09-22 on a ten-video Instagram watch set, the thirty envelopes landed
+not seconds: on a ten-video Instagram watch set, the thirty envelopes landed
 over 178 seconds, the last just under three minutes after the first. A video still pending is a job
 you have not waited for yet, not a video that cannot be watched.
 
@@ -135,7 +135,7 @@ cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill di
   `--deferred-incomplete` when this run is closing) and `--allow-pending`, and deliver the videos
   that were watched. The job id is the one the call returned; a placeholder such as `not-started` is
   refused, because pending means the call went out and has not come back. Reaching for that flag
-  early is the failure it exists to make visible — measured 2026-09-22, a run closed with seven of
+  early is the failure it exists to make visible — a run once closed with seven of
   ten videos at `jobs_pending` and reported shot-level findings from the three that had arrived.
 - Watched means frames arrived or a transcript arrived. Metadata alone is not watched. Never narrate
   hooks, cuts or spoken lines for an unwatched `content_id`.

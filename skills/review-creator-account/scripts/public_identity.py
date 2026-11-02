@@ -71,6 +71,7 @@ def identity_from_profile(profile: dict[str, Any]) -> dict[str, Any]:
     followers = first_number(profile, (
         ("follower_count",), ("followers_count",), ("followers",), ("followerCount",),
         ("edge_followed_by", "count"), ("statistics", "subscriberCount"), ("subscriberCount",),
+        ("metrics", "subscribers"),
     ))
     if display_name:
         identity["display_name"] = display_name
@@ -91,6 +92,12 @@ def identity_from_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     operation = str(envelope.get("operation") or "")
     if operation in {"resolve_profile", "resolve_channel", "check_handle"}:
         return identity_from_profile(data)
+    if operation == "get_channel":
+        # The YouTube channel arrives as `data.rows[0]` (description, metrics.subscribers); read it
+        # as the profile so the channel's own description and subscribers reach the identity.
+        rows = data.get("rows")
+        if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+            return identity_from_profile(rows[0])
     return {}
 
 

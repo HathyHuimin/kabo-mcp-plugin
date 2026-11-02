@@ -32,12 +32,30 @@ class Display:
                        "report_sha256": digest(report_bytes)}
         self.slots: list[dict[str, Any]] = []
         self.used: dict[str, str] = {}
+        # Slots whose translation was rejected and shown in the source text instead, with why.
+        self.kept_source: dict[str, str] = {}
         self.supplied = supplied
         if supplied is not None:
-            if set(supplied) != {*self.header, "slots"} or any(supplied.get(k) != v for k, v in self.header.items()):
-                raise ValueError("presentation report/language/header binding changed")
+            # Like a compact slot, an omitted header field is restored from the bound report; one
+            # that is present must still match it exactly.
+            if not isinstance(supplied, dict) or "slots" not in supplied or not set(supplied) <= {*self.header, "slots"}:
+                raise ValueError("presentation must hold slots and only the bound header fields")
+            changed = sorted(k for k, v in self.header.items() if k in supplied and supplied[k] != v)
+            if changed:
+                raise ValueError("presentation report/language/header binding changed: " + ", ".join(changed))
+            supplied = {**self.header, **supplied}
+            self.supplied = supplied
             if not isinstance(supplied["slots"], list):
                 raise ValueError("presentation slots must be a list")
+            # Slots are matched by id and only their text is used; every other field is recomputed
+            # from the bound report, so a mis-copied hash or a reordered list cannot change output.
+            self.by_id: dict[str, dict[str, Any]] = {}
+            for item in supplied["slots"]:
+                if not isinstance(item, dict) or not isinstance(item.get("id"), str) or "text" not in item:
+                    raise ValueError("presentation slot must hold an id and a text")
+                if item["id"] in self.by_id:
+                    raise ValueError(f"duplicate presentation slot {item['id']}")
+                self.by_id[item["id"]] = item
 
     def assert_report(self, report: dict[str, Any]) -> None:
         if report != self.report:
@@ -69,20 +87,30 @@ class Display:
         if slot_id in self.used:
             if self.used[slot_id] != json.dumps(slot, sort_keys=True, ensure_ascii=False):
                 raise ValueError(f"conflicting presentation slot {slot_id}")
-            index = next(i for i, item in enumerate(self.slots) if item["id"] == slot_id)
         else:
             self.used[slot_id] = json.dumps(slot, sort_keys=True, ensure_ascii=False)
-            index = len(self.slots); self.slots.append(slot)
+            self.slots.append(slot)
         if self.supplied is None:
             return source
-        if index >= len(self.supplied["slots"]):
+        if slot_id not in self.by_id:
             raise ValueError(f"missing presentation slot {slot_id}")
-        supplied = self.supplied["slots"][index]
-        if not isinstance(supplied, dict) or set(supplied) != set(slot) or any(supplied.get(k) != v for k, v in slot.items() if k != "text"):
-            raise ValueError(f"presentation source/slot binding changed: {slot_id}")
-        text = supplied["text"]
+        text = self.by_id[slot_id]["text"]
+        problem = self._rejected(text, facts)
+        if problem:
+            # A rejected translation is shown in its source text, which carries every fact as
+            # given; the report is still delivered instead of failing on one title (plugins,
+            # 2026-10-28: "Oct 15" translated as "10 月 {fact_0} 日" added the literal 10).
+            self.kept_source[slot_id] = problem
+            return source
+        if text == template:
+            return source
+        return "".join(escape(literal) + (facts[field] if field is not None else "")
+                       for literal, field, _, _ in string.Formatter().parse(text))
+
+    @staticmethod
+    def _rejected(text: Any, facts: dict[str, str]) -> str | None:
         if not isinstance(text, str) or not text.strip() or "\n" in text or "\r" in text:
-            raise ValueError(f"presentation text must be one nonempty line: {slot_id}")
+            return "presentation text must be one nonempty line"
         # A translator may move typed facts for grammar, but must use every one exactly once.
         try:
             fields = [field for _, field, spec, conversion in string.Formatter().parse(text)
@@ -92,21 +120,18 @@ class Display:
         except ValueError:
             valid_fields = False
         if not valid_fields:
-            raise ValueError(f"presentation placeholders changed: {slot_id}")
+            return "presentation placeholders changed"
         # All literal facts already have typed slots; adding new literal numbers/URLs/handles
         # outside them would turn a presentation into a new factual claim.
         if LITERAL.search(TOKEN.sub("", text)):
-            raise ValueError(f"presentation added literal fact: {slot_id}")
-        if text == template:
-            return source
-        return "".join(escape(literal) + (facts[field] if field is not None else "")
-                       for literal, field, _, _ in string.Formatter().parse(text))
+            return "presentation added literal fact"
+        return None
 
     def identity(self, slot_id: str) -> bool:
-        if self.supplied is None:
+        if self.supplied is None or slot_id in self.kept_source:
             return True
-        slot = next(item for item in self.supplied["slots"] if item["id"] == slot_id)
-        return slot["text"] == slot["source_template"]
+        bound = next(item for item in self.slots if item["id"] == slot_id)
+        return self.by_id[slot_id]["text"] == bound["source_template"]
 
     @staticmethod
     def _protect(text: str, facts: dict[str, str]) -> str:
@@ -117,8 +142,9 @@ class Display:
         return LITERAL.sub(protect, text)
 
     def contract(self) -> dict[str, Any]:
-        if self.supplied is not None and len(self.supplied["slots"]) != len(self.slots):
-            raise ValueError("extra/duplicate presentation slots")
+        if self.supplied is not None and set(self.by_id) != {slot["id"] for slot in self.slots}:
+            unknown = sorted(set(self.by_id) - {slot["id"] for slot in self.slots})
+            raise ValueError("unknown presentation slots: " + ", ".join(unknown))
         return {**self.header, "slots": self.slots}
 
 

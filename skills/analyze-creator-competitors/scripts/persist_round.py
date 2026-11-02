@@ -202,8 +202,10 @@ def place_round(run_dir: Path, operations: list[str], drained: Path | None = Non
             raise ValueError(
                 f"no unplaced host record of {', '.join(operations)} for this run{detail}. This run's staging "
                 f"holds: {have}. If a call is missing there it was never sent, or not sent yet: send it, then run "
-                "this same command again. The run directory is fine — keep using it, and do not "
-                "hand-write a truncated tool result.")
+                "this same command again. If this came from `drive.py <stage> --placed` and that stage never "
+                "printed calls for you to make in this run, run the same stage again without `--placed`: it "
+                "fetches the round itself, or places one already handed over. The run directory is fine — keep "
+                "using it, and do not hand-write a truncated tool result.")
         blind: dict[str, list[Candidate]] = {}
         claimed: dict[str, set[str]] = {operation: set() for operation in operations}
         for candidate in pending:

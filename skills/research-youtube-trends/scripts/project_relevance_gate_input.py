@@ -242,6 +242,12 @@ def table_parts(output: dict[str, Any]):
         header["excluded_topics_rule"] = EXCLUDED_TOPICS_RULE
     if any(row.get("platform_summary") for row in output["items"]):
         header["platform_summary_rule"] = PLATFORM_SUMMARY_RULE
+    if subject.get("region") is None and subject.get("language") is None:
+        # The rule sits in SKILL.md, but the Gate is scored from this table: plugins 2026-10-29 J1
+        # (a Chinese ask, no market named) scored six of seven English home-workout videos 75 on
+        # locale_fit against 95 for the Chinese ones. Say it where the scoring happens.
+        header["locale_fit_rule"] = ("No market or content language was named: the ask's language sets only the "
+                                     "reply language. Do not score locale_fit down for an item's language.")
     yield 0, json.dumps(header, ensure_ascii=False)
     for index, row in enumerate(output["items"], start=1):
         text = " / ".join(part.strip() for part in str(row.get("visible_text") or "").splitlines() if part.strip())

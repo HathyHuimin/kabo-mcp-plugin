@@ -16,6 +16,13 @@ INSTAGRAM_LANES = {
     "english_category",
     "english_workflow",
 }
+# Popular Search only knows short topics Instagram has indexed. A buyer workflow phrase is not one:
+# production 2026-10-14..21 saw 33 not-found against 29 hits on the workflow lanes,
+# versus 9 against 50 on the category lanes, so workflow lanes send no popular_topic.
+WORKFLOW_LANES = {"local_workflow", "english_workflow"}
+CATEGORY_LANES = INSTAGRAM_LANES - WORKFLOW_LANES
+
+
 def _tokens(value: str) -> list[str]:
     return re.findall(r"[^\W_]+(?:-[^\W_]+)*", value, flags=re.UNICODE)
 
@@ -328,10 +335,17 @@ def validate(request: dict[str, Any], plan: dict[str, Any]) -> None:
         lane = intent.get("intent_id")
         if lane not in INSTAGRAM_LANES or lane in by_lane:
             raise ValueError("Instagram intents must use every canonical lane exactly once")
+        if lane in WORKFLOW_LANES and "popular_topic" in intent:
+            raise ValueError(
+                f"{lane}.popular_topic is not allowed: a workflow phrase is not an Instagram topic, "
+                "remove the field"
+            )
         for field, minimum, maximum in (
             ("search_query", 2, 5),
             ("popular_topic", 2, 4),
         ):
+            if field == "popular_topic" and field not in intent:
+                continue
             value = intent.get(field)
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{lane}.{field} must be a non-empty string")

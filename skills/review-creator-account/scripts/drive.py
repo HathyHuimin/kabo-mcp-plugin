@@ -71,6 +71,11 @@ SYNTHESIS = "account_review_synthesis.json"
 # Only this name binds a growth scenario into the report; standalone calculations keep their own files.
 GROWTH_INPUT = "review_growth_input.json"
 OUTPUT_DIR = Path("output")
+# 本 run 的 report 返回过 needs_revision 的标记（run 根目录的点文件）。只有留下这个标记的 run
+# 还需要 verify-report 做最终复核；从未返回过的 run 由 report 直接作为最终步。
+AUTHORING_CORRECTION_MARKER = Path(".authoring-correction-used")
+# report 作为最终步时记下报告路径与 sha256；verify-report 见到同一份字节就不再重跑。
+REPORT_FINAL_MARKER = Path(".report-final.json")
 
 # The Instagram public sample: at most 100 persisted Feed + Reels rows combined.
 COMBINED_CAP = 100
@@ -531,7 +536,17 @@ def resolve_youtube(handle: str | None, channel_id: str | None, args: argparse.N
             holding.replace(Path(f"unresolved-{safe(label)}.json"))
             cd.save_state(unresolved=[*(cd.state().get("unresolved") or []), label.lower()])
 
-    cd.fetch_round([cd.run_call(YT, "get_channel", params)], args, place)
+    try:
+        cd.fetch_round([cd.run_call(YT, "get_channel", params)], args, place)
+    except cd.StageError as error:
+        # 数据源拒绝的 handle 每次重试都会同样失败：改为指向 channel id，而不是停在拒绝上。
+        if channel_id or not str(error).startswith("connector call refused:"):
+            raise
+        cd.save_state(unresolved=[*(cd.state().get("unresolved") or []), label.lower()])
+        say(f"YouTube refused the handle {label!r} ({str(error)[:200]}). Do not send this --handle again: take the "
+            "channel's UC… id from its channel URL or a channel search, then run this fetch again with "
+            "--channel-id <UC… id>.")
+        return False
     if label.lower() in (cd.state().get("unresolved") or []):
         say(f"{label} did not resolve to a public YouTube channel. Confirm the channel with the user (its @handle or "
             "its channel URL), then run this fetch again with --handle <@handle> or --channel-id <UC… id>. Do not "
@@ -681,10 +696,12 @@ def assemble(platform: str, requested: str, question: str, window: str) -> None:
     cd.script(SNAPSHOT_ANALYZER, SNAPSHOT, "--operation", "all", "--focus-handle", focus, "--output", ANALYSIS)
     profile = identity.get("profile_envelope")
     profile_args = ["--profile-envelope", str(profile)] if profile else []
+    # schema 先于 compact input 打印，并用紧凑 JSON：宿主截断的是输出尾部，截掉的只会是已落盘的
+    # synthesis_input.json，而不是 schema。
+    say(json.dumps(synthesis_schema(), ensure_ascii=False, separators=(",", ":")))
     cd.script("build_synthesis_input.py", "--analysis", ANALYSIS, "--snapshot", SNAPSHOT, *profile_args,
               "--user-question", question,
               "--output", SYNTHESIS_INPUT, "--print", show=True)
-    say(json.dumps(synthesis_schema(), ensure_ascii=False, indent=2))
 
 
 # --------------------------------------------------------------------------- stages
@@ -969,6 +986,8 @@ def stage_report(args: argparse.Namespace) -> None:
         try:
             validate_authoring(analysis, synthesis)
         except AuthoringError as error:
+            # 返回过 needs_revision 的 run，最终仍由 verify-report 复核。
+            AUTHORING_CORRECTION_MARKER.write_text("needs_revision\n", encoding="utf-8")
             say(json.dumps({"status": "needs_revision", "report_written": False,
                             "issues": error.issues,
                             "next_action": "Correct only these authored fields in this same open run; then repeat this non-final report stage. Do not change source IDs or deterministic inputs."}, ensure_ascii=False))
@@ -986,7 +1005,21 @@ def stage_report(args: argparse.Namespace) -> None:
               "--analysis", ANALYSIS, *growth_args,
               *[arg for path in stored for arg in ("--envelope", str(path))])
     report = (output_dir / "ACCOUNT_REVIEW.md").resolve()
+    # 本 run 从未返回 needs_revision 时，这次 report 就是最终步：两个校验器刚在同一份字节上通过，
+    # verify-report 再跑一遍只会重复 compose 和两次校验。
+    final = (getattr(args, "allow_authoring_correction", False) is True
+             and not AUTHORING_CORRECTION_MARKER.exists())
+    if final:
+        REPORT_FINAL_MARKER.write_text(json.dumps({"report": str(report), "sha256": hashlib.sha256(
+            report.read_bytes()).hexdigest()}) + "\n", encoding="utf-8")
     say(f"creator_report: {report}")
+    if final:
+        say("[drive] this report is final: both validators passed. "
+            "verify-report is not needed; deliver ACCOUNT_REVIEW.md now.")
+    elif AUTHORING_CORRECTION_MARKER.exists() and getattr(args, "verify_existing", False) is not True:
+        # 不含 needs_revision 字样：这里报告已通过校验，只是还差最终复核。
+        say("[drive] an earlier report in this run asked for author corrections, so this one is "
+            "non-final: run drive.py verify-report as the final step.")
     say(report.read_text(encoding="utf-8").rstrip())
 
 
@@ -1042,6 +1075,27 @@ def stage_verify_report(args: argparse.Namespace) -> None:
     """Final host close: recompute existing bytes and run both unchanged strict validators."""
     args.verify_existing = True
     args.allow_authoring_correction = False
+    # report 尚未生成时先停下，不把可修正的作者错误变成最终步骤失败；什么都不读不写。
+    output_dir = Path(getattr(args, "output_dir", None) or OUTPUT_DIR)
+    if not (output_dir / "ACCOUNT_REVIEW.md").is_file():
+        raise cd.StageError(
+            f"verify-report found no composed report in {output_dir}/; nothing was read or written. "
+            "Run the non-final `drive.py report --allow-authoring-correction` stage in this same run "
+            "first, and verify only after it prints the validated report")
+    # 幂等：report 已作为最终步（从未返回 needs_revision），且报告字节未变时不重跑 compose 和校验器。
+    # 标记缺失、不是普通文件或哈希不符时走下面的严格路径。
+    report = (output_dir / "ACCOUNT_REVIEW.md").resolve()
+    try:
+        record = (json.loads(REPORT_FINAL_MARKER.read_text(encoding="utf-8"))
+                  if REPORT_FINAL_MARKER.is_file() and not REPORT_FINAL_MARKER.is_symlink() else None)
+    except (OSError, UnicodeError, ValueError):
+        record = None
+    if (isinstance(record, dict) and record.get("report") == str(report) and not report.is_symlink()
+            and record.get("sha256") == hashlib.sha256(report.read_bytes()).hexdigest()):
+        say(f"creator_report: {report}")
+        say("[drive] report already finalized this run; nothing was re-run. "
+            "Deliver ACCOUNT_REVIEW.md as printed by report.")
+        return
     stage_report(args)
     close_unwrapped_reservation()
 

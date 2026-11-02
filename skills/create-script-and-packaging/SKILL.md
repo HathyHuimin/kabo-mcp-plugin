@@ -8,7 +8,7 @@ compatibility: "Requires Python 3 and read and write access to a local workspace
 allowed-tools: list_scripts get_script save_script update_script
 ---
 
-# Create Script and Packaging V4
+# Create Script and Packaging
 
 Create one versioned `ScriptPackage` from a frozen `SelectedIdea`. Preserve the selected promise,
 evidence basis, originality boundaries, Creator constraints, and requested audience action. The
@@ -130,7 +130,7 @@ Before script-bearing generation, read `references/duration-planning.md`. Resolv
 
     It reruns the package validator, verifies both deterministic Markdown projections, records the request plus every source reference from it, and rejects paths outside this run root or duplicate logical paths. Never hand-author `run-manifest.json` or declare validation status yourself. The manifest records hashes for its inputs and three outputs but deliberately does not hash itself: embedding its own final hash is self-referential and cannot be made stable. Never claim that `run-manifest.json` provides a self-hash. Keep `approval_status=pending` until an independent human approval event exists. Never output `agent_native_reasoning`; use short decision rationales and source manifest metadata instead.
 
-## V4 decision rules (1–7)
+## Decision rules (1–7)
 
 1. **SelectedIdea first**: accept only a selected, frozen idea. An unchosen candidate list is blocked. A literal topic/direction is valid only when the user explicitly selects it by asking to script that direction; normalize it only with `build_direct_selected_idea.py`, with no fabricated evidence or constraints.
 2. **Evidence basis before claims**: preserve `source_backed`, `brief_based`, or `hypothesis` in the input snapshot. Empty evidence is valid for the latter two, but every factual sentence must remain qualified until proof is supplied.

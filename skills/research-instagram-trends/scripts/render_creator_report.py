@@ -50,7 +50,13 @@ LABELS = {
     "direction": "Best direction for you:",
     "fit": "Why it fits you:",
     "next_action": "Test this first",
+    "standouts": "Featured posts",
+    "views": "{n} views",
+    "multiple": "{m}× the account's usual",
 }
+# A shown multiple needs a same-account cohort this large (the Composer's reliable-outlier floor).
+MIN_COHORT = 5
+STANDOUT_LIMIT = 5
 
 
 # Code-level identifiers of the recall, capacity and ranking implementation. No Creator-facing
@@ -122,15 +128,57 @@ def render(report: dict[str, Any], language: str | None = None) -> str:
     lines += [f"## {LABELS['next_action']}", "", overview["next_action"]]
     markdown = "\n".join(lines).strip() + "\n"
     validate_rendered_markdown(markdown, report)
+    # A synthesis with no pattern still has its ranked posts; without them the report named the
+    # finding but no post, so "which Reels beat their account's usual" got no Reel. Source titles
+    # are not model prose, so they go in after the prose check.
+    standouts = [line for line in (standout_line(item) for item in standout_items(report)) if line]
+    if standouts:
+        heading = f"## {LABELS['next_action']}"
+        block = "\n".join([f"## {LABELS['standouts']}", "", *standouts, "", ""])
+        markdown = markdown.replace(heading, block + heading, 1)
     basis = basis_sentence(report, shown_multiple_sample_sizes(report, cited_refs(report)), basis_template(language))
     return markdown + (f"\n*{basis}*\n" if basis else "")
 
 
+def standout_items(report: dict[str, Any]) -> list[dict[str, Any]]:
+    """Without patterns, the first ranked posts (the Composer's order) stand in as the proof."""
+    if report.get("patterns"):
+        return []
+    return [item for item in (report.get("top_content") or []) if item.get("url")][:STANDOUT_LIMIT]
+
+
+def shown_multiple(item: dict[str, Any]) -> float | None:
+    multiple = item.get("outlier_multiple")
+    cohort = (item.get("baseline") or {}).get("sample_size")
+    if isinstance(multiple, (int, float)) and isinstance(cohort, int) and cohort >= MIN_COHORT:
+        return float(multiple)
+    return None
+
+
+def standout_line(item: dict[str, Any]) -> str | None:
+    creator = str(item.get("creator_ref") or LABELS["source"])
+    if item.get("platform") in {"instagram", "tiktok"} and not creator.startswith("@"):
+        creator = f"@{creator}"
+    title = " ".join(str(item.get("title") or "").split())
+    title = title[:80].rstrip() + ("…" if len(title) > 80 else "")
+    title = re.sub(r"[\\\[\]()*_`<>]", "", title).strip()
+    parts = [f"[{title or creator}]({item['url']})", creator]
+    metrics = item.get("metrics") or {}
+    views = next((metrics[key] for key in ("views", "plays", "play_count") if isinstance(metrics.get(key), (int, float))), None)
+    if views is not None:
+        parts.append(LABELS["views"].format(n=f"{int(round(views)):,}"))
+    multiple = shown_multiple(item)
+    if multiple is not None:
+        parts.append(LABELS["multiple"].format(m=f"{multiple:.1f}"))
+    return "- " + " · ".join(parts)
+
+
 def cited_refs(report: dict[str, Any]) -> list[str]:
-    """The refs whose proof the rendered patterns show (first two of each of the first three)."""
+    """The refs whose proof the report shows: the patterns' first two each, or the featured posts."""
     content = content_map(report)
-    return [ref for pattern in (report.get("patterns") or [])[:3]
+    refs = [ref for pattern in (report.get("patterns") or [])[:3]
             for ref in (pattern.get("content_refs") or [])[:2] if ref in content]
+    return refs + [str(item["content_id"]) for item in standout_items(report) if shown_multiple(item) is not None]
 
 
 def main() -> int:

@@ -6,7 +6,7 @@ compatibility: "Requires Python 3 and read and write access to a local workspace
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_list_comments tiktok_discovery_list_comments tiktok_discovery_list_comment_replies
 ---
 
-# Develop Content Ideas V3
+# Develop Content Ideas
 
 Turn validated upstream artifacts or an explicit topic into an IdeaSet of distinct, selectable
 ideas. The schemas, builders, validators and renderers ship in this Skill's `references/` and
@@ -15,7 +15,7 @@ several stages, and wait for its final result before replying; never run it in t
 tell the user the report will come later. Without a foreground sub-agent, follow the same steps in
 the main thread.
 
-This V3 runtime consumes upstream V3 artifacts through `upstream_sources[]` and deterministic
+This Skill consumes validated research artifacts through `upstream_sources[]` and deterministic
 semantic `idea_context`. `user_brief.text` preserves the user's request; it is not by itself proof
 that a usable topic exists. Do not parse Creator-facing Markdown, use removed
 `opportunities[]/opportunity_id`, use competitor outputs as hidden criteria, or search the web.

@@ -325,6 +325,13 @@ def stage(tool, raw):
     # 下载就绪的结果省略了 data；当作内联证据保存会得到一份没有数据的 envelope。聚合工具例外：内联照旧完整。
     if download_mode(structured) and not typed_result(envelope):
         raise ValueError("This result carries a download instead of inline data; run static_host.py fetch on it")
+    # 宿主保存时丢了 download、只剩摘要（status 完成却没有 data）：入库后要到后面的脚本才报错，而且这一轮已算放置，
+    # 补下载的完整结果也不会再被读到（插件实测 TikTok 榜单）。在这里拒收，指回完整结果。
+    if (envelope.get("status") in ("completed", "completed_partial") and "data" not in envelope
+            and not typed_result(envelope) and tool != "read_research_data_artifacts"):
+        raise ValueError("This result has a completed status but no data: it is a summary of a download, not the "
+                         "evidence. Save the tool's complete result, including its download, and run "
+                         "static_host.py fetch on it")
     if typed_result(envelope):
         # 下载描述含签名链接，不落盘；去掉它之后与下载到的那份是同一个对象。
         envelope = {key: item for key, item in envelope.items() if key != "download"}

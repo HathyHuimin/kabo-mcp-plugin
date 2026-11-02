@@ -16,11 +16,12 @@ deterministic steps, and prints exactly what the next judgment reads.
 
     start     --platform P [--query N]   identity search            -> subject candidates
     start     --platform instagram --post URL   seed post + its author's subject stage
-    subject   --handle H | --channel-id  subject profile + history  -> caption phrases, schemas
+    subject   --handle H | --channel-id | --platform youtube --handle @H   subject profile + history  -> caption phrases, schemas
     discover                             collect + profile search   -> Gate author table
     select                               Gate -> roster -> profiles -> eligibility projection
-    content                              finalize -> pages -> Assemble/Analyze -> synthesis input
-    comments                             comment targets -> list_comments -> audience comments
+    content [--comments]                 finalize -> pages -> Assemble/Analyze -> synthesis input
+                                         (--comments: comment targets -> list_comments -> audience comments)
+    comments                             the same comment block alone, after content (kept as an alias)
     report                               Compose -> Validate -> Render
 
 A stage makes no data calls itself: it prints the calls as public MCP tool names (`call:` lines)
@@ -61,6 +62,7 @@ from connector_driver import (  # noqa: E402
 )
 from provided_accounts import discovery_mode, requested_accounts, resolved_channel, pin_requested_accounts
 from extract_account_caption_phrases import content_texts  # noqa: E402
+from validate_discovery_intents import CATEGORY_LANES, COLLECTOR_LIMITS, _term_count_ok as term_count_ok  # noqa: E402
 from persist_envelope import (  # noqa: E402
     USABLE_STATUSES,
     place as place_at,
@@ -75,6 +77,7 @@ from persist_envelope import (  # noqa: E402
 from persist_round import PROFILE_OPERATIONS, owner_of, place_round, report as round_report, target_for  # noqa: E402
 
 SCRIPTS = cd.SCRIPTS
+POPULAR_TOPIC_MAX_CHARS = COLLECTOR_LIMITS["popular_topic"][1]
 REFERENCES = cd.REFERENCES
 # Kept under this module's name for callers that catch a hand-over or read its prefix from here.
 HANDOVER_PREFIX = cd.HANDOVER_PREFIX
@@ -257,7 +260,11 @@ def start_from_post(args: argparse.Namespace) -> None:
     say("seed post (the video the user gave): " + json.dumps(seed_facts(envelope), ensure_ascii=False))
     say("The user asks for accounts that make this kind of video. Write subject.description about this video's "
         "content form — what the video does and how it is built — not only the author's general topics.")
-    stage_subject(argparse.Namespace(handle=handle, channel_id=None, seed=SEED, placed=False))
+    # `fetch_round` clears `placed` once it places the get_post round, so this is True only on the run
+    # that answers the subject's own hand-over. Hard-coding False left that run looking in staging,
+    # which a runner had already drained into snapshot/, and the subject was handed over again
+    # (plugins, 2026-10-26: the run closed with no discovery).
+    stage_subject(argparse.Namespace(handle=handle, channel_id=None, seed=SEED, placed=args.placed))
 
 
 def stage_start(args: argparse.Namespace) -> None:
@@ -356,7 +363,7 @@ def retry_empty_history(handle: str, args: argparse.Namespace) -> None:
 
 def verify_explicit_youtube_handle() -> None:
     """A bio mention is not proof that a selected channel owns the requested public handle."""
-    query = state().get("subject_query")
+    query = state().get("subject_handle") or state().get("subject_query")
     if not isinstance(query, str) or not query.strip().startswith("@"):
         return
     requested = query.strip().casefold()
@@ -371,10 +378,37 @@ def verify_explicit_youtube_handle() -> None:
         raise StageError("YouTube subject identity mismatch: the profile's public handle differs from the original requested handle")
 
 
+def resolve_youtube_handle(handle: str, args: argparse.Namespace) -> str:
+    """The channel id behind a YouTube @handle, asked with `get_channel` alone.
+
+    `youtube_get_channel` takes a handle on every contract version; the subject round itself then
+    stays on the channel id, as every other YouTube call does.
+    """
+    fetch_round([run_call(YT, "get_channel", {"handle": handle})], args, lambda: place_record(
+        "get_channel", "subject-handle.json", any_status=False, by_content=lambda: script(
+            "persist_many.py", "--connector", YT, "--operation", "get_channel", "--dest", "subject-handle.json",
+            *drained())))
+    profile = load("subject-handle.json")
+    rows = (profile.get("data") or {}).get("rows") or [] if isinstance(profile, dict) else []
+    ids = [row.get("id") for row in rows if isinstance(row, dict)]
+    if profile.get("status") not in USABLE_STATUSES or len(ids) != 1 or not isinstance(ids[0], str) or not ids[0].startswith("UC"):
+        raise StageError(f"YouTube handle {handle} resolved to no single channel; ask the user for the channel link")
+    # The handle is the identity asked for, whatever `start` searched: the profile must prove it.
+    save_state(subject_handle=handle)
+    return ids[0]
+
+
 def stage_subject(args: argparse.Namespace) -> None:
     # Continues the run `start` began when run from it; reserves one when the identity was known.
     cd.reserve_run_directory(args.placed, stage="subject", reuse=True, args=args)
-    platform = state().get("platform") or ("youtube" if args.channel_id else "instagram")
+    named = getattr(args, "platform", None)
+    platform = state().get("platform") or named or ("youtube" if args.channel_id else "instagram")
+    if named and named != platform:
+        raise StageError(f"this run is {platform}; --platform {named} needs its own run (`start --platform {named}`)")
+    if platform == "instagram" and not state().get("platform") and not named and (args.handle or "").strip().startswith("@"):
+        # A bare --handle used to mean Instagram silently: on one product case, 2026-10-23, a YouTube
+        # channel's @handle went to instagram-discovery and came back as a 0-follower account.
+        say("note: treating --handle as Instagram; for a YouTube @handle run `subject --platform youtube --handle <@handle>`")
     if platform == "instagram":
         if not args.handle:
             raise StageError("Instagram needs --handle")
@@ -389,17 +423,21 @@ def stage_subject(args: argparse.Namespace) -> None:
         profile_op, history_op, connector = "resolve_profile", "list_reels", IG
         save_state(subject_handles=[handle])
     else:
-        if not args.channel_id:
-            raise StageError("YouTube needs --channel-id (the UC… id the candidates printed)")
+        if not args.channel_id and not (args.handle or "").strip():
+            raise StageError("YouTube needs --channel-id (the UC… id the candidates printed) or --handle <@handle>")
+        channel_id = args.channel_id or resolve_youtube_handle("@" + args.handle.strip().lstrip("@"), args)
         # `get_channel` accepts exactly one identity parameter — here the canonical channel id; never
         # send both in one request. The same one-identity rule holds for `list_channel_uploads`.
         requests = [
-            {"connector_id": YT, "operation": "get_channel", "params": {"channel_id": args.channel_id}},
+            {"connector_id": YT, "operation": "get_channel", "params": {"channel_id": channel_id}},
+            # 50, the most one call returns (as for competitors): with 20, an active channel's own
+            # history ended inside the window and its cadence was only a lower bound (plugins,
+            # 2026-10-27). Still one call; a longer history stays a lower bound.
             {"connector_id": YT, "operation": "list_channel_uploads",
-             "params": {"channel_id": args.channel_id, "max_results": 20}},
+             "params": {"channel_id": channel_id, "max_results": 50}},
         ]
         profile_op, history_op, connector = "get_channel", "list_channel_uploads", YT
-        save_state(subject_handles=[args.channel_id, *( [args.handle] if args.handle else [])])
+        save_state(platform="youtube", subject_handles=[channel_id, *([args.handle] if args.handle else [])])
     dests = {profile_op: "subject-profile.json", history_op: "subject-history.json"}
 
     def place_subject() -> None:
@@ -473,6 +511,34 @@ def complete_request() -> dict[str, Any]:
     return cd.complete_artifact(REQUEST, fields)
 
 
+def complete_popular_topics() -> None:
+    """Reuse a category lane's search_query as its popular_topic when the model left it out.
+
+    Only category lanes: a workflow phrase is not an Instagram topic, so it gets none. Only a
+    search_query of up to four terms and 80 characters: a longer copy fails the validator's topic
+    limits and costs a needs_correction round for a field the model never wrote.
+    """
+    if not Path(INTENTS).is_file():
+        return
+    plan = load(INTENTS)
+    if not isinstance(plan, dict) or plan.get("platform") != "instagram":
+        return
+    intents = plan.get("intents")
+    if not isinstance(intents, list):
+        return
+    changed = False
+    for intent in intents:
+        if not isinstance(intent, dict) or intent.get("intent_id") not in CATEGORY_LANES:
+            continue
+        query = intent.get("search_query")
+        if ("popular_topic" not in intent and isinstance(query, str) and term_count_ok(query, 2, 4)
+                and len(query.strip()) <= POPULAR_TOPIC_MAX_CHARS):
+            intent["popular_topic"] = query
+            changed = True
+    if changed:
+        write_json_atomic(Path(INTENTS), plan)
+
+
 def stage_discover(args: argparse.Namespace) -> None:
     request = complete_request()
     if discovery_mode(request) != (request.get("discovery_mode") or "auto"):
@@ -486,11 +552,19 @@ def stage_discover(args: argparse.Namespace) -> None:
         stage_select(args)
         return
     platforms = request.get("platforms") or [request.get("platform")]
+    if not Path(INTENTS).is_file():
+        # The plan was never written (the Request alone was): nothing was retrieved yet, so the
+        # run stays open for it instead of closing on a missing file (plugins, 2026-10-28).
+        say(json.dumps({"status": "needs_correction", "artifact": INTENTS,
+                        "issues": [f"{INTENTS} is missing; write it next to {REQUEST}"]}, ensure_ascii=False))
+        say("Discovery retrieval did not start. Write the discovery intents in this same run directory, "
+            "then rerun drive.py discover there; this is not a completed discovery stage.")
+        return
     # The four intent kinds are the model's judgment; the file's own schema, platform and a
     # popular_topic that only repeats the search_query are not.
     cd.complete_artifact(INTENTS, {"schema_version": "competitor-discovery-intents.v1",
-                                   "platform": str(platforms[0] if platforms else "").lower() or None},
-                         intent_defaults={"popular_topic": "search_query"})
+                                   "platform": str(platforms[0] if platforms else "").lower() or None})
+    complete_popular_topics()
     script("validate_request_window.py", REQUEST, show=True)
     history = state().get("subject_history") or []
     if history:
@@ -893,6 +967,27 @@ def stage_content(args: argparse.Namespace) -> None:
         raise StageError(f"This skill package is incomplete: {SCRIPTS / 'build_public_snapshot.py'} is missing. "
                          "Reload a complete verified package before fetching account content.")
     request = load(REQUEST)
+    # The run after a reserve's classification has no calls of its own to place: the reserve's were
+    # placed by the run that asked for the classification. Carried over, `--placed` skipped the next
+    # page round's hand-over and placement then found nothing (2026-10-27).
+    if state().get("reserve_to_classify"):
+        save_state(reserve_to_classify=False)
+        if args.placed:
+            say("[drive] the reserve's calls were already placed; --placed is ignored for this run")
+            args.placed = False
+    # A missing classification is an authoring slip, not a failed stage: closing the run here
+    # throws away the fetched profiles (2026-10-27: a run wrote competitor-eligibility.v2.json).
+    if not Path(ELIGIBILITY).is_file():
+        misnamed = sorted(p.name for p in Path(".").glob("competitor-eligibility*.json")
+                          if p.name not in (ELIGIBILITY, ELIGIBILITY_INPUT))
+        say(json.dumps({"status": "needs_correction", "artifact": ELIGIBILITY,
+                        "issues": [f"{ELIGIBILITY} is missing" +
+                                   (f"; found {', '.join(misnamed)} — the file name is {ELIGIBILITY}, "
+                                    "competitor-eligibility.v2 is only its schema_version" if misnamed else "")]},
+                       ensure_ascii=False))
+        say(f"Account content was not fetched. Write the classification to {ELIGIBILITY} in this run "
+            "directory, then rerun drive.py content in this same run directory.")
+        return
     # Eligibility's own schema and request id, and an empty relationship list, are not judgments.
     cd.complete_artifact(ELIGIBILITY, {"schema_version": "competitor-eligibility.v2",
                                        "request_id": request.get("request_id"), "direct_refs": [],
@@ -924,8 +1019,9 @@ def stage_content(args: argparse.Namespace) -> None:
         envelope_args = [arg for h in roster if h.lower() in profiles
                          for arg in ("--profile-envelope", profiles[h.lower()])]
         project_eligibility(platform, envelope_args)
+        save_state(reserve_to_classify=True)
         say(f"Classify only {extra[0]}: add it to one list in {ELIGIBILITY}, leave every other entry as it is, "
-            "then run drive.py content again.")
+            "then run drive.py content again, without --placed.")
         return
     since_text, until_text = window_of(request)
     since, until = epoch(since_text), epoch(until_text)
@@ -999,23 +1095,53 @@ def stage_content(args: argparse.Namespace) -> None:
     retain = ["--retain-content-id", str(seed)] if seed else []
     script("analyze_public_snapshot.py", "public-content-snapshot.json", "--mode", "competitor", *retain,
            "--output", "public-content-analysis.json")
-    script("build_topic_coverage.py", "--snapshot", "public-content-snapshot.json", "--selection", SELECTION,
-           "--output", "topic-coverage.json", "--print", show=True)
-    script("project_synthesis_evidence.py", "--analysis", "public-content-analysis.json", "--snapshot",
-           "public-content-snapshot.json", "--selection", SELECTION, "--eligibility", ELIGIBILITY,
-           "--request", REQUEST, "--output", "synthesis-evidence.json", "--print", show=True)
-    show_schema("competitor-research-synthesis.schema.json")
+    coverage = script("build_topic_coverage.py", "--snapshot", "public-content-snapshot.json", "--selection",
+                      SELECTION, "--output", "topic-coverage.json", "--print")
+    with_comments = getattr(args, "comments", False) is True
+    if with_comments:
+        # 评论在打印证据之前取：评论调用被移交时阶段在这里停下，证据只由最后完成的那次运行打印一次，
+        # 省掉单独的 comments 轮次。
+        fetch_comments(args)
+    evidence = script("project_synthesis_evidence.py", "--analysis", "public-content-analysis.json", "--snapshot",
+                      "public-content-snapshot.json", "--selection", SELECTION, "--eligibility", ELIGIBILITY,
+                      "--request", REQUEST, "--subject-history", "subject-history.json",
+                      "--output", "synthesis-evidence.json", "--print")
+    # schema 与下一步说明先打印、且用紧凑 JSON，再打印大段 topic coverage / synthesis evidence：
+    # 宿主截断的是输出尾部（10-22..29 生产回执 55 轮里 12 轮被截），截掉的只会是已落盘的证据，
+    # 不会是 schema。只改本包 drive.py；共享的 connector_driver.show_schema 不动。
+    show_compact_schema("competitor-research-synthesis.schema.json")
     say("Next judgment: write competitor-research-synthesis.json in this run directory using "
-        "the schema above; competitor-research-synthesis.v3.1 is the schema_version, not "
-        "a file name. Then run the documented drive.py report stage.")
+        "the schema above and the topic coverage and synthesis evidence below; "
+        "competitor-research-synthesis.v3.1 is the schema_version, not a file name. "
+        "Then run the documented drive.py report stage.")
+    say(coverage.rstrip())
+    say(evidence.rstrip())
+    if with_comments and Path(AUDIENCE).exists():
+        say(Path(AUDIENCE).read_text(encoding="utf-8").rstrip())
+
+
+def show_compact_schema(name: str) -> None:
+    """One reference schema as a single compact JSON line (same content as the file, no indentation)."""
+    say(json.dumps(json.loads((REFERENCES / name).read_text(encoding="utf-8")),
+                   ensure_ascii=False, separators=(",", ":")))
 
 
 def stage_comments(args: argparse.Namespace) -> None:
+    """`comments` alone, after `content` finished: the same block `content --comments` runs.
+
+    旧说明里单独的 `drive.py comments` 仍可运行，作为 `content --comments` 的别名保留。
+    """
+    if fetch_comments(args):
+        say(Path(AUDIENCE).read_text(encoding="utf-8").rstrip())
+
+
+def fetch_comments(args: argparse.Namespace) -> bool:
     """The comment block, only when the question needs audience comments: targets -> list_comments -> persist.
 
     Each response is placed at its target's position in fetch order, as the manual block did. A
     response that cannot be placed stops the placement there — the next response would otherwise
-    slide into its slot — and the posts left over are recorded as `not_fetched`.
+    slide into its slot — and the posts left over are recorded as `not_fetched`. True when
+    `audience-comments.json` was written.
     """
     script("select_comment_targets.py", "--snapshot", "public-content-snapshot.json", "--selection", SELECTION,
            "--analysis", "public-content-analysis.json", "--output", COMMENT_TARGETS)
@@ -1023,7 +1149,7 @@ def stage_comments(args: argparse.Namespace) -> None:
     targets = plan.get("targets") or []
     if not targets:
         say("no comment targets: there is no comment evidence for this run; do not claim audience-comment findings.")
-        return
+        return False
     requests = [{"connector_id": plan["connector_id"], "operation": plan["operation"], "params": t["params"]}
                 for t in targets]
 
@@ -1041,9 +1167,9 @@ def stage_comments(args: argparse.Namespace) -> None:
     fetch_round(batch_calls(requests), args, place_comments)
     if not Path(COMMENT_SOURCE).exists():
         say("no comment response was placed: there is no comment evidence for this run; do not claim audience-comment findings.")
-        return
+        return False
     script("persist_comment_envelopes.py", COMMENT_TARGETS, COMMENT_SOURCE, "--output", AUDIENCE, show=True)
-    say(Path(AUDIENCE).read_text(encoding="utf-8").rstrip())
+    return True
 
 
 def stage_report(args: argparse.Namespace) -> None:
@@ -1088,9 +1214,14 @@ def main() -> int:
     subject = sub.add_parser("subject")
     subject.add_argument("--handle")
     subject.add_argument("--channel-id")
+    subject.add_argument("--platform", choices=["instagram", "youtube"],
+                         help="needed only for a YouTube @handle without a channel id; a bare --handle is Instagram")
     subject.add_argument("--seed", help="the placed get_post Envelope when the run started from a public post")
     for name in ("discover", "select", "content", "comments", "report"):
         sub.add_parser(name)
+    sub.choices["content"].add_argument(
+        "--comments", action="store_true",
+        help="also fetch audience comments before the synthesis evidence is printed")
     for command in sub.choices.values():
         command.add_argument("--placed", action="store_true",
                              help="the connector calls were already made by hand; place their responses")

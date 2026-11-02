@@ -60,7 +60,7 @@ schemas.
 
 ## 2. The Request, the query plan and discovery
 
-Build one `TrendResearchRequest`. Freeze niche, locale, formats and exact UTC window.
+Build one `TrendResearchRequest`. Freeze niche, locale, formats and exact UTC window. Leave `locale.region` and `locale.language` null unless the user names a market or content language ("Spanish videos", "in Brazil"); then quote those words verbatim in `locale.named_in_ask`; `discover` checks it against the ask from `--question-file -`. The ask's own language sets only the reply language.
 
 - **Creator.** When the ask supplies a video instead of naming an account, the Creator is that
   video's author: take `creator_profile.handle` from what the source call returned for it
@@ -89,7 +89,7 @@ Build one `TrendResearchRequest`. Freeze niche, locale, formats and exact UTC wi
   one natural category or workflow phrase, not a sentence or a synonym-stuffed keyword list; locale
   already carries language and region. With only two slots, spend one on the source's own wording
   and one on the format's common name — a phrase another community would search for the same
-  thing, carrying none of the source's words. Measured 2026-09-16: every plan that spent both slots
+  thing, carrying none of the source's words. Measured: every plan that spent both slots
   on the source's own words returned nothing outside it, while the plans that reserved the second
   slot for the common name were the only ones that reached beyond it.
 
@@ -102,7 +102,9 @@ JSON
 cat > trend-query-plan.json <<'JSON'
 …
 JSON
-KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO> | --last-days <N>]
+KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO> | --last-days <N>] --question-file - <<'ASK'
+<the ask, verbatim>
+ASK
 ```
 
 (chain the three with `&&`). What `discover` does:
@@ -166,14 +168,15 @@ The scores mean:
 - `topic_relevance`: whether the video itself demonstrates the requested topic or mechanism.
 - `creator_transferability`: whether its visible move can credibly be adapted by this Creator.
   **Omit this field entirely when the Gate input carries neither `subject.anchor_handle` nor
-  `subject.anchor_mechanisms`.** With no anchor there is nothing to judge adaptability against,
-  and a number invented there is indistinguishable from a real verdict — a run that never learned
-  who the Creator is would otherwise carry a fabricated score at a quarter of the ranking weight.
-  Omitting it is a supported state, not an error: the contract accepts the field's absence and the
-  ranking redistributes its weight proportionally across `topic_relevance` and `locale_fit`. Never
-  write a placeholder such as 0 or 50 in its place, and never omit it when an anchor is present.
+  `subject.anchor_mechanisms`.** With no anchor the score would be invented, yet carry a quarter of
+  the ranking weight. Omitting it is a supported state, not an error: the contract accepts the
+  field's absence and the ranking redistributes its weight proportionally across `topic_relevance`
+  and `locale_fit`. Never write a placeholder such as 0 or 50 in its place, and never omit it when
+  an anchor is present.
 - `locale_fit`: fit to the requested language, culture and target market; it is not geographic
-  popularity.
+  popularity. When the user named no market or content
+  language, the language they write in sets only the reply language: do not score an item down for
+  being in another language.
 
 ```bash
 cd '<run directory>' && cat > trend-relevance-gate.tsv <<'TSV'

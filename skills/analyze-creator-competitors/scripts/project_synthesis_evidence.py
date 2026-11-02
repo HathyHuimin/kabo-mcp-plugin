@@ -11,6 +11,12 @@ The citation allowlist here is the same rule the skill states: eligible direct, 
 accounts that are also in `included_handles`, intersected with Snapshot items and `analysis.evidence`,
 plus the request's seed item when it is analyzed. Nothing is ranked or dropped semantically; rows are
 only ordered by the Analyzer's own `evidence_score`, then views.
+
+Each account also carries its posting cadence in the request window, and `subject_cadence` gives the
+subject's own from its placed history page. A user asking to compare posting cadence otherwise got only
+"a predictable rhythm": the dates were in the Snapshot but no count reached the synthesis (plugins,
+2026-10-27). A count is a lower bound when the fetched pages stop inside the
+window without a terminal page.
 """
 
 from __future__ import annotations
@@ -20,9 +26,12 @@ import json
 import re
 import sys
 from pathlib import Path
+from datetime import datetime
 from typing import Any
 
 sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from build_public_snapshot import dig, parse_timestamp, rows_of, terminal_page, unwrap  # noqa: E402
 
 MAX_TITLE_CHARS = 100
 MAX_ROWS_PER_ACCOUNT = 12
@@ -80,12 +89,64 @@ def number(value: Any) -> float | None:
     return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
 
+def cadence(dates: list[datetime], since: datetime, until: datetime, complete: bool) -> dict[str, Any]:
+    """Posts inside [since, until] and the weekly rate they imply; `complete` says the count is exact.
+
+    A count that is only a lower bound carries no rate or gap: given one, the synthesis ranked accounts
+    by it and called competitors faster than a subject whose fetched page simply ended (plugins,
+    2026-10-27). It is `posts_in_window_at_least` alone.
+    """
+    inside = sorted(moment for moment in dates if since <= moment <= until)
+    if not complete:
+        return {"posts_in_window_at_least": len(inside), "count_is_lower_bound": True}
+    days = max((until - since).total_seconds() / 86400, 1)
+    gaps = [(later - earlier).total_seconds() / 86400 for earlier, later in zip(inside, inside[1:])]
+    return {
+        "posts_in_window": len(inside),
+        "posts_per_week": round(len(inside) * 7 / days, 1),
+        "median_gap_days": round(sorted(gaps)[len(gaps) // 2], 1) if gaps else None,
+        "count_is_lower_bound": False,
+    }
+
+
+def window_of(request: dict[str, Any] | None) -> tuple[datetime, datetime] | None:
+    window = (request or {}).get("window") if isinstance((request or {}).get("window"), dict) else {}
+    try:
+        return parse_timestamp(window.get("since"), "window.since"), parse_timestamp(window.get("until"), "window.until")
+    except (ValueError, TypeError):
+        return None
+
+
+def history_dates(envelope: dict[str, Any]) -> list[datetime]:
+    dates = []
+    for raw in rows_of(envelope):
+        row = unwrap(raw)
+        value = dig(row, ("published_at",)) or dig(row, ("publishedAt",)) or dig(row, ("snippet", "publishedAt")) \
+            or dig(row, ("taken_at",)) or dig(row, ("taken_at_timestamp",)) or dig(row, ("timestamp",))
+        try:
+            dates.append(parse_timestamp(value, "published_at"))
+        except (ValueError, TypeError):
+            continue
+    return dates
+
+
+def subject_cadence(history: dict[str, Any] | None, window: tuple[datetime, datetime] | None) -> dict[str, Any] | None:
+    if not history or window is None:
+        return None
+    dates = history_dates(history)
+    if not dates:
+        return None
+    since, until = window
+    return cadence(dates, since, until, terminal_page(history) or min(dates) < since)
+
+
 def build(
     analysis: dict[str, Any],
     snapshot: dict[str, Any],
     selection: dict[str, Any],
     eligibility: dict[str, Any],
     request: dict[str, Any] | None,
+    subject_history: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     relationships = {
         name: ref_tokens(eligibility.get(f"{name}_refs")) for name in ("direct", "adjacent", "media")
@@ -157,6 +218,15 @@ def build(
         )
         account["evidence"].append(row)
 
+    window = window_of(request)
+    snapshot_complete = (snapshot.get("source") or {}).get("coverage_complete") is True
+    dates_by_creator: dict[str, list[datetime]] = {}
+    for item in items.values():
+        try:
+            dates_by_creator.setdefault(str(item.get("creator_id") or ""), []).append(
+                parse_timestamp(item.get("published_at"), "published_at"))
+        except (ValueError, TypeError):
+            continue
     rendered = []
     for account in accounts.values():
         rows = sorted(
@@ -168,6 +238,8 @@ def build(
             "evidence_count": len(rows),
             "evidence": rows[:MAX_ROWS_PER_ACCOUNT],
             **({"evidence_not_listed": len(rows) - MAX_ROWS_PER_ACCOUNT} if len(rows) > MAX_ROWS_PER_ACCOUNT else {}),
+            **({"cadence": cadence(dates, window[0], window[1], snapshot_complete or min(dates) < window[0])}
+               if window is not None and (dates := dates_by_creator.get(account["account_ref"])) else {}),
         })
     order = {"direct": 0, "adjacent": 1, "media": 2}
     rendered.sort(key=lambda row: (order.get(row["relationship"], 3), -row["evidence_count"], str(row["handle"] or "")))
@@ -181,6 +253,7 @@ def build(
         "accounts": rendered,
         "included_without_evidence": without,
         "seed_item": seed_row,
+        **({"subject_cadence": own} if (own := subject_cadence(subject_history, window)) is not None else {}),
         "citation_allowlist": sorted(set(allowlist)),
     }
 
@@ -192,6 +265,7 @@ def main() -> int:
     parser.add_argument("--selection", type=Path, required=True)
     parser.add_argument("--eligibility", type=Path, required=True)
     parser.add_argument("--request", type=Path)
+    parser.add_argument("--subject-history", type=Path, help="the subject's placed history page, for its cadence")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--print", action="store_true", help="also print the projection")
     args = parser.parse_args()
@@ -202,6 +276,7 @@ def main() -> int:
             load(args.selection),
             load(args.eligibility),
             load(args.request) if args.request else None,
+            load(args.subject_history) if args.subject_history and args.subject_history.is_file() else None,
         )
         text = json.dumps(projection, ensure_ascii=False, separators=(",", ":"))
         args.output.parent.mkdir(parents=True, exist_ok=True)

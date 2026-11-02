@@ -188,7 +188,7 @@ writing the plan. When the user asks to change their saved profile, follow
 
 1. `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' start [--video "<the video URL or id as the user gave it>" | --profile '<the saved profile file>']`
 2. Write `trend-research-request.json` and `trend-query-plan.json`, then
-   `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO> | --last-days <N>]`
+   `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO> | --last-days <N>] --question-file -` with the ask verbatim on standard input
    (once more with a replacement plan only when the first collection fails coverage)
 3. Score every numbered Gate line by judgment into `trend-relevance-gate.tsv`, then
    `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' rank`
@@ -196,6 +196,7 @@ writing the plan. When the user asks to change their saved profile, follow
    `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' report --language <the user's chat language>`.
    This is the final step: it composes, validates and renders `creator-report.md` and prints
    `creator_report: <absolute path>` followed by the report.
+   If `report` returns `needs_correction`, follow its instruction once in the same run.
 
 ### Idea handoff
 

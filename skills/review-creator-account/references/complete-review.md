@@ -118,8 +118,9 @@ insufficient.
 - `report` then runs `validate_artifacts.py`, and `validate_creator_report.py` on
   `ACCOUNT_REVIEW.md` with every connector Envelope this run stored: that validator reads their
   source strings and rejects the report if any reached the Creator-facing text. Both validators
-  must pass before the result is presented; `verify-report` reruns both on the existing bytes. Do
-  not run them by hand.
+  must pass before the result is presented. When no `needs_revision` came back earlier in this
+  run, `report` says the report is final and is the final step; after a correction,
+  `verify-report` reruns both on the existing bytes as the final step. Do not run them by hand.
 
 ## Corrections and closed runs
 

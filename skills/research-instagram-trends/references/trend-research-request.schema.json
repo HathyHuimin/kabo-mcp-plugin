@@ -26,7 +26,8 @@
       "required": ["region", "language"],
       "properties": {
         "region": {"type": ["string", "null"]},
-        "language": {"type": ["string", "null"]}
+        "language": {"type": ["string", "null"]},
+        "named_in_ask": {"type": ["string", "null"], "description": "Required when region or language is not null: the user's own words, copied exactly from the ask, that name the market or content language (\"Spanish videos\", \"in Brazil\"). The ask's own language is not one; discover checks this quote against the ask."}
       }
     },
     "formats": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
