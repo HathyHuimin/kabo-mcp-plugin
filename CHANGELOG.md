@@ -4,6 +4,8 @@
 
 ## 未发布
 
+- `analyze-creator-competitors` 同步 creator-skills 0.5.89：`report` 先把 synthesis 的 `status` 同义词（completed/done/ok/success、incomplete、failed）规整为 complete/partial/blocked，其它非法值在 compose 入口给出可改提示，不再到校验才失败。`review-creator-account` 锁定上游 0.5.50，其改动（`--export-report` 与 handoff 只认 `.json`）属 Web 宿主交付机制，插件版没有 handoff 导出、`ACCOUNT_REVIEW.md` 本就是本地交付文件，不搬。
+
 ## 1.0.6（2026-11-02；GitHub Release）
 
 - 推荐交付增加统一兜底：已有入选视频不会因 synthesis 留空而丢失；正常推荐为空时，最多展示三个本轮采到的视频参考，明确标注匹配或资料不足，不填造指标。原 Gate 和名额不改写，也不追加数据或模型调用。YouTube 一次重搜后仍覆盖不足时继续利用已有候选，不再直接中止报告。

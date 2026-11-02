@@ -1172,6 +1172,22 @@ def fetch_comments(args: argparse.Namespace) -> bool:
     return True
 
 
+# Synonyms models write for the synthesis status; any other value gets compose_report's correctable error.
+STATUS_SYNONYMS = {"completed": "complete", "done": "complete", "ok": "complete", "success": "complete",
+                   "incomplete": "partial", "partially_complete": "partial", "failed": "blocked"}
+
+
+def normalize_synthesis_status(path: str) -> None:
+    target = Path(path)
+    if not target.is_file():
+        return
+    document = cd.load(target)
+    status = document.get("status") if isinstance(document, dict) else None
+    if isinstance(status, str) and status.strip().lower() in STATUS_SYNONYMS:
+        document["status"] = STATUS_SYNONYMS[status.strip().lower()]
+        target.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def stage_report(args: argparse.Namespace) -> None:
     if Path(REQUEST).is_file():
         # The Request's own id and the synthesis schema are not the model's to retype (audit item 7):
@@ -1179,6 +1195,7 @@ def stage_report(args: argparse.Namespace) -> None:
         cd.complete_artifact("competitor-research-synthesis.json",
                              {"schema_version": "competitor-research-synthesis.v3.1",
                               "request_id": cd.load(REQUEST).get("request_id")})
+        normalize_synthesis_status("competitor-research-synthesis.json")
     script("compose_report.py", "--request", REQUEST, "--snapshot", "public-content-snapshot.json",
            "--analysis", "public-content-analysis.json", "--synthesis", "competitor-research-synthesis.json",
            "--discovery", DISCOVERY, "--eligibility-input", ELIGIBILITY_INPUT, "--eligibility", ELIGIBILITY,

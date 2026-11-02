@@ -18,8 +18,8 @@
     },
     {
       "id": "review-creator-account",
-      "derivedFromVersion": "0.5.49",
-      "derivedFromCommit": "c414fac55381422eeb67f4ad6d01f26a4206ca77",
+      "derivedFromVersion": "0.5.50",
+      "derivedFromCommit": "a9514ba301cf52b02d700976e6e94cc11237542d",
       "sourcePath": "creator-skills/runtime/review-creator-account"
     },
     {
@@ -57,8 +57,8 @@
     },
     {
       "id": "analyze-creator-competitors",
-      "derivedFromVersion": "0.5.88",
-      "derivedFromCommit": "c414fac55381422eeb67f4ad6d01f26a4206ca77",
+      "derivedFromVersion": "0.5.89",
+      "derivedFromCommit": "a9514ba301cf52b02d700976e6e94cc11237542d",
       "sourcePath": "creator-skills/runtime/analyze-creator-competitors"
     },
     {
