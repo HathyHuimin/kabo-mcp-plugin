@@ -1,7 +1,7 @@
 # Rising search terms
 
 Read this whole file before the first call of this route. `<run directory>` and
-`<skill directory>` are the absolute paths from *Set up one run* in `SKILL.md`; run every command
+`<skill directory>` are the absolute paths from *Running commands* in `SKILL.md`; run every command
 from the run directory.
 
 Use this route when the user asks what TikTok users are searching, which search terms are rising,

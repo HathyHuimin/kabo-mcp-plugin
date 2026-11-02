@@ -147,12 +147,41 @@ def supersede(path: Path | None) -> None:
     target.chmod(0o600)
 
 
+def resume_command() -> str:
+    """This same stage, with the same arguments, run again with `--placed` from this run directory.
+
+    `--without-include` answered one hand-over and is remembered by the run; the original ask given with
+    `--question-file` is stored by the run too, and a resume does not read standard input again.
+    """
+    stage, rest = [], iter(sys.argv[1:])
+    for arg in rest:
+        if arg == "--question-file":
+            next(rest, None)
+        elif arg not in ("--placed", "--without-include") and not arg.startswith("--question-file="):
+            stage.append(arg)
+    return (f"cd '{Path.cwd()}' && KABO_STATIC_RUN_DIR='{Path.cwd()}' python3 '{SCRIPTS / 'drive.py'}' "
+            + " ".join(f"'{arg}'" if re.search(r"[^\w./=:-]", arg) else arg for arg in stage) + " --placed")
+
+
 def hand_over(calls, why=""):
+    # 每条调用后面直接打印要存的文件名与 fetch 命令，结尾打印续跑命令：模型照抄即可，不必自己拼路径
+    # （实测里模型猜过不存在的参数、写错过运行目录，最后绕开脚本自己复制、下载，跳过了整条存证）。
     from static_host import public_calls
-    say("This host does not fetch for scripts: call these public MCP tools, each as its own individual call (never combined into one batch call), save each complete result as its own file in the run's host-results/ folder and run static_host.py fetch on it (static_host.py stage when fetch reports no ready download), then resume with --placed:")
-    for call in calls:
-        for public in public_calls(call):
-            say(HANDOVER_PREFIX + json.dumps(public, ensure_ascii=False))
+    public = [mapped for call in calls for mapped in public_calls(call)]
+    results = Path("host-results")
+    first = len(list(results.glob("*.json"))) + 1 if results.is_dir() else 1
+    say(f"Hand-over: make these {len(public)} call(s) now, each as its own individual call (never combined into "
+        "one batch call), all in one response, with the arguments verbatim. Then, in the order below, save each "
+        "complete result unchanged to the file named under it (the host's result export, or the result text as "
+        "returned written with a single-quoted heredoc) and run the command under it at once; links expire in "
+        "10 minutes. When fetch reports no ready download, run the same command with stage in place of fetch.")
+    for number, mapped in enumerate(public, first):
+        saved = f"host-results/{number:02d}-{mapped['tool']}.json"
+        say(HANDOVER_PREFIX + json.dumps(mapped, ensure_ascii=False))
+        say(f"  save: {saved}")
+        say(f"  then: cd '{Path.cwd()}' && KABO_STATIC_RUN_DIR='{Path.cwd()}' python3 "
+            f"'{SCRIPTS / 'static_host.py'}' fetch --tool {mapped['tool']} --input '{saved}'")
+    say("When every result above is fetched or staged, resume: " + resume_command())
     raise SystemExit(0)
 
 
