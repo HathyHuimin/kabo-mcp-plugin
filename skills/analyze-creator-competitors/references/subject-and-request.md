@@ -78,7 +78,7 @@ stripping punctuation from a product name.
 niche, such as «I make <niche> videos on YouTube» — there is no identity to search: run `start
 --platform <instagram|youtube>` without `--query`, skip the `subject` stage, and freeze the
 Request from the user's own words with no `account_ref` and no market they did not state. Never
-search the niche and adopt one of its channels as the user: measured 2026-09-18, doing so turned
+search the niche and adopt one of its channels as the user: in testing, doing so turned
 an English-language niche into a Chinese one — the adopted channel's market — and discovery
 missed every labelled competitor.
 
@@ -153,7 +153,7 @@ that answer one question are frequently wrong answers to the other.
   company's own site. Use what the user wrote about that site, and say the site itself was not
   read.
 - Default to `creator` only after those surfaces still show the subject's own output is the
-  content and no purchase offer is visible. Measured 2026-09-14 on a YouTube name query whose
+  content and no purchase offer is visible. Measured on a YouTube name query whose
   channel had no uploads: defaulting `creator` from the empty profile retrieved deal and
   real-estate channels instead of purchase alternatives.
 

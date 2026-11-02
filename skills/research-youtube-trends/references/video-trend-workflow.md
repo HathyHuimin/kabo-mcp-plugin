@@ -89,7 +89,7 @@ Build one `TrendResearchRequest`. Freeze niche, locale, formats and exact UTC wi
   one natural category or workflow phrase, not a sentence or a synonym-stuffed keyword list; locale
   already carries language and region. With only two slots, spend one on the source's own wording
   and one on the format's common name — a phrase another community would search for the same
-  thing, carrying none of the source's words. Measured 2026-09-16: every plan that spent both slots
+  thing, carrying none of the source's words. Measured: every plan that spent both slots
   on the source's own words returned nothing outside it, while the plans that reserved the second
   slot for the common name were the only ones that reached beyond it.
 
