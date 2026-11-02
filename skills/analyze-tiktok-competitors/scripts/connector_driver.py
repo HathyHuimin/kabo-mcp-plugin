@@ -254,7 +254,7 @@ def resume_command() -> str:
 
 def hand_over(calls, why=""):
     # 每条调用后面直接打印要存的文件名与 fetch 命令，结尾打印续跑命令：模型照抄即可，不必自己拼路径
-    # （实测里模型猜过不存在的参数、写错过运行目录，最后用 cp / curl 绕开了整条存证）。
+    # （实测里模型猜过不存在的参数、写错过运行目录，最后绕开脚本自己复制、下载，跳过了整条存证）。
     from static_host import public_calls
     public = [mapped for call in calls for mapped in public_calls(call)]
     results = Path("host-results")
