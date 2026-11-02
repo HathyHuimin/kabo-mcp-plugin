@@ -10,8 +10,9 @@
   工具名 + `delivery:"download"` + `static_host.py`；超过 KS3.2 上限的数据文件拆分或删去脚本与正文都不读的字段。
   `recommend-publish-timing` 修正上游校验器与引擎对小时级推荐置信度判定不一致（校验器按指标一致率重算，引擎按同行佐证），
   此前多数小时级推荐会在校验步失败。
-- `verify-platform-rule` 依赖 `/mcp-pub` 恢复的 `official_page_render_page`（kabo#1817，未合入）；`contracts/directory-mcp/`
-  暂时固定到该 PR 的 head `9ed1ec61a`（已合入 kabo main；64 个工具，相对 main 只增这一个），kabo 合入后须按合入 commit 重新固定。
+- `verify-platform-rule` 依赖 `/mcp-pub` 恢复的 `official_page_render_page`（kabo#1817，已合入并部署）；`contracts/directory-mcp/`
+  重新固定到 kabo main 的合入提交 `d1dcf9b09`（64 个工具；另含 kabo main 期间对复刻工具、`analyze_content_video` 与
+  `tiktok_list_account_posts` 的出入参更新）。
   四个新 Skill 在本机 Codex 连生产 /mcp-pub 实测：发布时间、变现已交付；平台规则核对待 kabo#1817 部署。
 - `analyze-content-video` 同步到 creator-skills 0.14.29、`create-script-and-packaging` 同步到 0.2.27（冻结提交 `a9514ba30`）：本地视频抽帧改用哈希文件名、720px、限 90 帧 / 12 MiB 且先写开头和结尾，`--measure-signals` 测剪辑点与停顿进 `media.probed`，宿主机器转写用 `--origin speech_recognition` 记为「听到的」；健康的 job 在本轮内等约 3 分钟；测量、长视频文字、图文帖、剪辑请求拿不到时的处理写进 `references/evidence-reading.md`；脚本的 `video_analysis_sources` 只认 `video_analysis.json`；续集先核实上一集。两个 SKILL.md 正文不增长。
 - review-creator-account-deep 同步上游 0.3.52：没有标准版分析时，在本次运行里用 `fetch_catalog.py` 取一页作品目录（每次运行最多 4 次目录调用，失败调用用 `--failed` 记账，Feed 失败不重试）；后续步骤缺输入时退出码 2 并给出第 1 步的两个入口；标准版复用说明移到 `references/standard-inputs.md`。
