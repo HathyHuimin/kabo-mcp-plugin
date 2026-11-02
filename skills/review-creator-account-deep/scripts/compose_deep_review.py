@@ -484,6 +484,7 @@ def main(argv: list[str] | None = None) -> int:
     # （实测里模型转述时删掉了证据引用）。
     print(f"creator_report: {args.markdown.resolve()}")
     print(report["markdown"].rstrip())
+    print('Your reply is this report, even when the question was short: at most one short sentence of your own, then the report above complete and unchanged (translated only where the Skill says), then this creator_report line.')
     return 0
 
 
