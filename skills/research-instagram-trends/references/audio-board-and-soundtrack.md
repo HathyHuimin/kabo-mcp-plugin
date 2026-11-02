@@ -1,7 +1,7 @@
 # Audio board and scene soundtrack
 
 Read this file whole before the first data call of either path. Both paths run in the one run
-reserved for this request (see *Set up one run* in `SKILL.md`); every command below runs from that
+reserved for this request (see *Running commands* in `SKILL.md`); every command below runs from that
 run directory with `KABO_STATIC_RUN_DIR` set, and `<skill directory>` is the folder holding
 `SKILL.md`. Neither path creates a `TrendResearchRequest`, `TrendResearchReport`, Snapshot or
 Analyzer output, and neither uses `drive.py`.
