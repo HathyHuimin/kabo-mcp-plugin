@@ -39,6 +39,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import unicodedata
 from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -68,6 +70,42 @@ def platform_of(request: dict[str, Any]) -> str:
     if not isinstance(platforms, list) or len(platforms) != 1 or platforms[0] not in DEFAULT_DAYS:
         raise ValueError("the Request must name exactly one of instagram, youtube or tiktok in platforms")
     return platforms[0]
+
+
+# 10-29 plugins K2：中文问居家健身、没点名市场，SKILL.md 已写明 locale 只取用户点名的市场或内容语言，
+# 模型仍把问句语言写成 locale.language=zh-CN，YouTube 搜索被偏到中文结果。只靠文字守不住，改成确定性
+# 核对：region / language 非空时，locale.named_in_ask 必须逐字摘自用户原话。三个趋势通道共用这一份字节。
+LOCALE_NOT_NAMED = ("No market or content language was named in the ask; set locale.region and locale.language "
+                    "to null, or quote the words that name them in locale.named_in_ask.")
+
+
+def _folded(text: str) -> str:
+    # NFKC 统一全角/半角与兼容字符，casefold 忽略大小写，连续空白算一个，避免排版差异误判。
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", text).casefold()).strip()
+
+
+def locale_named_error(request: dict[str, Any], question: str | None) -> str | None:
+    """The error to correct when the Request names a market or language the ask never named, else None.
+
+    `question` is the user's original ask verbatim; None (a host that passed none) skips the check.
+    """
+    locale = request.get("locale")
+    if not isinstance(locale, dict):
+        return None  # the Request's own shape checks say so
+    quote = locale.get("named_in_ask")
+    if quote is not None and not isinstance(quote, str):
+        return "locale.named_in_ask must be a string (the user's own words) or null"
+    if question is None:
+        return None
+    named = [key for key in ("region", "language")
+             if isinstance(locale.get(key), str) and locale[key].strip()]
+    if not named:
+        return None
+    if not quote or not _folded(quote):
+        return LOCALE_NOT_NAMED
+    if _folded(quote) not in _folded(question):
+        return f"{LOCALE_NOT_NAMED} The quoted words {quote!r} are not in the ask as written."
+    return None
 
 
 def freeze(request: dict[str, Any], policy: str, now: datetime,

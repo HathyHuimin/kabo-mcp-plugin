@@ -1,0 +1,100 @@
+# Keep this file additive. Unset keys stay at org/UI defaults.
+# Rules ported from kabo-sh/kabo and kabo-sh/creator-skills. Every check here is advisory
+# (mode: warning). The mechanical subset (vendor names, host mechanics, case ids, provenance, version
+# labels and dates in Skill Markdown, the foreground note, bytecode) also runs in CI as
+# scripts/repo-rules.test.mjs and fails the build.
+language: "en-US"
+
+reviews:
+  auto_review:
+    enabled: true
+    # Most PRs here stay drafts until a maintainer decides to merge; review them anyway so
+    # violations surface before merge, not after.
+    drafts: true
+
+  path_instructions:
+    - path: "**"
+      instructions: |
+        Flag as **critical**: a data-vendor identity anywhere in this public repository, including tests,
+        fixtures, docs and comments (tikhub, scrapecreators, tubelab, vidiq, gemini, printingpress, yt-dlp,
+        youtube-pp, youtube data api, ensemble data, hiker api, creatordb, apify, firecrawl; case-insensitive,
+        truncated forms such as "tikhu" count). Use platform or capability names instead (TikTok, Instagram,
+        YouTube, discovery) and neutral fixture values such as "provider-a".
+
+    - path: "skills/**"
+      instructions: |
+        Flag as **critical**:
+        - Non-English prose in SKILL.md, references/** or assets/** Markdown, or the description, including
+          example user requests and fixed labels. Proper nouns with no English form are allowed. Localized
+          strings kept only so a script can match them are not an exception: make the script language-agnostic.
+        - Host-specific mechanics in Skill prose: another host's commands or tools (kabo-run-dir,
+          kabo-run-pipeline, data_connector_run, kabo_connector_run, registry_skill_*, run_bundle_*,
+          emit_block), wrapper placeholders such as {run} or {report}, branches on a host name ("On Web",
+          "On Codex", "Plugin host"), or instructions to download or look up a Skill from a registry.
+        - Case specialization: rules written as the answer to one benchmark case. Benchmark or scene numbers,
+          run ids, keyword gates for one specific account, brand, country or industry, a fixed default topic,
+          or a branch for one exact phrasing. Distil the general rule instead; real measured numbers may stay
+          without naming the case.
+        - Design-provenance material inside a Skill package: source-composition notes, private-repo
+          coordinates (kabo-sh/kabo@...), apps/web/src/app/tools/... path maps, or narratives of how the
+          package was distilled. These belong in PR descriptions or maintainer docs.
+        - Provenance markers in Skill Markdown: version labels of the source package ("V3", "V4 rules") and
+          dated incident notes ("measured 2026-09-14 on ..."). Keep the rule and the measured numbers, drop
+          when and in which version they were found.
+        Flag as **major**:
+        - A description that carries execution rules (fallback order, what to refuse, never-do lists)
+          instead of what the Skill does and when to use it (docs/skills-spec.md KS1.2). Those rules
+          belong in the body.
+        - A report-producing Skill whose delivery contract (deliver the validated report in full, do not
+          summarize or rewrite numbers, end with the creator_report line) is missing or sits after the
+          opening section of SKILL.md (KS3.3). Models start replying before they reach a late rule.
+        - A change that grows SKILL.md with another exception or never-do rule that the Skill's validator
+          could enforce instead; ask for the check in the script and a one-line pointer in prose.
+        Do not flag /mcp-pub tool names, connector_id / operation values, package script commands
+        (including --placed), capability-phrased branches, or script source.
+
+    - path: "skills/**/scripts/**"
+      instructions: |
+        Flag as **major**: scripts must work for any input language. A validator must not compare against
+        localized literals (an exact Chinese or English title, only "万/亿", only one phrase); check structure
+        (position, count, references, numbers, fields) instead. Renderers keep one English set of fixed labels;
+        do not add bilingual label tables. Reading legacy localized machine values from already-shipped
+        artifacts is allowed if new output never produces them.
+
+  pre_merge_checks:
+    title:
+      mode: warning
+      requirements: "Written in English (AGENTS.md). Conventional-commit style such as `fix(skill): ...` is preferred."
+    description:
+      mode: warning
+    custom_checks:
+      - name: "English PR title and description"
+        mode: warning
+        instructions: |
+          FAIL if the PR title or the PR description written by the author contains Chinese or other
+          non-English prose. AGENTS.md requires commit messages, PR titles and PR descriptions in English.
+          Ignore text generated by bots (for example CodeRabbit summaries), code identifiers, file paths,
+          quoted user queries that are test inputs, and proper nouns.
+      - name: "English commit messages"
+        mode: warning
+        instructions: |
+          FAIL if any commit message in this PR contains Chinese or other non-English prose (AGENTS.md).
+      - name: "No data vendor in this public repo"
+        mode: warning
+        instructions: |
+          FAIL if the PR adds or keeps a data-vendor identity anywhere in the repository, including tests,
+          fixtures, docs and comments: tikhub, scrapecreators, scrape creators, tubelab, vidiq, gemini,
+          printingpress, yt-dlp, youtube-pp, youtube data api, ensemble data, hiker api, creatordb, apify,
+          firecrawl (case-insensitive, truncated forms count). This repository is public, so any file is readable
+          by anyone.
+      - name: "Skill risk level and evidence"
+        mode: warning
+        instructions: |
+          Applies only when the PR changes files under skills/** other than typo fixes.
+          FAIL if the description does not give a risk level (R0 / R1 / R2 / R3, as defined in
+          .github/pull_request_template.md) for each changed Skill.
+          FAIL if the level is R1 or higher and the description lacks the local evidence (npm run verify,
+          skills:lint, and upstream tests when syncing from creator-skills).
+          FAIL if the level is R2 or higher and the description neither reports a real-host run against
+          https://kabo.sh/mcp-pub nor says plainly that one is still pending.
+          FAIL if the level is R3 and the description does not link an explicit owner approval.

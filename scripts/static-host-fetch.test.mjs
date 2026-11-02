@@ -818,3 +818,31 @@ test("persist --drained：带 MCP 外壳的来源记录原样放置后仍算已�
     assert.match(second.out, /no complete host record/);
   }
 });
+
+test("stage：状态为完成却没有 data 的结果（下载结果丢了 download 只剩摘要）被拒收，指回 fetch", async (t) => {
+  let checked = 0;
+  for (const id of await readdir(path.join(root, "skills"))) {
+    const script = path.join(root, "skills", id, "scripts", "static_host.py");
+    const text = await readFile(script, "utf8").catch(() => "");
+    if (!text.includes("completed status but no data")) continue;
+    // 取这份副本声明的第一个普通数据工具（投影查找与聚合工具另有规则）。
+    const declared = text.slice(text.indexOf("CONNECTOR_TOOLS = {"), text.indexOf("\n}\n", text.indexOf("CONNECTOR_TOOLS = {")));
+    const entry = [...declared.matchAll(/"([a-z-]+)\/([a-z_]+)": "([a-z_]+)"/g)]
+      .find(([, connector, , tool]) => !tool.startsWith("lookup_") && !connector.startsWith("creator-trending"));
+    assert.ok(entry, id);
+    const [, connector, operation, tool] = entry;
+    const temp = await mkdtemp(path.join(os.tmpdir(), "kabo-stage-summary-"));
+    t.after(() => rm(temp, { recursive: true, force: true }));
+    const env = { ...process.env, PYTHONDONTWRITEBYTECODE: "1" };
+    delete env.KABO_STATIC_RUN_DIR;
+    const run = execFileSync("python3", ["-B", script, "init", "--workspace", temp], { encoding: "utf8", env }).trim();
+    const input = path.join(run, "host-result.json");
+    await writeFile(input, JSON.stringify({ result: { ...withoutData(fullVideo(1)), connector_id: connector, operation } }));
+    const result = spawnSync("python3", ["-B", script, "stage", "--tool", tool, "--input", input],
+      { cwd: run, encoding: "utf8", env: { ...env, KABO_STATIC_RUN_DIR: run } });
+    assert.notEqual(result.status, 0, id);
+    assert.match(result.stdout + result.stderr, /completed status but no data/, `${id}: ${result.stdout}${result.stderr}`);
+    checked += 1;
+  }
+  assert.ok(checked >= 9, String(checked));
+});

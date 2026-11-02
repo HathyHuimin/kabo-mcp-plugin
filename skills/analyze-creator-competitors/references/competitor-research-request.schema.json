@@ -165,6 +165,12 @@
         "minLength": 1
       }
     },
+    "requested_competitor_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "description": "How many competitor accounts the Creator explicitly asked for (e.g. 10 for 'find 10 similar channels'). Omit when no number was named. It does not raise the per-run cap; the reply says so when the run compared fewer."
+    },
     "creator_profile": {
       "type": [
         "object",

@@ -1,6 +1,6 @@
 ---
 name: research-instagram-trends
-description: "Find what is working on Instagram Reels: scan a niche or a supplied Reel for repeated mechanisms, the hottest posts, account-relative outliers and emerging creators; list the hottest Reels of the last seven days; read the daily Reels audio board of trending and rising sounds; suggest soundtrack for named scenes; or analyze a supplied public-content Snapshot. Use for Reels trend scans and more hot Reels like this one. Not for a known creator's profile, YouTube, private Insights or scripts."
+description: "Find what is working on Instagram Reels: scan a niche or a supplied Reel for repeated mechanisms, the hottest posts, emerging creators and Reels in a topic that beat their own accounts' usual; list the last seven days' hottest Reels; read the daily Reels audio board of trending and rising sounds; suggest soundtrack for named scenes; or analyze a supplied public-content Snapshot. Use for more hot Reels like this one. Not for a known creator's profile, YouTube, private Insights or scripts."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read to read the Creator's saved account profile and workspace:write to save edits to it the user asks for."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_instagram_trend_candidates enrich_instagram_shortlist lookup_instagram_post instagram_get_transcript instagram_baseline_search_reels instagram_baseline_search_music creator_trends_get_instagram_audio_board list_connected_accounts get_creator_profile update_content_preferences
@@ -203,7 +203,7 @@ once, and follow its `next_stage`.
    prints the profile as used, also read `references/signature-content.md`; to change the saved
    profile, `references/profile-edits.md`.
 2. **Discover.** Read `references/discovery-and-gate.md` whole, then chain the two heredocs with
-   `drive.py discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO>]`.
+   `drive.py discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO>] --question-file -`.
    It freezes the window once, validates the plan per lane, hands over one
    `collect_instagram_trend_candidates` call per lane, places and binds the results, and prints the
    relevance Gate table. When the relevance lane returned no candidates at all, `discover` stops
@@ -229,8 +229,8 @@ once, and follow its `next_stage`.
    ```
 
    `report` composes, validates and renders, then prints `creator_report: <absolute path>`
-   followed by the report. If Validate or Render rejects the synthesis, correct the field it names
-   and run `report` again in the same run.
+   followed by the report.
+   If `report` returns `needs_correction`, follow its instruction once in the same run.
 
 A collection or enrichment result that was not recorded ends the run as described under *What a
 failed call does to each path*: never write or reconstruct items yourself or call the tool again

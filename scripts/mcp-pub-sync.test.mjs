@@ -64,7 +64,7 @@ function tiktokEnvelope({ route = "share_url", video = {}, unavailable = [] } = 
   }[route];
   const fallback = kind === "fallback";
   return {
-    schema_version: "1.0", connector_id: connector, operation, provider: fallback ? "scrapecreators" : "tikhub",
+    schema_version: "1.0", connector_id: connector, operation, provider: fallback ? "provider-a" : "provider-b",
     status: fallback ? "completed_partial" : "completed", summary: "Found 1 video",
     limitations: fallback ? ["TikTok discovery refused this video (forbidden), so Kabo answered through the search route."] : [],
     credential_values_recorded: false, evidence_ref: `ev-${route}`, raw_sha256: sha256(route),
@@ -78,7 +78,7 @@ function tiktokEnvelope({ route = "share_url", video = {}, unavailable = [] } = 
         sound: { id: "5", title: "original sound", author: "creator", is_original: true },
         ...video,
       },
-      source: { route: kind, connector_id: connector, operation, provider: fallback ? "scrapecreators" : "tikhub", retrieved_at: "2026-10-22T08:00:00Z", fallback_reason: fallback ? "forbidden" : null },
+      source: { route: kind, connector_id: connector, operation, provider: fallback ? "provider-a" : "provider-b", retrieved_at: "2026-10-22T08:00:00Z", fallback_reason: fallback ? "forbidden" : null },
       unavailable_fields: unavailable,
     },
   };

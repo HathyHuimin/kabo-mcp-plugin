@@ -39,7 +39,7 @@ function attempt(args, options) {
 function lookupEnvelope({ route = "primary", post = {}, metrics = {}, audio, unavailable = [] } = {}) {
   const fallback = route === "fallback";
   const connector = fallback ? "instagram-detail-proxy" : "instagram-discovery";
-  const provider = fallback ? "tikhub" : "scrapecreators";
+  const provider = fallback ? "provider-b" : "provider-a";
   return {
     connector_id: connector, operation: "get_post", provider,
     status: fallback ? "completed_partial" : "completed",

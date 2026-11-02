@@ -66,7 +66,7 @@ two are not interchangeable.**
 product-category candidates ahead of workflow-only fallbacks, then chooses up to six profile
 targets plus two reserves by 75% semantic fit and 25% comparable retrieval support. When the
 Request names a market, that six-seat budget is filled from the complementary profile-search lane
-first, then leftover seats from Search/Popular (measured 2026-09-14: local product accounts entered
+first, then leftover seats from Search/Popular (measured: local product accounts entered
 the pool via profile search but lost the six seats to English Search/Popular agencies because
 retrieval rewarded more posts). Caption phrases do not flip this lane: profile search on a form
 phrase often returns accounts named after the phrase. Profile-search authors are merged into the
@@ -107,8 +107,8 @@ eligibility projection and its schema.
 
 ## Profile Eligibility
 
-Read only that projection and write `competitor-eligibility.v2`
-(`references/competitor-eligibility.schema.json`), placing every handle present in `profiles[]`
+Read only that projection and write `competitor-eligibility.json` (`schema_version`
+`competitor-eligibility.v2`, see `references/competitor-eligibility.schema.json`), placing every handle present in `profiles[]`
 exactly once in `direct_refs`, `adjacent_refs`, `media_refs` or `excluded_refs`. Each Profile
 projection contains its public bio/category fields plus the visible discovery content for that same
 account, so eligibility is not decided from a generic bio alone.
@@ -139,8 +139,8 @@ account, so eligibility is not decided from a generic bio alone.
   UGC collaborators are excluded.
 - If fewer than three direct/adjacent accounts remain and a frozen reserve is still unused,
   `content` resolves that one reserve, prints its projection and stops: classify only that newly
-  added handle, leave every other entry as it is, and run `content` again. There is no second
-  reserve round.
+  added handle, leave every other entry as it is, and run `content` again without `--placed`: the
+  reserve's calls were already placed. There is no second reserve round.
 
 ## What `content` does with eligibility
 
@@ -157,4 +157,5 @@ hand-write that file; the Composer re-runs finalize and fails if the roster does
 Candidate, discovery selection, eligibility, final account selection and profile artifacts as audit
 artifacts; never pass them to the public-content Snapshot Assembler. `content` then retrieves each
 included account's remaining history within the page budget, assembles and analyzes the
-public-content Snapshot once, and prints the topic coverage and the synthesis evidence.
+public-content Snapshot once, and prints the synthesis schema first, then the topic coverage and
+the synthesis evidence.

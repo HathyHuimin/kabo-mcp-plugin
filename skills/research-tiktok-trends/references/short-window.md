@@ -7,7 +7,8 @@ from the run directory.
 Use this route when the requested window is seven days or shorter (the last day, the last 48
 hours, this week — named in any language) and the user wants recent viral content to copy. Every
 longer window, and every ask for repeated mechanisms or account-relative multiples, uses the
-video-trend workflow with its window policies. Do **not** stop because the short-window pool is
+video-trend workflow with its window policies (a seven-day-or-shorter ask for account-relative
+multiples with `--policy user_named_span`). Do **not** stop because the short-window pool is
 thin. Do **not** create a query plan, Snapshot, Analyzer output or `TrendResearchReport` for this
 route, and do not run the workflow's collection: a collection on a short-window ask is a failed
 delivery.

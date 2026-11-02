@@ -86,6 +86,9 @@ It has to pass the renderer's checks, or the line falls back to a plain card:
 
 - Move with transforms only: `x`, `y`, `scale`, `rotation`, `opacity`, colours. Never animate
   `left`, `top`, `width` or `height`.
+- Give every tween fixed numbers. Never a function that measures the page
+  (`getBoundingClientRect`, `offsetLeft`): the renderer's workers seek on their own, so a measured
+  value differs between them.
 - Nothing from the network: no web fonts, no image URLs (draw icons as inline SVG or text).
   Never paste an image in as `data:`; the runner drops it.
 - One timeline: no timers, no `requestAnimationFrame`, no randomness.

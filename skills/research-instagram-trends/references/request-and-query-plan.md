@@ -19,7 +19,7 @@ a call whose result could not be staged at all stops `start --placed`, and the r
 
 ## The Request
 
-Build one `TrendResearchRequest`. Freeze niche, locale, Reel format and exact UTC window. Resolve
+Build one `TrendResearchRequest`. Freeze niche, locale, Reel format and exact UTC window. Leave `locale.region` and `locale.language` null unless the user names a market or content language ("Spanish videos", "in Brazil"); then quote those words verbatim in `locale.named_in_ask`; `discover` checks it against the ask from `--question-file -`. The ask's own language sets only the reply language. Resolve
 relative durations from the current UTC clock, not from a run-directory name. Leave
 `schema_version` and `request_id` out (`discover` fills them, and keeps any value you do write).
 
@@ -38,19 +38,21 @@ the script own the dates:
   can).
 
 The same three policies run on every trend channel; a short-window copy ask (seven days or less)
-keeps its own path. A month of a niche rarely contains its own biggest posts, so a recency window
-answers a reach question with the wrong content rather than with less content. `discover` prints
-the script's result, including `instagram_lanes`: the discovery lanes this window calls for and each
-lane's collector bucket. When it prints `reaches_since: false`, the span starts before Instagram
-discovery can reach; keep the coverage incomplete rather than widening anything. A named span that
-ended more than a year ago fails there, before any collection.
+keeps its own path. A seven-day-or-shorter ask for which Reels beat their creator's own usual, or
+for any other account-relative multiple, is not a copy ask: it stays in the Workflow with
+`--policy user_named_span` and that span. A month of a niche rarely contains its own biggest posts,
+so a recency window answers a reach question with the wrong content rather than with less content.
+`discover` prints the script's result, including `instagram_lanes`: the discovery lanes this window
+calls for and each lane's collector bucket. When it prints `reaches_since: false`, the span starts
+before Instagram discovery can reach; keep the coverage incomplete rather than widening anything. A
+named span that ended more than a year ago fails there, before any collection.
 
 The window is the most consequential field in the Request: **three separate rules downstream switch
 on whether it spans more than one month** — how many intents may carry a `popular_topic`, whether
 discovery runs one lane or two, and what the report window becomes. A window frozen at thirty days
 silently turns all three off at once, and it does not fail: it produces a normal-looking
 single-lane report over recent content, with no signal anywhere in the artifacts that the reach half
-of the question was never asked. (Observed 2026-09-07: a reach question asked in plain words —
+of the question was never asked. (Observed: a reach question asked in plain words —
 which posts went furthest — was frozen as a thirty-day window, and the run went out with one lane,
 zero Popular intents and no reach content, looking healthy throughout.)
 
@@ -63,7 +65,7 @@ format evidence the scorer receives.
 
 **Whose handle.** When the ask supplies a video instead of naming an account, the Creator is that
 video's author: take the handle from what the source tool returned for it (`owner.username`, which
-`start` prints), never from an account this machine has on record. (Observed 2026-09-16: a run wrote
+`start` prints), never from an account this machine has on record. (Observed: a run wrote
 the machine's own registered account into `creator_profile.handle` while the tool had already
 returned the real author in the same run; the handle is projected as `anchor_handle`, so the Gate
 scored `creator_transferability` against the wrong person.)
@@ -94,7 +96,7 @@ two-to-five-term Search phrase. Leave `schema_version`, `request_id` and each `i
   phrases when the ask names several product surfaces; do not spend a slot on a neighbouring market.
 - When the plan is built from one supplied video rather than an account review, spend at least one
   slot on the format's common name — the words another community captions the same format with,
-  carrying none of the source video's own wording. (Measured 2026-09-16 across three channels: plans
+  carrying none of the source video's own wording. (Measured across three channels: plans
   that took every intent from the source's own words produced no such intent at all, and only the
   plans that reserved a slot for the common name reached outside the source's own vocabulary; the
   Creator's own wording retrieves a strict subset of their own format.)
@@ -142,7 +144,7 @@ a topic that has gone too broad.
 Search still returns dates without plays, and Popular still returns plays without a provider-side
 window. The server also runs one in-window Reels-search challenger page per intent: those rows come
 back with both plays and dates, then get locally filtered to the requested window. That challenger
-is a supplement, not a replacement (measured 2026-09-10: one benchmark niche gained 6 windowed-hot
+is a supplement, not a replacement (measured: one benchmark niche gained 6 windowed-hot
 items in the Top 12, 3 of them Y+; another gained 12). The validator writes the collector budget
 `search_pages_per_intent=2`, `popular_pages_per_intent=1`, `challenger_pages_per_intent=1`,
 `max_provider_calls=24`, `max_candidates=160`, `max_detail_calls=0`: six intents need 12 Search + 1
@@ -162,7 +164,9 @@ JSON
 cat > trend-query-plan.json <<'JSON'
 …
 JSON
-cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO>]
+cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO>] --question-file - <<'ASK'
+<the ask, verbatim>
+ASK
 ```
 
 `discover` freezes the window (once per run: running it again keeps the window it froze), then

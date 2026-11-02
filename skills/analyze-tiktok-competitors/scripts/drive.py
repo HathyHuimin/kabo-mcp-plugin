@@ -438,7 +438,10 @@ def stage_report(args: argparse.Namespace) -> None:
         if candidate.parent != Path.cwd().resolve() or candidate.name != "report-presentation.json":
             raise ValueError("presentation must be this run's report-presentation.json")
         render_args += ["--language", language, "--presentation", str(candidate)]
-    cd.script("render_creator_report.py", *render_args)
+    rendered = cd.script("render_creator_report.py", *render_args)
+    if rendered and rendered.strip():
+        # 渲染器只在有译文槽位退回原文时输出 kept_source_text，原样转给 agent。
+        say(rendered.rstrip())
     report = Path(CREATOR_REPORT).resolve()
     say(f"creator_report: {report}")
     say(report.read_text(encoding="utf-8").rstrip())

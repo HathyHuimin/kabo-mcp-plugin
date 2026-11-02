@@ -23,8 +23,11 @@ from Reel evidence is a wrong answer, not an approximation.
 2. Call `creator_trends_get_instagram_audio_board` exactly once with
    `{"parameters": {}, "delivery": "download"}` - no parameters at all. The defaults are the whole
    published board: the ranked rows plus today's and yesterday's fastest risers. Pass `limit`
-   (integer 1-50) only when the user asked for a specific number of rows; it truncates the ranked
-   rows and leaves the risers as they are. Pass `include_rising: false` only when the user said they
+   (integer 1-50) only when the user asked for fewer rows than the board holds; it truncates the
+   ranked rows and leaves the risers as they are, and never returns more rows than the published
+   board. When the user asks for more rows than the board returned (say 100-300 songs from a 20-row
+   board), say in one sentence how many rows the published board holds; do not refetch, page, or
+   fill the gap from other sources. Pass `include_rising: false` only when the user said they
    do not want the risers. Do not repeat a completed call, do not batch it with other calls, and
    never substitute another tool or another operation for this one - not a music catalog search, not
    Reel search. A failed or unavailable operation is not an empty board: report the missing board
@@ -45,6 +48,11 @@ This is the path's final step; its deliverable is `creator-report.md`. Deliver t
 without another model rewrite. Never
 re-rank, filter, dedupe or merge the ranked rows and the riser lists, never recompute growth, and
 never add a row, count or growth figure the board does not carry.
+
+When the user also asks for an idea for each audio, give the ideas after the delivered board,
+labelled as suggestions rather than board data, one per distinct audio in the board's order: every
+ranked row, then each riser that is not already a ranked row (a riser that is also ranked gets no
+second idea). Never fold them into one shared plan for every row.
 
 Always say which day the board is from. The day is `fetchedAt` in the response and the renderer
 prints it. When `stale` is true, say plainly that today's board has not been built yet and this is

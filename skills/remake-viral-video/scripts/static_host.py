@@ -22,6 +22,7 @@ import os
 import re
 import secrets
 import shutil
+import ssl
 import sys
 import urllib.error
 import urllib.request
@@ -224,9 +225,47 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+def hashed_capath(path):
+    # OpenSSL 只从目录里读 <8 位十六进制>.<数字> 形式的证书链接；目录非空但没有这类文件时等于没有信任库。
+    try:
+        with os.scandir(path) as entries:
+            return any(re.fullmatch(r"[0-9a-f]{8}\.\d+", entry.name) for entry in entries)
+    except (OSError, TypeError):
+        return False
+
+
+def tls_context():
+    # macOS 上 python.org 装的 Python 没跑过 Install Certificates 时默认信任库是空的，每个 HTTPS 下载都报证书失败
+    # （插件实测 T-20261028-04）。只在默认信任库确实不存在时换用 certifi 或系统 CA 包，证书照常校验；
+    # 某个候选读不了或格式不对就试下一个。
+    # Windows 的默认上下文读系统证书库，文件路径为空不代表没有信任库，保持默认。
+    if sys.platform == "win32":
+        return None
+    paths = ssl.get_default_verify_paths()
+    if (paths.cafile and os.path.isfile(paths.cafile)) or hashed_capath(paths.capath):
+        return None
+    candidates = []
+    try:
+        import certifi
+        candidates.append(certifi.where())
+    except Exception:
+        pass
+    candidates += ["/etc/ssl/cert.pem", "/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt"]
+    for path in candidates:
+        if not os.path.isfile(path):
+            continue
+        try:
+            return ssl.create_default_context(cafile=path)
+        except (OSError, ssl.SSLError):
+            continue
+    return None
+
+
 def build_opener():
     # 测试可在进程内替换这个函数注入假的 HTTPS 处理器；命令行没有入口能改它。
-    return urllib.request.build_opener(NoRedirect())
+    context = tls_context()
+    handlers = [NoRedirect()] + ([urllib.request.HTTPSHandler(context=context)] if context else [])
+    return urllib.request.build_opener(*handlers)
 
 
 def expired(descriptor):

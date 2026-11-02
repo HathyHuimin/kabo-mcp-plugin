@@ -17,7 +17,9 @@ def format_ratio(value):
         raise ValueError("Search insight rise_ratio is invalid")
     if value == int(value):
         return f"{int(value)}×"
-    return f"{value:.1f}×"
+    text = f"{value:.1f}"
+    # 73/70 printed as "1.0×" beside a "rising" label; two decimals keep such a rise visible.
+    return f"{value:.2f}×" if text in ("1.0", "0.0") else f"{text}×"
 
 
 def expected_rise(seq):

@@ -11,7 +11,10 @@ Freeze `discovery_mode` and `competitor_refs` from the user's scope before retri
 
 - `auto` discovers accounts with an empty reference list; references written under `auto` are
   kept and the run proceeds as `hybrid`.
-- `provided` compares only the supplied public account handles or profile URLs (up to twenty).
+- `provided` compares only the supplied public account handles or profile URLs (up to twenty). A
+  profile tab URL (`/@name/shorts`, `/@name/videos`, `/name/reels/`) names that one account, not a
+  content format: keep the Request's `formats`, the subject description and the findings to what
+  the user asked in words, never narrowed to the tab's format.
 - `hybrid` preserves those accounts and may discover additional peers.
 
 Do not reinterpret a requested comparison as discovery, or require a separate subject-account
@@ -30,6 +33,9 @@ requested identities before adding automatic candidates.
 - Automatic six-account and media quotas apply to discovered additions, not to the explicit
   roster. Preserve all requested accounts in the audit even when only some support content
   findings.
+- When the user names how many competitors they want ("find 10 similar channels"), write that
+  number as `requested_competitor_count`. The run still compares at most six discovered accounts,
+  and the reply states that limit; do not promise or imply more accounts than were compared.
 
 ## Resolving the subject
 
@@ -72,7 +78,7 @@ stripping punctuation from a product name.
 niche, such as «I make <niche> videos on YouTube» — there is no identity to search: run `start
 --platform <instagram|youtube>` without `--query`, skip the `subject` stage, and freeze the
 Request from the user's own words with no `account_ref` and no market they did not state. Never
-search the niche and adopt one of its channels as the user: measured 2026-09-18, doing so turned
+search the niche and adopt one of its channels as the user: in testing, doing so turned
 an English-language niche into a Chinese one — the adopted channel's market — and discovery
 missed every labelled competitor.
 
@@ -103,8 +109,10 @@ schemas.
   `discover` writes those phrases onto the Request's `subject` itself; never retype them.
 
 If no returned candidate supports the requested identity, stop as unresolved instead of assigning
-an unrelated market. For an explicit YouTube @handle, the driver preserves the original query and
-requires the fetched profile's canonical public handle to match it; a bio mention or promotion of
+an unrelated market. When only a YouTube @handle is known, run `subject --platform youtube --handle
+<@handle>`: the driver resolves it to its channel id with `youtube_get_channel` first (a bare
+`--handle` without `--platform youtube` means Instagram). For an explicit YouTube @handle, the
+driver preserves that handle and requires the fetched profile's canonical public handle to match it; a bio mention or promotion of
 the product does not establish that identity. A mismatch or missing handle proof stops before
 phrase extraction and discovery.
 
@@ -145,7 +153,7 @@ that answer one question are frequently wrong answers to the other.
   company's own site. Use what the user wrote about that site, and say the site itself was not
   read.
 - Default to `creator` only after those surfaces still show the subject's own output is the
-  content and no purchase offer is visible. Measured 2026-09-14 on a YouTube name query whose
+  content and no purchase offer is visible. Measured on a YouTube name query whose
   channel had no uploads: defaulting `creator` from the empty profile retrieved deal and
   real-estate channels instead of purchase alternatives.
 

@@ -10,7 +10,7 @@ teardown: a craft teardown has no fixed shape on purpose — see `craft-teardown
 carry these titles into one.
 
 A summary, then three cards with fixed titles, three lines in each, paired straight down. This is
-a three-card cut of a six-section layout benchmarked during V3, minus two of its sections; the
+a three-card cut of a tested six-section layout, minus two of its sections; the
 reason a creator can read it fast is that the titles never move, so they know where the answer
 lives before they start reading.
 
@@ -70,7 +70,7 @@ a third of the room for the same content.
 | `data_note` | 240 |
 | `hooks[].purpose` | 160 |
 
-These are not a style preference. The six-section and four-card layouts benchmarked during V3
+These are not a style preference. The tested six-section and four-card layouts
 read quickly because each part is one or two sentences; the reason to cap a field rather than cut a card is
 that the sequence is what carries the analysis, and dropping a card would drop a reading.
 

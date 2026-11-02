@@ -2,7 +2,7 @@
 """Persist one connector envelope from this run's staged copy of that response.
 
 The tool result the model sees is a rendering: hosts fence it and abridge large results.
-Retyping it once lost every row (ACCT-021: 100 TikTok posts persisted with empty ``rows``), so
+Retyping it once lost every row (100 TikTok posts persisted with empty ``rows``), so
 the bytes must come from a complete copy. The source is this run's own staging directory,
 ``<run>/snapshot/.host-evidence``, which ``static_host.py stage`` fills from the host's exported
 tool result after checking it. This script never reads a host's conversation or session records:

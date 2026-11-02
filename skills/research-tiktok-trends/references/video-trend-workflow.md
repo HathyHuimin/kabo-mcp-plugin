@@ -7,7 +7,10 @@ synthesis. `<run directory>` and `<skill directory>` are the absolute paths from
 in `SKILL.md`.
 
 If the requested window is seven days or shorter and the user wants recent viral content to copy,
-stop this workflow and use the short-window route (`references/short-window.md`) only.
+stop this workflow and use the short-window route (`references/short-window.md`) only. A
+seven-day-or-shorter ask for which videos beat their creator's own usual, or for any other
+account-relative multiple, is not a short-window copy ask: it stays in this workflow with
+`--policy user_named_span` and that span.
 
 ## How the driver works
 
@@ -69,7 +72,7 @@ from. A private, removed or photo post prints as not resolved; go on without it.
 ## 2. The Request, the query plan and discovery
 
 Freeze one `trend-research-request.v3` with `platforms: ["tiktok"]`, a narrow niche, locale,
-`tiktok_video` format and exact UTC window.
+`tiktok_video` format and exact UTC window. Leave `locale.region` and `locale.language` null unless the user names a market or content language ("Spanish videos"); then quote those words verbatim in `locale.named_in_ask`; `discover` checks it against the ask from `--question-file -`. The ask's own language sets only the reply language.
 
 - **Creator.** When the ask supplies a video instead of naming an account, the Creator is that
   video's author: take `creator_profile.handle` from what `start` printed for it
@@ -90,10 +93,9 @@ Freeze one `trend-research-request.v3` with `platforms: ["tiktok"]`, a narrow ni
   search intents; a query in a script written without spaces (Chinese, Japanese, Thai) is one
   natural phrase of 2–20 characters instead, with no spaces inserted to pass. With only two slots,
   spend one on the source's own wording and one on the format's common name — a phrase another
-  community would search for the same thing, carrying none of the source's words. Measured
-  2026-09-16: every plan that spent both slots on the source's own words returned nothing outside
-  it, while the plans that reserved the second slot for the common name were the only ones that
-  reached beyond it.
+  community would search for the same thing, carrying none of the source's words. In tests,
+  only the plans that reserved the second slot for the common name reached beyond the source's own
+  words.
 - **Region.** The search region is the Request region: every search carries it as `region` and the
   ranked board as `country_code`, one and the same value on every call. When the Request region is
   unknown, leave it `null` and either name one region with `--region <code>` (it is then used on
@@ -109,7 +111,9 @@ JSON
 cat > tiktok-trend-query-plan.json <<'JSON'
 …
 JSON
-KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO>] [--region <code>]
+KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' discover --policy <default_1y|recent_90d|user_named_span> [--since <ISO> --until <ISO>] [--region <code>] --question-file - <<'ASK'
+<the ask, verbatim>
+ASK
 ```
 
 (chain the three with `&&`). What `discover` does:
@@ -165,13 +169,14 @@ Score from the numbered table only.
   visible content, not route, rank, followers or metrics.
 - Score `topic_relevance` and `locale_fit` for every item, and `creator_transferability` whenever
   the table's first line carries `subject.anchor_handle` or `subject.anchor_mechanisms`. **Omit
-  `creator_transferability` entirely when it carries neither.** With no anchor there is nothing to
-  judge adaptability against, and a number invented there is indistinguishable from a real verdict
-  — a run that never learned who the Creator is would otherwise carry a fabricated score at a
-  quarter of the ranking weight. Omitting it is a supported state, not an error: the contract
-  accepts the field's absence and the ranking redistributes its weight proportionally across the
-  other two. Never write a placeholder such as 0 or 50 in its place, and never omit it when an
-  anchor is present.
+  `creator_transferability` entirely when it carries neither.** With no anchor the score would be
+  invented, yet carry a quarter of the ranking weight. Omitting it is a supported state, not an
+  error: the contract accepts the field's absence and the ranking redistributes its weight
+  proportionally across the other two. Never write a placeholder such as 0 or 50 in its place, and
+  never omit it when an anchor is present.
+- `locale_fit` is fit to the market and content language the user named, not geographic
+  popularity. When they named none, the language they write in sets only the reply language: do
+  not score an item down for being in another language.
 
 ```bash
 cd '<run directory>' && cat > trend-relevance-gate.tsv <<'TSV'
@@ -211,10 +216,13 @@ Write one `trend-research-synthesis.v3.3` from allowlisted evidence only.
 
 - Read `analysis.claim_boundary.snapshot_count` before choosing any pattern stage or
   emerging-creator status. When it is below 2, every pattern `stage` MUST be
-  `current_high_performance` or `recurring_pattern`, every emerging creator MUST avoid
-  `breakout_confirmed`, and `pattern`, `mechanism`, `why_now`, `summary` and `overview` MUST NOT
-  claim or imply momentum (including rising, falling, growth, acceleration, breakout, "starting
-  to", "shifting toward", or equivalents in the delivery language).
+  `current_high_performance` or `recurring_pattern`: `current_high_performance` only when the
+  pattern cites an item at 1.5× or more of its own account's usual or in the top quarter by public
+  metrics, otherwise `recurring_pattern` (when no cited item meets either, say in the overview that
+  nothing beat its account's usual). Every emerging creator MUST avoid `breakout_confirmed`, and
+  `pattern`, `mechanism`, `why_now`, `summary` and `overview` MUST NOT claim or imply momentum
+  (including rising, falling, growth, acceleration, breakout, "starting to", "shifting toward", or
+  equivalents in the delivery language).
 - Keep natural headlines, `why_now`, up to three mechanisms and Creator-fit directions. Do not copy
   formulas, routes, windows, sample sizes, coverage or audit gaps into Creator-facing prose; write
   any such note into `data_gaps`, which is never rendered.
@@ -223,36 +231,9 @@ Write one `trend-research-synthesis.v3.3` from allowlisted evidence only.
   keep the public `url` out of those fields; the Composer resolves eligible IDs and supplies public
   proof links. Do not derive IDs from a URL.
 
-**Openings.** For a video mechanism or Creator-fit direction that needs an opening choice, apply
-this in the existing mechanism or direction fields; cite only current allowlisted content. It adds
-no steps to the sound-board, scene-sound or search-term routes.
-
-- Choose a feasible mechanism from declared material: proof needs authorised readable proof,
-  comparison needs both sides, and demonstration needs the actual action or workflow. Make the
-  recommended opening one complete production choice: the first picture and the first spoken or
-  heard sound (or intentional silence) together, then the immediate meaning or question their
-  combination conveys. Intentional quiet, no title and first-person narration can be valid; apply
-  checkpoints to the content form.
-- With titles and captions only, keep reference-related findings, including overview and pattern
-  labels, about their wording. Label inferred mechanisms as title or caption interpretations ("the
-  titles suggest a demonstration direction"), rather than narrating what the creators show or do.
-  Reserve action order, visible proof, first frames, text timing, sound and delivery for observed
-  media. State proposed execution as a recommendation for the creator's next video. Public
-  performance numbers do not establish why an opening worked; a transcript is not a listening
-  observation. Keep current-task citations and metrics unchanged.
-- `rank` printed the opening-method catalog (`HookResearchContext`: pattern ids and names). For a
-  relevant short-video direction, choose a suitable pattern and read its picture, sound and
-  material details only through the script, in this same synthesis:
-  `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/prepare_hook_context.py' --platform tiktok --purpose trends
-  --pattern-id <Mxx> --output hook-opening-<Mxx>.json`. Never open `references/hook-core/`
-  directly: the script is the only reader of the patterns. Then add one concrete opening execution
-  in the existing recommendation, angle, differentiation or next-shoot field. Read
-  `references/opening-method.md` when choosing between patterns needs more method.
-- Unconfirmed materials are preparation requirements, not assets the creator already owns. The
-  catalog is method context: it supplies no viewing or listening evidence, current account
-  evidence or private retention, and never a current-task proof citation. Write the production
-  choice in the delivery language; keep pattern ids, internal labels and helper commands in task
-  artifacts, outside Creator-facing prose.
+**Openings.** When a video mechanism or Creator-fit direction needs an opening choice, read
+`references/synthesis-openings.md` whole before writing it. It adds no steps to the sound-board,
+scene-sound or search-term routes.
 
 ## 6. Report and delivery
 

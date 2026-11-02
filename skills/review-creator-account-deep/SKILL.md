@@ -116,8 +116,9 @@ Deep never pages beyond the catalog the standard review already fetched.
    validated report** that `review-creator-account` produced for this same platform, handle and
    original question: `<standard run>/account_analysis.json`, `<standard run>/report/ACCOUNT_REVIEW.md`
    (`output/` for a review that wrote there) and the original question in
-   `<standard run>/question.txt`. Use only a standard run whose `drive.py verify-report` printed
-   `creator_report: <path>` in this conversation: the report file exists before its validators run,
+   `<standard run>/question.txt`. Use only a standard run whose final step printed
+   `creator_report: <path>` in this conversation (`drive.py report` when it said the report is
+   final, otherwise `drive.py verify-report`): the report file exists before its validators run,
    so its presence alone proves nothing. An earlier session, a host transcript or session log, or the
    creator saying the review is done does not count, and you must not read host records to find
    one; if you cannot see that line in this conversation, stop and ask the creator to run (or

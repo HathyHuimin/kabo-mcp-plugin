@@ -136,7 +136,9 @@ again.
   its weight proportionally across `topic_relevance` and `locale_fit`. Never write a placeholder such
   as 0 or 50 in its place, and never omit it when an anchor is present.
 - `locale_fit`: fit to the requested language, culture and target market; it is not geographic
-  popularity.
+  popularity. When the user named no market or content
+  language, the language they write in sets only the reply language: do not score an item down for
+  being in another language.
 
 Two promotional caps override the bands, with one exception:
 

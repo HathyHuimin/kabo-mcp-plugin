@@ -49,9 +49,9 @@ directory, write nothing elsewhere, and name the directory to use.
   tool, and then run the next stage. In a heredoc JSON quotes are literal: do not escape them as
   `\"`, and leave no trailing comma. Write artifact fields as JSON, never as extra driver flags.
 - Leave out what carries no judgment: the Request's `schema_version`, `request_id` and, for the
-  default last 30 days, `window`; the intents file's `schema_version`, `platform` and a
-  `popular_topic` that would only repeat its `search_query`. The stages fill them and keep any
-  value you write.
+  default last 30 days, `window`; the intents file's `schema_version`, `platform` and a category
+  lane's `popular_topic` that would only repeat its `search_query`. The stages fill them and keep
+  any value you write.
 - A stage that fetches may still be running when the command first returns output; when your shell
   tool lets you choose, give each `drive.py` command 120 s and wait on that same command again
   rather than polling in shorter steps. Never start a stage a second time while it runs.
@@ -160,7 +160,10 @@ rewrite a judgment to get past a validator.
    ```sh
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' subject --handle <instagram handle>
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' subject --channel-id <UC… channel id>
+   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' subject --platform youtube --handle <@handle>
    ```
+
+   The last form is for YouTube when only an @handle is known; a bare `--handle` means Instagram.
 
 2. **Request and intents.** Read `references/discovery-intents.md` whole. Write both artifacts and
    start discovery in one command:
@@ -193,14 +196,12 @@ rewrite a judgment to get past a validator.
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' content
    ```
 
-   If `content` stops on one reserve, classify only that handle and run `content` again.
+   If `content` stops on one reserve, classify only that handle and run `content` again without
+   `--placed`.
 5. **Comments (optional).** Only when the user asks what the selected accounts have not done or what
-   the audience wants: read `references/synthesis.md` whole, then, after `content` completed every
-   hand-over, run this as its own command:
-
-   ```sh
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/drive.py' comments
-   ```
+   the audience wants: read `references/synthesis.md` whole first and run `content --comments` in
+   place of `content` in step 4; it hands over the histories, then the comments. If you decide only
+   after `content` finished, run `drive.py comments` as its own command.
 
 6. **Synthesis.** Read `references/synthesis.md` whole (if not already), write
    `competitor-research-synthesis.json` once and run the final step:

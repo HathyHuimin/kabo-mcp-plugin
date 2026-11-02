@@ -9,7 +9,9 @@ Written as one JSON object per handle it is thousands of output tokens (measured
 
 where `n` is the author's 1-based position in the printed table. This script checks that every
 author is scored exactly once with integers 0–100 and writes the same Gate JSON `select_accounts.py`
-already reads.
+already reads. A few authors left unscored (at most one in twenty) are scored 0, or
+rejected on YouTube, and named in the output: refusing the whole Gate for one forgotten line of 68
+spent the run's last correction and closed it (plugins, 2026-10-27).
 """
 
 from __future__ import annotations
@@ -25,6 +27,15 @@ sys.dont_write_bytecode = True
 FIELDS = ("category_fit", "audience_job_fit", "sustained_focus", "locale_fit")
 
 
+def tolerated(missing: list[int], total: int, unscored: list[int] | None) -> bool:
+    """Whether these unscored numbers are few enough to fill in; records them in `unscored`."""
+    if len(missing) > total // 20:
+        return False
+    if unscored is not None:
+        unscored.extend(missing)
+    return True
+
+
 def load(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -32,7 +43,7 @@ def load(path: Path) -> dict[str, Any]:
     return value
 
 
-def build(gate_input: dict[str, Any], lines: str) -> dict[str, Any]:
+def build(gate_input: dict[str, Any], lines: str, unscored: list[int] | None = None) -> dict[str, Any]:
     if gate_input.get("schema_version") != "competitor-discovery-gate-input.v1":
         raise ValueError("input must be competitor-discovery-gate-input.v1")
     authors = gate_input.get("authors")
@@ -59,7 +70,9 @@ def build(gate_input: dict[str, Any], lines: str) -> dict[str, Any]:
             values[field] = int(token)
         scored[n] = values
     missing = [n for n in range(1, len(authors) + 1) if n not in scored]
-    if missing:
+    if missing and tolerated(missing, len(authors), unscored):
+        scored.update({n: {field: 0 for field in FIELDS} for n in missing})
+    elif missing:
         preview = ", ".join(map(str, missing[:20])) + (" …" if len(missing) > 20 else "")
         raise ValueError(f"{len(missing)} author(s) not scored: {preview}; score every numbered line exactly once")
     return {
@@ -76,7 +89,7 @@ LABELS = {"d": "direct_refs", "direct": "direct_refs", "a": "adjacent_refs", "ad
           "r": "reject_refs", "reject": "reject_refs"}
 
 
-def build_labels(gate_input: dict[str, Any], lines: str) -> dict[str, Any]:
+def build_labels(gate_input: dict[str, Any], lines: str, unscored: list[int] | None = None) -> dict[str, Any]:
     """The YouTube Gate: `<n> d|a|r` per numbered channel -> `competitor-discovery-gate.v2`.
 
     Each line used to be a 24-character channel id retyped into one of three arrays — 1.4k–1.5k output
@@ -108,7 +121,9 @@ def build_labels(gate_input: dict[str, Any], lines: str) -> dict[str, Any]:
             raise ValueError(f"line {line_no}: {tokens[1]!r} is not d (direct), a (adjacent) or r (reject)")
         labelled[n] = label
     missing = [n for n in range(1, len(authors) + 1) if n not in labelled]
-    if missing:
+    if missing and tolerated(missing, len(authors), unscored):
+        labelled.update({n: "reject_refs" for n in missing})
+    elif missing:
         preview = ", ".join(map(str, missing[:20])) + (" …" if len(missing) > 20 else "")
         raise ValueError(f"{len(missing)} channel(s) not classified: {preview}; classify every numbered line exactly once")
     gate: dict[str, Any] = {"schema_version": "competitor-discovery-gate.v2",
@@ -128,11 +143,18 @@ def main() -> int:
     args = parser.parse_args()
     try:
         lines = args.scores.read_text(encoding="utf-8")
-        gate = build_labels(load(args.input), lines) if args.labels else build(load(args.input), lines)
+        unscored: list[int] = []
+        gate = (build_labels(load(args.input), lines, unscored) if args.labels
+                else build(load(args.input), lines, unscored))
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(gate, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         count = len(gate["items"]) if "items" in gate else sum(len(gate[k]) for k in ("direct_refs", "adjacent_refs", "reject_refs"))
-        print(json.dumps({"status": "ok", "authors": count, "path": str(args.output)}))
+        result: dict[str, Any] = {"status": "ok", "authors": count, "path": str(args.output)}
+        if unscored:
+            result["unscored"] = unscored
+            result["note"] = (f"{len(unscored)} numbered line(s) were missing and count as "
+                              f"{'reject' if args.labels else 'scored 0'}: {', '.join(map(str, unscored))}")
+        print(json.dumps(result, ensure_ascii=False))
         return 0
     except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
         print(json.dumps({"status": "failed", "error": f"{type(error).__name__}: {error}"}, ensure_ascii=False))

@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import os
 import sys
 import subprocess
 import tempfile
@@ -254,6 +255,54 @@ class VideoDeliveryFallbackTest(unittest.TestCase):
                 self.assertEqual({"one", "two"}, {row["content_id"] for row in report["top_content"]})
                 self.assertNotIn("reference_videos", report)
                 self.assertEqual([], module(platform, "validate_output").validate(report, req, analysis, [self.candidates(platform)]))
+                rendered = module(platform, "render_creator_report").render(report)
+                for item in report["top_content"]:
+                    self.assertIn(item["url"], rendered)
+
+    def test_driver_correction_keeps_candidates_and_then_delivers_references(self):
+        for platform in ("instagram", "tiktok", "youtube"):
+            with self.subTest(platform=platform), tempfile.TemporaryDirectory() as tmp:
+                scripts = RUNTIME / f"research-{platform}-trends/scripts"
+                made = subprocess.run([sys.executable, "-B", str(scripts / "static_host.py"),
+                                       "init", "--workspace", tmp], text=True, capture_output=True)
+                self.assertEqual(0, made.returncode, made.stdout + made.stderr)
+                run = Path(made.stdout.strip())
+                env = {**os.environ, "KABO_STATIC_RUN_DIR": str(run), "PYTHONDONTWRITEBYTECODE": "1"}
+
+                def stage(name):
+                    result = subprocess.run([sys.executable, "-B", str(scripts / "drive.py"), name],
+                                            cwd=run, env=env, text=True, capture_output=True)
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    self.assertNotIn("call: ", result.stdout, "report correction must not fetch data")
+                    return result.stdout
+
+                stage("start")
+                req, snapshot, analysis, synthesis = self.empty_report_inputs(platform)
+                candidates = self.candidates(platform)
+                candidate_name = {"instagram": "trend-candidate-set.json", "tiktok": "tiktok-trend-candidate-set.json",
+                                  "youtube": "youtube-trend-candidate-set.json"}[platform]
+                for name, value in (("trend-research-request.json", req), ("public-content-snapshot.json", snapshot),
+                                    ("public-content-analysis.json", analysis), (candidate_name, candidates)):
+                    (run / name).write_text(json.dumps(value))
+                source_bytes = (run / candidate_name).read_bytes()
+                authored = run / "trend-research-synthesis.json"
+                authored.write_text(json.dumps({**synthesis, "featured_content_refs": ["unseated"]}))
+                rejected_bytes = authored.read_bytes()
+                rejected = stage("report")
+                self.assertIn('"status": "needs_correction"', rejected)
+                self.assertEqual(rejected_bytes, authored.read_bytes())
+                self.assertFalse((run / "trend-research-report.json").exists())
+
+                authored.write_text(json.dumps(synthesis))
+                delivered = stage("report")
+                self.assertNotIn('"status": "needs_correction"', delivered)
+                report = json.loads((run / "trend-research-report.json").read_text())
+                self.assertEqual("partial", report["status"])
+                self.assertEqual(3, len(report["reference_videos"]))
+                markdown = (run / "creator-report.md").read_text()
+                for item in report["reference_videos"]:
+                    self.assertIn(item["url"], markdown)
+                self.assertEqual(source_bytes, (run / candidate_name).read_bytes())
 
     def test_reference_links_are_bound_to_candidates_and_cannot_claim_complete(self):
         for platform in ("instagram", "tiktok", "youtube"):

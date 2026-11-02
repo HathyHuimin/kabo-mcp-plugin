@@ -35,6 +35,10 @@ the inline `items` form.
 - Never rebuild the arguments or `selected`, re-derive them from the Gate, add or drop entries, or
   reorder them, even when a tool description recommends the handle form. Do not run a legacy
   selector, allocate route slots, hand-pick or reorder.
+- Copy every `content_key` with its `instagram:` prefix exactly as printed. If the enrichment
+  answers that selected keys are absent from the candidate set, the arguments were mis-copied, not
+  the data missing: send the printed arguments once more, verbatim, then run `rank --placed`; do
+  not close the run.
 
 Two lanes always use the inline form — the handle form binds one `candidate_set_id` and there are
 two — with `ranking_mode` set to `relevance_saturated.v1` and each item tagged with its `lane`. Items

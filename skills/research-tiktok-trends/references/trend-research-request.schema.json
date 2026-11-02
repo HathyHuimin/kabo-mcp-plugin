@@ -83,6 +83,13 @@
             "string",
             "null"
           ]
+        },
+        "named_in_ask": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Required when region or language is not null: the user's own words, copied exactly from the ask, that name the market or content language (\"Spanish videos\", \"in Brazil\"). The ask's own language is not one; discover checks this quote against the ask."
         }
       }
     },

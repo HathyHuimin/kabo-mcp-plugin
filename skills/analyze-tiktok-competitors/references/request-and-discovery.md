@@ -53,9 +53,9 @@ category or audience-job phrases.
   its bio, captions or website description, translated into the market's language — never from a
   broader term you generalised to. When one of its channels is TikTok itself, use another, because
   TikTok's own name matches every tool account here.
-- English phrases must be two to five whitespace-separated terms. Chinese, Japanese or Korean
-  phrases may be one 2–20-character phrase without spaces; do not insert dummy English spaces just
-  to pass the validator.
+- Each `search_query` is two to five whitespace-separated words; a Chinese, Japanese or Korean
+  phrase may instead be one 2–20-character phrase without spaces (do not insert dummy spaces just
+  to pass the validator). A longer description fails `discover`.
 
 ## The search region
 

@@ -383,7 +383,9 @@ def compose(
         if not creator_on_selection(ref, creator, included):
             continue
         if ref in listed:
-            raise ValueError(f"duplicate competitor account_ref: {ref}")
+            # A repeated account (the same ref twice, or a handle that resolves to an id already
+            # listed) adds no evidence; keep its first entry instead of discarding the whole report.
+            continue
         sample_size = analyzed_sample_size(ref, contents, evidence_ids)
         if sample_size < 1 and included is None:
             omitted_zero_sample_accounts.append({
@@ -634,6 +636,8 @@ def compose(
             "competitor_count": len(competitors),
             "coverage_complete": coverage_complete,
             **({"requested_not_compared": requested_not_compared} if requested_not_compared else {}),
+            **({"requested_competitor_count": request["requested_competitor_count"]}
+               if isinstance(request.get("requested_competitor_count"), int) else {}),
         },
         "overview": synthesis["overview"],
         "competitors": competitors,

@@ -41,7 +41,8 @@
         "eligible_count": {"type": "integer", "minimum": 0, "description": "Analyzed in-window evidence rows belonging to the representative report accounts, not the number of top_content citations."},
         "competitor_count": {"type": "integer", "minimum": 0},
         "coverage_complete": {"type": "boolean"},
-        "requested_not_compared": {"type": "array", "maxItems": 20, "items": {"type": "string", "minLength": 1}, "description": "References the Creator explicitly requested that could not be compared with verified public evidence; no substitute account was used for them."}
+        "requested_not_compared": {"type": "array", "maxItems": 20, "items": {"type": "string", "minLength": 1}, "description": "References the Creator explicitly requested that could not be compared with verified public evidence; no substitute account was used for them."},
+        "requested_competitor_count": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Copied from the Request when the Creator named how many competitors they wanted; when it exceeds competitor_count the reply discloses the per-run cap."}
       }
     },
     "overview": {

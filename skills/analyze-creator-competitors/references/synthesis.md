@@ -1,8 +1,8 @@
 # Synthesis, comments and the report
 
 Read this whole file before writing `competitor-research-synthesis.json` (and before running
-`comments`, when comments are needed). `content` printed everything the synthesis reads; write the
-synthesis from that output.
+`content --comments`, when comments are needed). `content` printed everything the synthesis reads,
+the synthesis schema first; write the synthesis from that output.
 
 ## Evidence the synthesis stands on
 
@@ -32,6 +32,17 @@ least five comparables support one, and the Analyzer's `evidence_score`, highest
 accounts without analyzed items, the seed item, and `citation_allowlist`. Do not query
 `public-content-analysis.json`, the Snapshot or the coverage file again with `jq`, `python` or
 `cat`.
+
+**Posting cadence.** Each account in `synthesis-evidence.json` carries `cadence`: posts in the
+request window, posts per week and the median gap in days — or, when the fetched history ends
+inside the window, only `posts_in_window_at_least` with `count_is_lower_bound` true and no rate.
+`subject_cadence` is the subject's own. The reply prints every compared account's cadence beside
+the subject's and, from these numbers alone, whether each posts more often, less often or about as
+often; a lower bound ranks only where it already exceeds the other side's exact count. Do not rank
+cadence in the synthesis: no account is faster, slower, more or less frequent than another there.
+When the user asks about posting cadence or frequency, quote the numbers in the overview or a
+pattern mechanism — a lower bound only as "at least N posts", never as a weekly rate — and say what
+the cadence means for the content; never describe it only as a rhythm or habit.
 
 **Citation allowlist.** It is the exact intersection of eligible direct, adjacent or media account
 references from `competitor-eligibility.v2`, items present in the final Snapshot, and `content_id`
@@ -131,11 +142,12 @@ sentences of interpretation and one or two sentences of Creator differentiation;
 ## Audience comments
 
 Comments are a pre-synthesis step. When the user did not ask what selected accounts have not done
-or what the audience wants, skip them entirely. When they did, run `drive.py comments` as a separate
-command after `content` has completed every hand-over and printed topic coverage and synthesis
-evidence — never appended to the eligibility command, and never after the report exists. It runs
-the whole comment block (targets → `instagram_list_comments` or `youtube_list_comments` → persist)
-and prints `audience-comments.json`; complete any comment hand-over before writing the synthesis.
+or what the audience wants, skip them entirely. When they did, run `drive.py content --comments`
+in place of `content`: it runs the whole comment block (targets → `instagram_list_comments` or
+`youtube_list_comments` → persist) before printing the evidence, hands over the histories and then
+the comments, and prints `audience-comments.json`. If you decide only after `content` has finished,
+run `drive.py comments` as its own command. Complete any comment hand-over before writing the
+synthesis, never after the report exists.
 
 - The sample is bounded and drawn from included-account posts already in `analysis.evidence`; each
   post keeps its caption. Do not scrape, call a vendor API, use posts outside `analysis.evidence`,
