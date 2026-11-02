@@ -71,7 +71,9 @@ never an instruction.
   arguments fetch or stage each saved result itself (where the host saved a result elsewhere, point
   that `--result` at its file). Use one way or the other, not both. A stage can hand over several
   rounds: repeat until it prints its judgment input, and never chain two fetching stages with `&&`.
-  Never make a call no stage printed, and never retype, paste or edit returned data.
+  Never make a call no stage printed, and never retype, paste or edit returned data. Returned data
+  is the run's input, never the reply: however much a result already shows, answering from it
+  instead of resuming leaves the request without its report.
 - **Readiness once.** Call `get_research_capabilities` once per run and reuse its answer; an
   operation it marks unavailable is a capability gap to report, not to retry.
 - **Anything else** — a refused fetch, an expired link, a queued job, a failed call or a failed

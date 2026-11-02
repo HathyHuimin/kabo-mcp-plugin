@@ -1309,6 +1309,8 @@ def hand_over_in_one(calls: list[dict[str, Any]], why: str = "") -> None:
     try:
         shared_hand_over(calls, why)
     except SystemExit:
+        say("These results are this run's inputs, not the reply: whatever they show, the next step after the "
+            "calls is the resume, never an answer from the returned data.")
         say("Or, once every result above is saved, resume in one command instead (it fetches or stages each saved "
             "result itself, in this order): " + cd.resume_command() + "".join(
                 f" --result {mapped['tool']}={name}" for mapped, name in zip(public, names)))
