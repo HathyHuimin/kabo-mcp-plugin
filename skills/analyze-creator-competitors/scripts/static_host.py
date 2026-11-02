@@ -64,6 +64,9 @@ AGGREGATE_TOOLS = {"collect_instagram_trend_candidates", "collect_youtube_trend_
 AGGREGATE_SCHEMAS = {"collect_instagram_trend_candidates": "trend-candidate-set.v1", "collect_youtube_trend_candidates": "youtube-trend-candidate-set.v1"}
 # 异步任务的终态与产物字节由这两个工具返回，同样可以保存为证据。
 JOB_TOOLS = {"get_research_data_job", "read_research_data_artifacts"}
+# 本 Skill 交给模型的组合取数工具（KS9）：主页 + 历史的多轮取数由后台一次做完，入参原样在顶层。
+# 它的 calls[] 逐项按上面 CONNECTOR_TOOLS 声明的数据工具校验落盘。
+HANDED_COMPOSITES = {"collect_account_history"}
 # 工具声明的操作之外，提供方可以如实返回的另一条路线；不能放宽到任意操作。
 # 帖子详情：主源拒绝时 lookup 改走详情路线，信封记的就是那条路线。
 ROUTE_ALIASES = {"instagram-discovery/get_post": {"instagram-detail-proxy/get_post"}}
@@ -117,6 +120,9 @@ def public_calls(call):
                 raise ValueError("lookup_instagram_post needs the post link or shortcode")
             return [{"tool": name, "arguments": {"post": post, "delivery": "download"}}]
         return [{"tool": name, "arguments": {"parameters": args["params"], "delivery": "download"}}]
+    if tool in HANDED_COMPOSITES:
+        # 组合结果整份走下载交付：fetch 下载后逐项拆开落盘（split_composite）。
+        return [{"tool": tool, "arguments": {**args, "delivery": "download"}}]
     if tool not in AGGREGATE_TOOLS | JOB_TOOLS:
         raise ValueError("Unsupported public MCP operation: " + tool)
     if tool in JOB_TOOLS:

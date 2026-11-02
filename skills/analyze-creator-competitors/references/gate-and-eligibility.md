@@ -102,8 +102,8 @@ Completeness here means the Gate covers every author in the persisted Candidate 
 erase the discovery-coverage limitation.
 
 `select` then resolves the six selected public profiles together with each account's first history
-page, replaces every unavailable profile one-for-one from the two frozen reserves, and prints the
-eligibility projection and its schema.
+page in one `collect_account_history` call, which replaces every unavailable profile one-for-one
+from the two frozen reserves, and prints the eligibility projection and its schema.
 
 ## Profile Eligibility
 
@@ -155,7 +155,8 @@ quota, up to the Request limit.
 Only `competitor-account-selection.json.included_handles` may proceed to content retrieval. Do not
 hand-write that file; the Composer re-runs finalize and fails if the roster does not match. Keep
 Candidate, discovery selection, eligibility, final account selection and profile artifacts as audit
-artifacts; never pass them to the public-content Snapshot Assembler. `content` then retrieves each
-included account's remaining history within the page budget, assembles and analyzes the
+artifacts; never pass them to the public-content Snapshot Assembler. `content` then retrieves, in one
+`collect_account_history` call, the Reels history of each included account that still owes pages
+within the page budget, assembles and analyzes the
 public-content Snapshot once, and prints the synthesis schema first, then the topic coverage and
 the synthesis evidence.
