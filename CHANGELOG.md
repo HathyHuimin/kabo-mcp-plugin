@@ -4,6 +4,7 @@
 
 ## 未发布
 
+- `develop-content-ideas` 同步 creator-skills 0.1.31（`a9514ba30`）：prep 对各类输入问题（非 JSON / 非 UTF-8 / 缺失文件、非原文主题、错误语言标签）统一返回 `needs_correction`，首轮合并所有可独立核实的问题、限纠正一次；支持「再来 10 个同风格」续轮（`--previous-ideas` 绑定上一轮 `idea_set.json`）；zh/en/fr/ar 之外的报告语言改用 `report_language.py --labels` 列出的 UI 标签译文并逐项校验。`remake-viral-video` 对照上游 0.1.34 无需改动（TikTok 链接由 #20 处理，Wan 3.0 不在当前 `/mcp-pub` 合约中，固定补间数值已在 #40 合入），只更新溯源记录。
 - `analyze-creator-competitors` 同步 creator-skills 0.5.89：`report` 先把 synthesis 的 `status` 同义词（completed/done/ok/success、incomplete、failed）规整为 complete/partial/blocked，其它非法值在 compose 入口给出可改提示，不再到校验才失败。`review-creator-account` 锁定上游 0.5.50，其改动（`--export-report` 与 handoff 只认 `.json`）属 Web 宿主交付机制，插件版没有 handoff 导出、`ACCOUNT_REVIEW.md` 本就是本地交付文件，不搬。
 - 三个 trends Skill：逐项核对 creator-skills `92824da5b` 到 `a9514ba30`（冻结点）之间的账号画像系列（#914、#915、#918、#920，15 个提交），脚本与 references 已由 #32、#33 和 1.0.6 全部覆盖，无需补移植；`skills.lock.json` 的来源改记为 IG 0.3.115 / TT 0.1.105 / YT 0.1.103（`a9514ba30`）。
 
