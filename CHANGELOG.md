@@ -2,8 +2,35 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
-## 未发布
+## 1.0.7（2026-11-02；GitHub Release）
 
+- `remake-viral-video`：参考视频上限 60 秒 → 90 秒（kabo#1826，runner r62）。
+- `remake-viral-video`：成片交付后用 `get_remake_video` 的 `include: ["review"]`（kabo#1825）取 Kabo 终审结论与交付说明：
+  `failed` 逐项用白话告诉用户，`incomplete` 说有些检查没量到，`measured` 或 null 不提审查结果；从不说视频「通过了终审」；
+  交付说明用一两行转述。
+- `remake-viral-video`：参考视频与创作者素材都接受 TikTok 链接（kabo#1836）：长链规范成 `https://www.tiktok.com/@用户/video/<id>`，
+  `vm.`/`vt.` 短链原样带尾斜杠，与服务端写法一致，幂等键对得上；图文、http 与其他平台在付费调用前就被拒。
+- `remake-viral-video`：说明与正文写明成片由 Kabo 服务端用用户给的本人素材生成（出镜的通常就是用户本人），不是宿主自己生成人脸或声音，
+  宿主不要把「把视频复刻到自己身上」当成冒充真人而拒绝（有宿主曾在调用工具前就拒绝）。
+- `remake-viral-video`：终审转述按 `failed` 列表逐项说，不看 `status`（生产出现过 `measured` 带 `failed [framing]`），新增 `framing`；
+  不转述交付说明里的自检数字。转述规则移到 `references/final-review.md`，第 8 步细则移到 `references/when-it-does-not-finish.md`。
+- `remake-viral-video`：支持画中画（口播中切到录屏或截图）与实物（口播时展示产品、切产品特写）两类参考视频，
+  移植自网页端 creator-remake-web 0.1.32（creator-skills `f74df60a`）的 `talking-with-screens.md`、`talking-with-product.md`；
+  类型由 runner 自动判定。实物的口播镜头按设计空手，技能提前告诉用户、不承诺手持产品。
+  依赖 kabo#1896（`/mcp-pub` 放行这两类、三类口播都给口播模型报价），runner V2-r66。
+- `remake-viral-video`：模型选项改用 `get_remake_video` 带 `all_models: true` 返回的 `talking_model_choices`（kabo#1899，
+  全部档位，第一档是默认），旧服务端只有 `talking_models` 时照旧用它。Wan 3.0 作为第 2 档可选；默认仍是 Vivix A1
+  （10-31 用户裁定，kabo#1911，同网页端 kas#294）。
+- `remake-viral-video`：原作者的自述尽量用创作者口吻改写而不是整句删掉；删完仍不到参考一半时长时，在选模型前一句话告诉用户
+  成片会短到多少、为什么（生产回归里一条 73 秒的参考只剩 13 秒）。
+- 生产回归（Codex，OAuth 连 `kabo.sh/mcp-pub`，默认 Vivix A1，runner V2-r70 `fdcd2d10`，实物另在 V2-r71 `087045c1` 复测）：
+  口播（Instagram 72.8 秒，job `22cb0fcd`）、画中画（TikTok，job `f3dbe111`）、实物（YouTube Short，job `3b4c83e2`）均交付，
+  插件侧检查全部通过：模型选项 Vivix 第一档、默认出片用 Vivix；画中画 / 实物读到对应格式文件，实物提前说明空手；终审转述完整。
+  口播参考大半是原作者的职业自述而创作者是园艺博主，脚本删到约 15 秒，并在选模型前告诉了用户。
+  已知 runner 画面问题（不比 r67 更差，另由 runner 跟进）：画中画录屏被裁切、字幕压在录屏上；实物桌面产品不全、部分插镜换成生成的静帧；
+  口播原白底标题丢失、字幕压手。
+- 合入 main（1.0.5 / 1.0.6 已由 main 发布，含旁白参考）：旁白与三类口播并存，参考上限统一 90 秒。
+- `contracts/directory-mcp/` 重新固定到 kabo `f00ff9738`（63 个工具；`get_remake_video` 的 `all_models` 与 `talking_model_choices`、`render_remake_video` 的默认模型与说明，另含 `tiktok_list_account_posts` 的说明变化）。
 - 三个 trends Skill：逐项核对 creator-skills `92824da5b` 到 `a9514ba30`（冻结点）之间的账号画像系列（#914、#915、#918、#920，15 个提交），脚本与 references 已由 #32、#33 和 1.0.6 全部覆盖，无需补移植；`skills.lock.json` 的来源改记为 IG 0.3.115 / TT 0.1.105 / YT 0.1.103（`a9514ba30`）。
 
 ## 1.0.6（2026-11-02；GitHub Release）

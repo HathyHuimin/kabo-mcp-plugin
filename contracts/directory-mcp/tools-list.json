@@ -12398,7 +12398,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Read a remake job. Top-level. Send job_id and wait_s. At waiting_script: brief.download is a JSON bundle {schema, job_id, files} to write the four files from, and talking_models lists the model choices with estimated cost. At delivered: video.download is the final MP4; with include [\"review\"], review has Kabo's final-review verdict (qc, null when unknown) and the runner's notes on what it changed. Links are short-lived; call again to re-sign. out_of_scope, failed, timed_out and failure unsupported_type are final and come back as a normal result. No quota.",
+      "description": "Read a remake job. Top-level. Send job_id and wait_s. At waiting_script: brief.download is a JSON bundle {schema, job_id, files} to write the four files from, and talking_models lists the model choices with estimated cost (all_models: every model). At delivered: video.download is the final MP4; with include [\"review\"], review has Kabo's final-review verdict (qc, null when unknown) and the runner's notes on what it changed. Links are short-lived; call again to re-sign. out_of_scope, failed, timed_out and failure unsupported_type are final and come back as a normal result. No quota.",
       "execution": {
         "taskSupport": "forbidden"
       },
@@ -12406,6 +12406,11 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "additionalProperties": false,
         "properties": {
+          "all_models": {
+            "const": true,
+            "description": "true adds talking_model_choices: every model, the first is the default.",
+            "type": "boolean"
+          },
           "include": {
             "description": "Send [\"review\"] to also get review: Kabo's final-review verdict and delivery notes once delivered.",
             "items": {
@@ -12682,6 +12687,38 @@
             ],
             "type": "string"
           },
+          "talking_model_choices": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "est_usd": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "id": {
+                      "maxLength": 128,
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "est_usd"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "talking_models": {
             "anyOf": [
               {
@@ -12860,7 +12897,7 @@
         "openWorldHint": true,
         "readOnlyHint": false
       },
-      "description": "Submit the four script files at waiting_script and start paid generation; with preview only render pictures, with review answer the picture review. Top-level. Talking-head and voice-over only (else unsupported_type, free). If rejected, get_remake_video returns waiting_script with gate_message; fix and resubmit. Next: poll get_remake_video.",
+      "description": "Submit the four script files at waiting_script and start paid generation; with preview only render pictures, with review answer the picture review. Top-level. Talking-head (incl. screen recordings or a product) and voice-over only (else unsupported_type, free). If rejected, get_remake_video returns waiting_script with gate_message; fix and resubmit. Next: poll get_remake_video.",
       "execution": {
         "taskSupport": "forbidden"
       },
@@ -12920,9 +12957,10 @@
             "type": "string"
           },
           "talking_model": {
-            "description": "One of talking_models; defaults to vivix/vivix-a1.",
+            "description": "A model id; defaults to the first of talking_model_choices.",
             "enum": [
               "vivix/vivix-a1",
+              "alibaba/wan-3.0/reference-to-video",
               "fal-ai/kling-video/ai-avatar/v2/standard",
               "minimax/h3-max/lip-sync/image-to-video",
               "fal-ai/kling-video/ai-avatar/v2/pro",
@@ -22846,6 +22884,9 @@
               "handle": {
                 "pattern": "^@?[A-Za-z0-9._]{2,24}$",
                 "type": "string"
+              },
+              "label_photo_posts": {
+                "type": "boolean"
               },
               "limit": {
                 "default": 15,
