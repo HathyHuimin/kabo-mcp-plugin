@@ -29,8 +29,8 @@ Do what `fetch` prints. For a data tool's result, call `get_research_data_downlo
 `evidence_ref` it names (no allowance cost; nothing is re-run) and fetch that result with
 `--tool get_research_data_download`; the new link's sha256 and bytes can differ from the old one. If
 that call itself fails, call the original tool again with the same parameters and
-`"delivery": "download"` (this re-runs it) and fetch that result right away. For
-`get_research_data_job`, `read_research_data_artifacts` or a `lookup_*` tool, call it again with
+`"delivery": "download"` (this re-runs it) and fetch that result right away. For a
+job read, an artifact read or a `lookup_*` tool, call that same tool again with
 `"delivery": "download"`. A `collect_*` or `enrich_*` result is complete inline: export it and run
 the same command with `stage` instead of calling the tool again.
 
@@ -39,7 +39,8 @@ the same command with `stage` instead of calling the tool again.
 A tool that answers with a job id is not finished: read it with `get_research_data_job` and `wait_s`
 (up to 30) until it is terminal, and fetch the terminal result under `get_research_data_job`, never
 one still queued. Never restart a queued job. If a job names artifacts, read them with
-`read_research_data_artifacts`; artifact reads are fetched or staged, never placed as Envelopes.
+the artifact-read tool in `allowed-tools`; artifact reads are fetched or staged, never placed as
+Envelopes.
 
 ## A failed tool call
 
