@@ -215,7 +215,7 @@ cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill di
 
 ## Rates by niche, and what a figure is net of
 
-**No platform publishes a rate per content niche.** Checked 2026-09-14: YouTube's own RPM/CPM help
+**No platform publishes a rate per content niche.** Checked on the platforms' own pages: YouTube's own RPM/CPM help
 page defines the terms and gives generic examples, and its blog post on ad relevance says CPM can be
 viewed by ad type and country - neither carries a finance, education or home-decor figure. The sites
 that do publish such tables are not the platform, and this Skill only reads its versioned rule
@@ -236,7 +236,7 @@ rather than that it is unpublished.
 the source states it; never apply a revenue share to a figure that is already net of one, and never
 present a pre-share figure as what the creator receives.
 
-YouTube's RPM is the case that decides most of these questions. Checked 2026-09-15 on YouTube's own
+YouTube's RPM is the case that decides most of these questions. Per YouTube's own
 page (https://support.google.com/youtube/answer/9314357): "RPM is your total revenue (after
 YouTube's revenue share) per 1000 views", and "RPM is based on several revenue sources, including:
 ads, channel memberships, YouTube Premium revenue, Super Chat, and Super Stickers." So the YouTube
