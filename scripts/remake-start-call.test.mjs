@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -9,9 +9,10 @@ import test from "node:test";
 const script = path.resolve("skills/remake-viral-video/scripts/static_host.py");
 
 function startCall(reference, extra = ["--instagram-handle", "niallgardens"]) {
+  const refArgs = reference === null ? [] : ["--reference-url", reference];
   const workspace = mkdtempSync(path.join(tmpdir(), "remake-start-"));
   const run = execFileSync("python3", [script, "init", "--workspace", workspace], { encoding: "utf8" }).trim();
-  return spawnSync("python3", [script, "start-call", "--reference-url", reference, ...extra], {
+  return spawnSync("python3", [script, "start-call", ...refArgs, ...extra], {
     encoding: "utf8", env: { ...process.env, KABO_STATIC_RUN_DIR: run },
   });
 }
@@ -47,4 +48,25 @@ test("同一条 TikTok 不能既当参考又当创作者素材", () => {
     ["--creator-video", "https://m.tiktok.com/@a/video/1234567", "--creator-name", "a"]);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /same video/);
+});
+
+test("稿件模式：--script-file 原样带上口播稿，与 --reference-url 恰好给一项，不收 --language", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "remake-script-"));
+  const file = path.join(dir, "approved.txt");
+  const text = "Plant tomatoes deep.  Water at the base — not the leaves.";
+  writeFileSync(file, `${text}\n`);
+  const ok = startCall(null, ["--script-file", file, "--instagram-handle", "niallgardens"]);
+  assert.equal(ok.status, 0, ok.stderr);
+  const args = JSON.parse(ok.stdout).arguments;
+  assert.equal(args.script, text);
+  assert.equal(args.reference_url, undefined);
+  for (const extra of [
+    ["--script-file", file, "--reference-url", "https://www.youtube.com/shorts/8u7NbUT0XW4", "--instagram-handle", "a"],
+    ["--script-file", file, "--instagram-handle", "a", "--language", "en"],
+  ]) {
+    const refused = startCall(null, extra);
+    assert.notEqual(refused.status, 0, extra.join(" "));
+  }
+  writeFileSync(file, "   \n");
+  assert.notEqual(startCall(null, ["--script-file", file, "--instagram-handle", "a"]).status, 0);
 });

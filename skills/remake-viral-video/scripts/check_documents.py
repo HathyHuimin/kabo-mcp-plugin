@@ -2,6 +2,7 @@
 """Check the four script-gate documents before render_remake_video; no network or model loop.
 
   check        validate script/*.json against the saved brief and print errors and warnings
+  copy-drafts  approved-script jobs: write script/*.json from the runner's drafts unchanged, then check
   render-args  run the same check and, when it passes, write render/render_remake_video.json
                (voice-over: --preview writes the preview call, --beat-review the picture review)
 
@@ -464,6 +465,55 @@ def narration_brief(brief):
     return isinstance(brief, dict) and (brief.get("reference") or {}).get("type") == "narration"
 
 
+def script_input(brief):
+    """Approved-script input: the runner's drafts already hold the creator's exact words."""
+    return isinstance(brief, dict) and brief.get("input_kind") == "script"
+
+
+DRAFTS = {"script": "brief/work/script.draft.json", "opening_review": "brief/work/opening_review.draft.json",
+          "decisions": "brief/work/decisions.draft.json", "route_b_jobs": "brief/work/route_b/jobs.template.json"}
+
+
+def spoken(script):
+    lines = script.get("lines") if isinstance(script, dict) else None
+    if not isinstance(lines, list):
+        return None
+    return " ".join(" ".join(str(line.get("text", "")).split()) for line in lines if isinstance(line, dict)).strip()
+
+
+def check_script_input(run, documents, errors):
+    # 稿件模式：四份文件就是 runner 的草稿；只许重新分行（与每行的表演提示），字一个不改。
+    drafts = {name: load(run / path, errors, name + " draft") for name, path in DRAFTS.items()}
+    for name in ("opening_review", "decisions", "route_b_jobs"):
+        if documents[name] is not None and drafts[name] is not None and documents[name] != drafts[name]:
+            errors.append(f"{name} must be the runner's draft unchanged in script mode; run copy-drafts again")
+    script, draft = documents["script"], drafts["script"]
+    if script is None or draft is None:
+        return
+    if not isinstance(script, dict) or {k: v for k, v in script.items() if k != "lines"} != \
+            {k: v for k, v in draft.items() if k != "lines"}:
+        errors.append("script: only lines may change in script mode; keep every other field of the draft")
+    words, expected = spoken(script), spoken(draft)
+    if words is None or words != expected:
+        errors.append("script: the lines must say the approved script word for word (only where lines break may "
+                      "change); do not proofread, rewrite, translate, add or drop anything")
+
+
+def copy_drafts(run):
+    """Write the four documents from the runner's drafts (script mode), without changing a byte."""
+    errors = []
+    brief = load(run / "brief/work/brief_input.json", errors, "brief_input")
+    if errors or not script_input(brief):
+        raise ValueError("copy-drafts is only for an approved-script job; fetch its waiting_script brief first")
+    (run / "script").mkdir(exist_ok=True)
+    for name, path in DRAFTS.items():
+        source = run / path
+        if not source.is_file():
+            raise ValueError(f"The brief has no {path}; fetch the waiting_script result again")
+        (run / DOCUMENTS[name]).write_bytes(source.read_bytes())
+    return check(run)
+
+
 def check_jobs(jobs, template, errors, warnings):
     if not isinstance(jobs, dict) or not isinstance(jobs.get("jobs"), list):
         errors.append("route_b_jobs must be the template object with its jobs list")
@@ -529,6 +579,10 @@ def check(run):
         errors.insert(0, "the brief is not saved in this run; run static_host.py fetch on the waiting_script result first")
         return {"status": "errors", "errors": errors, "warnings": warnings}
     documents = {name: load(run / path, errors, name) for name, path in DOCUMENTS.items()}
+    if script_input(brief):
+        check_script_input(run, documents, errors)
+        return {"status": "ready" if not errors else "errors", "errors": errors, "warnings": warnings,
+                "kind": "script"}
     if documents["script"] is not None:
         check_script(documents["script"], brief, errors, warnings)
     if documents["opening_review"] is not None:
@@ -623,6 +677,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("check").add_argument("--run-dir")
+    commands.add_parser("copy-drafts").add_argument("--run-dir")
     command = commands.add_parser("render-args")
     command.add_argument("--run-dir")
     command.add_argument("--talking-model")
@@ -631,8 +686,12 @@ def main():
     command.add_argument("--beat-review")
     args = parser.parse_args()
     run = run_dir(args.run_dir)
-    result = check(run) if args.command == "check" else render_args(
-        run, args.talking_model, args.models_from, args.preview, args.beat_review)
+    if args.command == "check":
+        result = check(run)
+    elif args.command == "copy-drafts":
+        result = copy_drafts(run)
+    else:
+        result = render_args(run, args.talking_model, args.models_from, args.preview, args.beat_review)
     print(json.dumps(result, ensure_ascii=False, indent=1))
     if result["status"] != "ready":
         sys.exit(2)

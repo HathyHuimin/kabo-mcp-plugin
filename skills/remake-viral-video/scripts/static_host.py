@@ -3,7 +3,8 @@
 
 Commands:
   init        reserve one run directory under <workspace>/.kabo-runs/
-  start-call  check the inputs and print the start_remake_video arguments with a stable idempotency_key
+  start-call  check the inputs (a reference video or an approved script) and print the start_remake_video
+              arguments with a stable idempotency_key
   fetch       save the brief bundle, the final MP4 or (voice-over) the picture review that a
               get_remake_video / render_remake_video result links to, after checking host, size,
               sha256 and content type
@@ -163,11 +164,37 @@ def _same_video(a, b):
     return key(a) == key(b)
 
 
-def start_call(reference, handle, video_urls, creator_name, language, attempt):
-    """The arguments of start_remake_video, with an idempotency_key that is stable for the same inputs."""
+SCRIPT_MAX_CHARS = 12000
+
+
+def approved_script(path):
+    """The approved spoken text, byte for byte as the user gave it (only a final newline is dropped)."""
+    raw = Path(path).read_bytes()
+    if len(raw) > SCRIPT_MAX_CHARS * 4:
+        raise ValueError("The script file is too large")
+    text = raw.decode("utf-8")
+    if text.endswith("\n"):
+        text = text[:-1]
+    if not text.strip():
+        raise ValueError("The script file has no spoken words")
+    if len(text) > SCRIPT_MAX_CHARS:
+        raise ValueError(f"The script is longer than {SCRIPT_MAX_CHARS} characters")
+    return text
+
+
+def start_call(reference, handle, video_urls, creator_name, language, attempt, script_file=None):
+    """The arguments of start_remake_video, with an idempotency_key that is stable for the same inputs.
+
+    Two starting points share this one call: a reference video (--reference-url) or the creator's
+    approved script (--script-file), never both."""
     if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1:
         raise ValueError("--attempt must be a positive integer")
-    reference = _url(reference, "Reference")
+    if bool(reference) == bool(script_file):
+        raise ValueError("Give exactly one of --reference-url (a video to remake) or --script-file (the approved script)")
+    script = approved_script(script_file) if script_file else None
+    if script is not None and language:
+        raise ValueError("--language does not apply to a script: the script's own language is used")
+    reference = _url(reference, "Reference") if reference else None
     if bool(handle) == bool(video_urls):
         raise ValueError("Give the creator as exactly one of --instagram-handle or --creator-video (1 to 4 links)")
     if handle:
@@ -186,12 +213,13 @@ def start_call(reference, handle, video_urls, creator_name, language, attempt):
         urls = [_url(url, "Creator video") for url in video_urls]
         if any(_same_video(a, b) for i, a in enumerate(urls) for b in urls[i + 1:]):
             raise ValueError("The same creator video is listed twice")
-        if any(_same_video(reference, url) for url in urls):
+        if reference and any(_same_video(reference, url) for url in urls):
             raise ValueError("The reference and a creator video are the same video; each role needs its own video")
         if not creator_name:
             raise ValueError("--creator-name is required with --creator-video (a short ASCII name for the creator)")
         creator = {"video_urls": urls}
-    arguments = {"reference_url": reference, "creator": creator}
+    arguments = ({"reference_url": reference} if reference else {"script": script})
+    arguments["creator"] = creator
     if creator_name:
         if not CREATOR_NAME.match(creator_name):
             raise ValueError("--creator-name must be 1-64 ASCII letters, digits, '.', '_' or '-', starting with a letter or digit")
@@ -601,7 +629,8 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("init").add_argument("--workspace", required=True)
     command = commands.add_parser("start-call")
-    command.add_argument("--reference-url", required=True)
+    command.add_argument("--reference-url")
+    command.add_argument("--script-file")
     command.add_argument("--instagram-handle")
     command.add_argument("--creator-video", action="append", default=[])
     command.add_argument("--creator-name")
@@ -617,7 +646,8 @@ def main():
         print(init(args.workspace))
     elif args.command == "start-call":
         print(json.dumps(start_call(args.reference_url, args.instagram_handle, args.creator_video,
-                                    args.creator_name, args.language, args.attempt), ensure_ascii=False))
+                                    args.creator_name, args.language, args.attempt, args.script_file),
+                         ensure_ascii=False))
     else:
         if args.input == "-":
             raw = sys.stdin.buffer.read(MAX_RESULT_BYTES + 1)

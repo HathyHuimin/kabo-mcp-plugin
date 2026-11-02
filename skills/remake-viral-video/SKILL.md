@@ -1,6 +1,6 @@
 ---
 name: remake-viral-video
-description: "Have Kabo's remake service make a finished MP4 of a viral talking-head or voice-over reference (90 seconds or less; talking videos may cut to screen recordings or show a product) with the creator in it, built from footage the user gives. Kabo generates it on its servers; it is not your own video generation. Use when someone asks to remake, recreate or copy a viral video onto themselves or a named creator. For only a script use script writing; for a teardown, video analysis."
+description: "Have Kabo make a finished MP4 with the creator in it, from footage the user gives: a remake of a viral talking-head or voice-over reference (90 s or less; talking videos may cut to screens or show a product), or the creator saying a script they approved. Kabo generates it on its servers, not you. Use when asked to remake or copy a viral video onto themselves or a named creator, or to turn their script into a talking video. For only a script use script writing; for a teardown, video analysis."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub with its remake tools, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return. Kabo permission: video."
 allowed-tools: start_remake_video get_remake_video render_remake_video
@@ -72,6 +72,9 @@ unchanged) to `host-results/<NN>-<tool name>.json`, numbered in call order. Thes
 small: they carry download links, never the brief or the video itself. Never retype the brief or
 rebuild a file from what was displayed.
 
+**No reference, only a script?** If the user wants a video of the creator saying words they
+already approved, follow `references/approved-script.md` for steps 1-4.
+
 ## 1. Collect the inputs
 
 The first time the user asks for a remake in a conversation, say in two or three sentences, before
@@ -90,7 +93,7 @@ after it.
 A remake needs both of these. Check them before any paid call:
 
 1. **One reference video**: the viral video to remake, as a YouTube, Instagram or TikTok link,
-   90 seconds or less, one person talking to camera or a voice-over (TikTok short links work too).
+   90 seconds or less, one person talking to camera or a voice-over.
 2. **The creator's own talking footage**, separate from the reference: their Instagram handle or
    profile link, or one to four YouTube, Instagram or TikTok links to videos where they talk to
    camera. It decides how much the result looks like the creator.
@@ -291,8 +294,7 @@ example `cr check-script: ...`) and a fresh brief; nothing paid has been spent. 
 
 ## 7. Production and delivery
 
-Production takes about twenty to thirty minutes, depending on the model and the video's length
-(Seedance 2.0 queues longer). Call `get_remake_video` with `wait_s` 30, `include` `["review"]`
+Production takes about twenty to thirty minutes, depending on the model and length. Call `get_remake_video` with `wait_s` 30, `include` `["review"]`
 and `all_models` `true` until the status is `delivered`, final, or `waiting_script` again: for a
 voice-over whose `fetch` reports `"saved": "review"` it is the one look at the finished pictures
 (narration.md, last section); otherwise the documents were rejected (step 6). While it is
