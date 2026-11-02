@@ -24,7 +24,8 @@
     },
     {
       "id": "review-creator-account-deep",
-      "derivedFromVersion": "0.3.46",
+      "derivedFromVersion": "0.3.52",
+      "derivedFromCommit": "a9514ba301cf52b02d700976e6e94cc11237542d",
       "sourcePath": "creator-skills/runtime/review-creator-account-deep"
     },
     {
