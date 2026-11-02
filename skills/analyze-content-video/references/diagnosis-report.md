@@ -155,6 +155,6 @@ its timestamp and its `observations.{id}`, not by a second copy of the same URL.
 `details` is the host's half of the result, not the audit ledger. It must not carry
 `calculations`, `reproducibility`, `limitations` or `evidence`: those belong to the `VideoAnalysis`
 and `ContentEvidence` objects, which travel alongside and are where anyone checking the work will
-look. Keeping them out of the creator's text is *Output boundary* in `SKILL.md`; this is a second thing. Copying
+look. Keeping them out of the creator's text is *Delivery* in `SKILL.md`; this is a second thing. Copying
 them into `details` duplicates the audit layer into the object the App renders, and the two copies
 then drift.
