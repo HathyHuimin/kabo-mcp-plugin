@@ -5,9 +5,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import short_window_topic_gate as topic_gate
 
 
 PLACEMENT = f"python3 '{Path(__file__).resolve().parent / 'persist_short_window.py'}' --into short-window-input.json --at runs --at <lane>-<intent>-<sort_type> --connector tiktok-discovery --operation search_videos"
@@ -96,7 +100,8 @@ def normalize(row: dict[str, Any]) -> dict[str, Any] | None:
         or ""
     ).lstrip("@")
     metrics = as_record(row.get("metrics"))
-    views = row.get("views") or metrics.get("views") or row.get("play_count")
+    views = next((value for value in (row.get("views"), metrics.get("views"), row.get("play_count"))
+                  if value is not None), None)
     if type(views) is not int or views < 0:
         views = None
     return {
@@ -109,7 +114,8 @@ def normalize(row: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def build(payload: dict[str, Any]) -> dict[str, Any]:
+def build(payload: dict[str, Any], gate_input: dict[str, Any] | None = None,
+          topic_decisions: Any = None) -> dict[str, Any]:
     window = as_record(payload.get("window"))
     since = parse_time(window.get("since"))
     until = parse_time(window.get("until"))
@@ -121,6 +127,9 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
     # Missing source evidence is not proof of a completed empty search.
     if not has_source_collection(payload):
         raise MissingPlacement("short-window input has no completed source collection; place the completed responses before building layers")
+    if (gate_input is None) != (topic_decisions is None):
+        raise ValueError("topic input and decisions must be provided together")
+    eligible, audit = topic_gate.apply(payload, gate_input, topic_decisions) if gate_input is not None else (None, None)
     heat: list[dict[str, Any]] = []
     in_window: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -129,10 +138,12 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
         item = normalize(raw)
         if item is None:
             continue
-        key = item["url"] or item["content_id"]
+        key = topic_gate.key(item)
         if key in seen:
             continue
         seen.add(key)
+        if eligible is not None and key not in eligible:
+            continue
         published = parse_time(item["published_at"])
         if published is None:
             undated += 1
@@ -140,7 +151,8 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
         item["in_window"] = since <= published <= until
         if item["in_window"]:
             in_window.append(item)
-        heat.append(item)
+        if platform == "instagram" or until - timedelta(days=30) <= published <= until:
+            heat.append(item)
     heat.sort(key=lambda row: (-(row["views"] or 0), row["published_at"] or ""))
     in_window.sort(key=lambda row: (-(row["views"] or 0), row["published_at"] or ""))
     return {
@@ -149,6 +161,7 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
         "window": {"since": iso(since), "until": iso(until)},
         "heat": heat,
         "in_window": in_window,
+        **({"topic_gate": audit} if audit is not None else {}),
         "coverage": {
             "heat_count": len(heat),
             "in_window_count": len(in_window),
@@ -161,9 +174,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--topic-gate-input", type=Path)
+    parser.add_argument("--topic-decisions", type=Path)
     args = parser.parse_args()
     try:
-        result = build(json.loads(args.input.read_text(encoding="utf-8")))
+        if bool(args.topic_gate_input) != bool(args.topic_decisions):
+            raise ValueError("provide both --topic-gate-input and --topic-decisions")
+        result = build(json.loads(args.input.read_text(encoding="utf-8")),
+                       json.loads(args.topic_gate_input.read_text(encoding="utf-8")) if args.topic_gate_input else None,
+                       json.loads(args.topic_decisions.read_text(encoding="utf-8")) if args.topic_decisions else None)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(json.dumps({"status": "ok", "heat": result["coverage"]["heat_count"], "in_window": result["coverage"]["in_window_count"]}))

@@ -22,6 +22,15 @@ test("references/data-calls.md 在各 Skill 中逐字相同", () => {
   for (const { skill, text } of found) assert.equal(text, found[0].text, `${skill} 与 ${found[0].skill} 不同`);
 });
 
+for (const relative of ["scripts/short_window_topic_gate.py", "references/short-window-topic-gate.md",
+  "scripts/render_short_window_report.py"]) {
+  test(`${relative} 在三平台趋势 Skill 中逐字相同`, () => {
+    const found = copies(relative);
+    assert.equal(found.length, 3);
+    for (const { skill, text } of found) assert.equal(text, found[0].text, skill);
+  });
+}
+
 test("connector_driver.py 的交接段（resume_command 与 hand_over）在各 Skill 中逐字相同", () => {
   const block = (text) => {
     const start = text.indexOf("def resume_command()");
