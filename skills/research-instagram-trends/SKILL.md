@@ -59,10 +59,10 @@ into one batch call. Never retype, paste or edit returned data.
 | Tool | Envelope `connector_id` / `operation` | Used by |
 |---|---|---|
 | `creator_trends_get_instagram_audio_board` | `creator-trending-board` / `get_instagram_audio_board` | Audio board |
-| `instagram_baseline_search_reels` | `instagram-baseline-proxy` / `search_reels` | Scene soundtrack, Short window |
+| `instagram_baseline_search_reels` | `instagram-baseline-proxy` / `search_reels` | Scene soundtrack, sub-week fallback |
 | `instagram_baseline_search_music` | `instagram-baseline-proxy` / `search_music` | Scene soundtrack |
 | `lookup_instagram_post`, `instagram_get_transcript` | `instagram-discovery` (or `instagram-detail-proxy` when it answers the lookup) / `get_post`, `get_transcript` | Workflow `start --post` |
-| `collect_instagram_trend_candidates` | typed `trend-candidate-set.v1` | Workflow `discover` |
+| `collect_instagram_trend_candidates` | typed `trend-candidate-set.v1` | Seven-day Search, Workflow `discover` |
 | `enrich_instagram_shortlist` | typed `trend-enrichment.v1` | Workflow `rank` |
 
 - **Hand-over.** A Workflow stage that needs data exits 0 after printing the calls (`call:` lines,
@@ -108,9 +108,10 @@ Decide before retrieving anything.
 
 - The audio board is one published board, never Reel search results or prior knowledge, and never
   a soundtrack recommendation; a historical month cannot be answered from today's board.
-- A short-window ask never runs the Workflow: do not call `collect_instagram_trend_candidates` or
-  `enrich_instagram_shortlist` for it. Every longer window, and every ask for repeated mechanisms
-  or account-relative multiples, uses the Workflow.
+- A current seven-day recommendation uses the short-window Search collector with bounded original
+  post detail completion, then the topic gate. Shorter spans use the reference's best-effort legacy
+  route; never send `last-day` to the dated provider. Historical weeks, longer windows and requests
+  for repeated mechanisms or account-relative multiples use the Workflow.
 - More hot Reels like a supplied Reel is same-style recall in the Workflow, not a competitor study.
   A known creator's Instagram profile or `/reels/` page belongs to `review-creator-account`;
   discovering or classifying competitor accounts belongs to `analyze-creator-competitors`. Name

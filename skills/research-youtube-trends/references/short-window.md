@@ -14,6 +14,8 @@ plays: a collection on a short-window ask is a failed delivery, not a reason to 
 
 ## Collect
 
+First read `references/short-window-topic-gate.md` and freeze its request context before retrieval.
+
 1. Readiness: `youtube-public/search_videos` and `youtube-public/get_video` implemented and ready.
 2. Freeze the requested window in UTC: `until` is now unless the user named an end, and `since` is
    `until` minus the requested span (resolve a relative span once against the current time). At
@@ -47,10 +49,12 @@ plays: a collection on a short-window ask is a failed delivery, not a reason to 
 
 ## Build and author
 
+Complete the projection and every topic decision in `references/short-window-topic-gate.md` first.
+
 5. Build the layers and print the presentation contract:
 
 ```bash
-cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/build_short_window_layers.py' short-window-input.json --output short-window-layers.json
+cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/build_short_window_layers.py' short-window-input.json --topic-gate-input short-window-topic-input.json --topic-decisions short-window-topic-decisions.json --output short-window-layers.json
 cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/render_short_window_report.py' short-window-layers.json --language <the user's chat language> --print-presentation-contract --text-only --contract-output short-window-presentation.json
 ```
 

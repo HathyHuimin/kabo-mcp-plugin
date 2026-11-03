@@ -114,6 +114,32 @@ def presentation_window_hours(layers: dict) -> Fraction:
     return Fraction(micros, 3600000000)
 
 
+def report_limitations(layers: dict) -> list[str]:
+    notes = []
+    gate = layers.get("topic_gate")
+    if gate:
+        counts = gate["counts"]
+        notes.append(f"Topic review retained {counts['on_niche']} of {sum(counts.values())} candidates "
+                     "using source text. This is model judgment, not video or audio verification.")
+        undated = (layers.get("coverage") or {}).get("undated_count", 0)
+        if undated:
+            notes.append(f"{undated} on-topic candidates lack a publish date and were not ranked.")
+    for note in layers.get("limitations", []):
+        if isinstance(note, str) and note.strip() and note not in notes:
+            notes.append(note)
+    return notes
+
+
+def report_labels(layers: dict) -> dict[str, str]:
+    labels = dict(LABELS)
+    if layers.get("source_policy") == "instagram-week-search.v1":
+        labels.update(title_prefix="Verified posts in the requested week",
+                      intro="Both lists use original post dates inside the exact window and are ordered by public plays. They do not measure acceleration.",
+                      heat_heading="Highest public plays in the verified week",
+                      empty_window="No verified on-topic posts fall inside this window.")
+    return labels
+
+
 def presentation_contract(layers: dict, language: str, layers_sha256: str) -> dict:
     # Validate the same layer structure before emitting a skeleton. No report is written here.
     hours = presentation_window_hours(layers)
@@ -122,8 +148,13 @@ def presentation_contract(layers: dict, language: str, layers_sha256: str) -> di
         raise ValueError("a presentation needs an explicit delivery language")
     if not isinstance(layers_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", layers_sha256):
         raise ValueError("layers_sha256 must bind the actual layers file bytes")
-    sources = {**LABELS, "intro": f"The exact window spans {hours} hours. " + LABELS["intro"],
+    labels = report_labels(layers)
+    sources = {**labels, "intro": f"The exact window spans {hours} hours. " + labels["intro"],
                "window_heading": f"Inside the {hours}-hour window"}
+    notes = report_limitations(layers)
+    if notes:
+        sources["limitations_heading"] = "Coverage and limitations"
+        sources.update({f"limitation:{index}": note for index, note in enumerate(notes)})
     return {
         "schema_version": PRESENTATION_SCHEMA,
         "language": language,
@@ -293,6 +324,10 @@ def render_presentation(layers: dict, presentation: dict, language: str, layers_
         lines.extend(line(slot, item) for slot, item in displayed_rows(layers) if slot.startswith("in_window:"))
     else:
         lines.append(prose(labels["empty_window"]))
+    if report_limitations(layers):
+        lines.extend(["", f"## {prose(labels['limitations_heading'])}", ""])
+        lines.extend(f"- {prose(labels[f'limitation:{index}'])}"
+                     for index, _ in enumerate(report_limitations(layers)))
     return "\n".join(lines) + "\n"
 
 
@@ -309,12 +344,14 @@ def render(layers: dict, language=None, presentation=None, layers_sha256=None) -
         raise ValueError("heat and in_window must be arrays")
     since = cell(window.get("since"))
     until = cell(window.get("until"))
+    labels = report_labels(layers)
     lines = [
-        f"# Hottest first, then the exact window {since} → {until}",
+        f"# {labels['title_prefix']} {since} → {until}",
         "",
-        "The heat layer is ordered by public plays and always shows the publish time. **Do not read those rows as in-window.**",
+        (labels["intro"] if layers.get("source_policy") else
+         "The heat layer is ordered by public plays and always shows the publish time. **Do not read those rows as in-window.**"),
         "",
-        "## Hottest now (may be outside the window)",
+        f"## {labels['heat_heading']}",
     ]
     lines.extend(row_line(item) for item in heat[:12] if isinstance(item, dict))
     if not heat:
@@ -323,7 +360,11 @@ def render(layers: dict, language=None, presentation=None, layers_sha256=None) -
     if inside:
         lines.extend(row_line(item) for item in inside[:12] if isinstance(item, dict))
     else:
-        lines.append("No dated posts fall inside this window. The heat layer is still usable to copy, but it does not show acceleration inside this window.")
+        lines.append(labels["empty_window"])
+    notes = report_limitations(layers)
+    if notes:
+        lines.extend(["", "## Coverage and limitations", ""])
+        lines.extend(f"- {prose(note)}" for note in notes)
     return "\n".join(lines) + "\n"
 
 
