@@ -2,6 +2,17 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.8（2026-11-02；GitHub Release）
+
+- `remake-viral-video`：按已确认的口播稿出片（没有参考视频）。复用复刻同一条链路：`start-call --script-file` 原样带上稿子
+  （与 `--reference-url` 恰好给一项），`check_documents.py copy-drafts` 把 runner 的四份草稿原样写成提交文件，只许改分行；
+  选模型、出片、终审转述、失败处理与复刻共用。写稿规则移植自 creator-remake-web 0.1.32 的 approved-script 流程
+  （`references/approved-script.md`）。依赖 kabo#1925（`start_remake_video` 新增可选 `script`）。
+- `remake-viral-video`：在子 agent 里跑时，主线程把子 agent 的最终结果完整转给用户（路径、花费、终审）。
+- 生产回归（Codex，OAuth 连 `kabo.sh/mcp-pub`，默认 Vivix A1，runner V2-r71 系 `a028b1a9`）：一条已确认的 54 词口播稿
+  （job `5dfe48ee`，20.7 秒，$0.46）交付，逐字核对 54/54 一致；走 approved-script 路径、`--script-file` 只带 `script`、
+  `copy-drafts` 原样写入、默认 Vivix、终审为空时不编造结论，均通过。主线程转述时丢了花费，已在本版修正说法。
+
 ## 1.0.7（2026-11-02；GitHub Release）
 
 - `remake-viral-video`：参考视频上限 60 秒 → 90 秒（kabo#1826，runner r62）。
