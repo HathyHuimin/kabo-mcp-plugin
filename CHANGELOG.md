@@ -2,6 +2,14 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.9（2026-11-03；GitHub Release）
+
+- Instagram、TikTok、YouTube 的短时间窗推荐先按完整候选文本判断领域，再按热度排序；每项保留判断与简短原因。
+- Instagram 最近七天走 Search collector（实验 B）：最多两个意图、各一页，原帖详情预算 24；只有详情完整、播放量已知且原帖日期在精确时间窗内的候选参与排名。
+- TikTok、YouTube 的热度层在本地再次检查 30 天边界；报告说明排除数量与资料缺失，名额不足时如实保留空缺。
+- 完整保留已发布 1.0.8 的口播稿出片与交付说明；本次包也包含 main 已合入的十五项 Skills、后端聚合取数与媒体 operation 名兼容修复。
+- 实验样本、GSB 口径及局限见 [推荐实验汇总](docs/2026-11-03-recommendation-experiments.md)。本次重点验收三平台推荐改动；十五项 Skills 的全部跨宿主验收与 OpenAI 商店审核仍独立记录，不能以本次 GitHub Release 代替。
+
 ## 1.0.8（2026-11-02；GitHub Release）
 
 - `remake-viral-video`：按已确认的口播稿出片（没有参考视频）。复用复刻同一条链路：`start-call --script-file` 原样带上稿子
