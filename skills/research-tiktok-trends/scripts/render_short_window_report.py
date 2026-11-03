@@ -121,6 +121,8 @@ def report_limitations(layers: dict) -> list[str]:
         counts = gate["counts"]
         notes.append(f"Topic review retained {counts['on_niche']} of {sum(counts.values())} candidates "
                      "using source text. This is model judgment, not video or audio verification.")
+        from content_language_gate import notes as language_notes
+        notes.extend(language_notes(gate))
         undated = (layers.get("coverage") or {}).get("undated_count", 0)
         if undated:
             notes.append(f"{undated} on-topic candidates lack a publish date and were not ranked.")

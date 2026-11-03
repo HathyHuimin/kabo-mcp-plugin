@@ -13,7 +13,8 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 REQUEST = {"ask": "Find video editing examples from the past week",
-           "niche": "video editing", "content_use": "learn editing techniques"}
+           "niche": "video editing", "content_use": "learn editing techniques",
+           "language_scope": {"mode": "unrestricted", "accepted_languages": [], "basis": "No account or content language was requested."}}
 
 
 def module(platform, name):
@@ -46,7 +47,9 @@ def payload(platform, items):
 def decisions(projection, labels=None):
     labels = labels or {}
     return [{"content_id": row["content_id"], "decision": labels.get(row["content_id"], "on_niche"),
-             "reason": f"Fixture judgment for {row['content_id']}"} for row in projection["items"]]
+             "reason": f"Fixture judgment for {row['content_id']}",
+             "language": {"decision": "not_applicable", "languages": [], "evidence": [],
+                          "reason": "This fixture explicitly has no language restriction."}} for row in projection["items"]]
 
 
 def weekly(items):
@@ -79,7 +82,7 @@ class TopicGateTests(unittest.TestCase):
                 relevant = next(row for row in projected["items"] if row["content_id"] == "relevant")
                 self.assertIn("decisive ending", relevant["texts"][0])
                 self.assertIn("Additional source description", relevant["texts"][1])
-                self.assertEqual(set(relevant), {"content_id", "author", "texts"})
+                self.assertEqual(set(relevant), {"content_id", "author", "texts", "language_evidence"})
                 self.assertEqual(len(projected["items"]), 4)
                 judged = decisions(projected, {"off": "off_niche", "adjacent": "adjacent", "unknown": "uncertain"})
                 result = builder.build(source, projected, judged)
