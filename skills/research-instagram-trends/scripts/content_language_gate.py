@@ -110,7 +110,8 @@ def notes(audit: dict) -> list[str]:
     context = language["scope"]
     counts = language["on_topic_counts"]
     if context["mode"] == "unrestricted":
-        return ["Content language was explicitly left unrestricted; the report language did not filter videos."]
+        return ["Content language was explicitly left unrestricted; the report language did not filter videos. "
+                "Some videos may have unconfirmed spoken language."]
     if context["mode"] == "unknown":
         return ["The account's accepted content languages could not be established; no videos were ranked."]
     return [f"Content languages: {', '.join(context['accepted_languages'])}. Language review excluded "

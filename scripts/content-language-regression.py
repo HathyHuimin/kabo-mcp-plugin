@@ -31,6 +31,50 @@ def judged(projected, overrides=None):
 
 
 class LanguageGateTests(unittest.TestCase):
+    def test_user_approved_languages_expand_eligibility_without_bypassing_topic_or_time(self):
+        for platform in ("instagram", "tiktok", "youtube"):
+            gate, builder, renderer = base.setup(platform)
+            source = base.payload(platform, [base.item("english"),
+                base.item("spanish", description="Explico cómo editar este vídeo paso a paso."),
+                base.item("hindi", description="Dosto, video kaise banaye"),
+                base.item("unknown", title="", caption="", description=""),
+                base.item("off_topic", views=9000000),
+                base.item("future", views=8000000, date="2026-11-04T00:00:00Z")])
+            if platform == "instagram":
+                rows = source["runs"]["search"]["items"]
+                for row in rows:
+                    row["metrics"] = {"play_count": row.pop("views")}
+                    row["availability"] = {"detail_status": "completed"}
+                    row["sources"] = [{"route": "search"}]
+                source = base.weekly(rows)
+            for mode, languages, expected in (
+                ("restricted", ["en"], {"english"}),
+                ("restricted", ["en", "es"], {"english", "spanish"}),
+                ("unrestricted", [], {"english", "spanish", "hindi", "unknown"}),
+            ):
+                req = request(languages, mode)
+                req["language_scope"]["basis"] = (
+                    "The account uses English. The user permits any language." if mode == "unrestricted"
+                    else "The user explicitly approved this language set for this request.")
+                projected = gate.project(source, req)
+                decisions = judged(projected, {
+                    "spanish": {"decision": "match" if "es" in languages else "mismatch", "languages": ["es"],
+                        "evidence": [{"source": "description", "quote": "Explico cómo editar este vídeo paso a paso."}]},
+                    "hindi": {"decision": "mismatch", "languages": ["hi"],
+                        "evidence": [{"source": "description", "quote": "Dosto, video kaise banaye"}]},
+                    "unknown": {"decision": "unknown", "languages": [], "evidence": []},
+                })
+                for row in decisions:
+                    if row["content_id"] == "off_topic": row["decision"] = "off_niche"
+                    if mode == "unrestricted" and row["language"]["decision"] != "unknown":
+                        row["language"]["decision"] = "not_applicable"
+                        row["language"]["reason"] = "The user permits every language; retain the observed source language."
+                result = builder.build(source, projected, decisions)
+                self.assertEqual({r["content_id"] for r in result["heat"]}, expected)
+                self.assertEqual({r["content_id"] for r in result["in_window"]}, expected)
+                if mode == "unrestricted":
+                    self.assertIn("unconfirmed spoken language", renderer.render(result))
+
     def test_no_platform_can_build_without_language_review(self):
         for platform in ("instagram", "tiktok", "youtube"):
             _, builder, _ = base.setup(platform)

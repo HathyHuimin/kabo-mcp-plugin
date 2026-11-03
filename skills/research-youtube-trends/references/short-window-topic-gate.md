@@ -71,6 +71,25 @@ use `mode: "unrestricted"` and an empty list. If an account-specific request has
 context, use `mode: "unknown"` and an empty list; do not silently treat it as English or unrestricted.
 An unknown scope produces no ranked recommendations and reports the missing context.
 
+Explicit permission to broaden languages overrides the account default for this request:
+
+- "Also include Spanish" adds `es` to the account's supported languages, keeping `restricted`.
+  "Only Spanish" replaces the accepted set with `["es"]`. Permission for named languages does
+  not authorize every other language.
+- "Other languages are fine" or "Any language is OK" uses `unrestricted` with an empty list.
+  Language, including unknown language, no longer excludes a candidate; topic, time, detail and
+  ranking checks still apply. Preserve the observed language evidence and explain uncertainty.
+- Record the user's permission in `basis`; do not ask again for already-granted permission or
+  overwrite the account's saved profile. If the user changes scope after a review, create a new
+  frozen request, projection and decisions, preserving the previous audit and finished report.
+  Reused source evidence keeps its original collection time; a broader search is a new collection.
+
+For an approved cross-language search, use subject-and-use query phrases in the approved languages
+within the route's existing query budget. Do not leave every query in the account's original
+language and call that a cross-language search. For unrestricted searches, choose useful search
+languages from the request and niche evidence and state the coverage; do not claim all-language
+coverage. Report language stays as requested. Never broaden language silently to fill a short list.
+
 Judge content language separately for **every** candidate, including rejected topics:
 
 ```json

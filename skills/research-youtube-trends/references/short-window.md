@@ -29,9 +29,13 @@ First read `references/short-window-topic-gate.md` and freeze its request contex
 
    Add `"delivery": "download"`. If the connected tool schema exposes `include_content_signals`, set
    it to `true` so the same detail calls return declared audio-language evidence. If `queries[].language`
-   is available and the frozen scope has one accepted language, pass its YouTube language code
-   (`en`, `es`, `zh-Hans` or `zh-Hant`) on every query as a relevance preference, never a hard filter.
-   Do not narrow a multilingual or unrestricted scope to an arbitrary single language. Older tools
+   is available, use the query's planned approved language as its YouTube language code
+   (for example `en`, `es`, `zh-Hans` or `zh-Hant`), as a relevance preference, never a hard filter.
+   A single-language scope uses that language on every query. For an approved multilingual or
+   unrestricted search, spread the two subject-and-use intents across the chosen search languages,
+   keeping each intent's language on both its window and heat query. State which languages this
+   bounded search covered; never apply the account's original language to every translated query.
+   If no language preference is supported or applicable to a query, omit it. Older tools
    may lack these optional inputs: omit them, keep the local language gate, and report missing audio
    evidence. Leave every other argument at its default. Save the complete
    result as is, download link included and `calls` whole, to
