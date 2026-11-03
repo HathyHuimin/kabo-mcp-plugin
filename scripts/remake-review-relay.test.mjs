@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import path from "node:path";
 import test from "node:test";
 
@@ -59,4 +59,36 @@ print(json.dumps(out))`;
   ];
   const out = JSON.parse(execFileSync("python3", ["-c", code, path.join(scripts, "check_documents.py"), JSON.stringify(docs)], { encoding: "utf8" }));
   assert.deepEqual(out, [[wan, "vivix/vivix-a1"], ["vivix/vivix-a1"]]);
+});
+
+test("稿件模式 copy-drafts：四份文件就是草稿；只许改分行，改字或改其他字段都拒", async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const run = mkdtempSync(path.join(tmpdir(), "remake-script-run-"));
+  writeFileSync(path.join(run, ".static-run.json"), JSON.stringify({ format: "kabo.static-run.v1", skill: "remake-viral-video" }));
+  const work = path.join(run, "brief", "work");
+  mkdirSync(path.join(work, "route_b"), { recursive: true });
+  const text = "Plant tomatoes deep. Water at the base.";
+  writeFileSync(path.join(work, "brief_input.json"), JSON.stringify({ kind: "brief_input", input_kind: "script", approved_script: { text } }));
+  const draft = { receipt: { sha256: "abc" }, lines: [{ text }] };
+  writeFileSync(path.join(work, "script.draft.json"), JSON.stringify(draft));
+  writeFileSync(path.join(work, "opening_review.draft.json"), JSON.stringify({ stage: "script" }));
+  writeFileSync(path.join(work, "decisions.draft.json"), JSON.stringify({ input_kind: "script" }));
+  writeFileSync(path.join(work, "route_b", "jobs.template.json"), JSON.stringify({ jobs: [] }));
+  const tool = path.join(scripts, "check_documents.py");
+  const run_ = (cmd) => spawnSync("python3", [tool, cmd, "--run-dir", run], { encoding: "utf8" });
+  const copied = run_("copy-drafts");
+  assert.equal(copied.status, 0, copied.stdout + copied.stderr);
+  assert.equal(JSON.parse(copied.stdout).kind, "script");
+  // 只改分行：通过
+  const scriptPath = path.join(run, "script", "script.json");
+  writeFileSync(scriptPath, JSON.stringify({ ...draft, lines: [{ text: "Plant tomatoes deep." }, { text: "Water at the base." }] }));
+  assert.equal(run_("check").status, 0);
+  // 改一个字：拒
+  writeFileSync(scriptPath, JSON.stringify({ ...draft, lines: [{ text: "Plant tomatoes deeply." }, { text: "Water at the base." }] }));
+  assert.match(run_("check").stdout, /word for word/);
+  // 改别的字段：拒
+  writeFileSync(scriptPath, JSON.stringify({ ...draft, receipt: { sha256: "x" } }));
+  assert.match(run_("check").stdout, /only lines may change/);
+  assert.equal(JSON.parse(readFileSync(path.join(run, "script", "decisions.json"), "utf8")).input_kind, "script");
 });
