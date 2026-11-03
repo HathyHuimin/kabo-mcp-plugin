@@ -30,6 +30,11 @@ Never read credentials or ask for tokens in chat. Never infer CTR, retention, de
 or conversion. An invalid or partial artifact keeps its actual status, evidence gaps and source
 limitations.
 
+For short-window video recommendations, freeze the user's approved content languages, otherwise
+the matching account's accepted languages,
+and apply the independent language check in `references/short-window-topic-gate.md` before ranking.
+The report language never changes which video languages are acceptable.
+
 ## Running commands
 
 `<skill directory>` is the folder holding this `SKILL.md`. Before the first data call, reserve

@@ -12622,6 +12622,9 @@
             "default": true,
             "type": "boolean"
           },
+          "include_content_signals": {
+            "type": "boolean"
+          },
           "max_results": {
             "default": 50,
             "maximum": 50,
@@ -12632,6 +12635,11 @@
             "items": {
               "additionalProperties": false,
               "properties": {
+                "language": {
+                  "maxLength": 32,
+                  "minLength": 2,
+                  "type": "string"
+                },
                 "order": {
                   "enum": [
                     "date",
@@ -19794,6 +19802,10 @@
               "max_id": {
                 "maxLength": 4096,
                 "minLength": 1,
+                "type": "string"
+              },
+              "view": {
+                "const": "instagram-account-analysis.v1",
                 "type": "string"
               }
             },

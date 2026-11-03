@@ -162,9 +162,9 @@ def build(payload: dict[str, Any], gate_input: dict[str, Any] | None = None,
             raise ValueError("weekly Search cannot mix Popular or unbounded Reels search")
         if gate_input is None:
             raise ValueError("weekly Search requires topic input and complete topic decisions")
-    if (gate_input is None) != (topic_decisions is None):
-        raise ValueError("topic input and decisions must be provided together")
-    eligible, audit = topic_gate.apply(payload, gate_input, topic_decisions) if gate_input is not None else (None, None)
+    if gate_input is None or topic_decisions is None:
+        raise ValueError("short-window build requires topic input and complete content-language decisions")
+    eligible, audit = topic_gate.apply(payload, gate_input, topic_decisions)
     heat: list[dict[str, Any]] = []
     in_window: list[dict[str, Any]] = []
     seen: set[str] = set()
