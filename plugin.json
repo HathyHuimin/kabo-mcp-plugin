@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "kabo",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Public creator research with bundled workflows and Kabo MCP evidence.",
   "author": {
     "name": "Dealism",
@@ -15,7 +15,7 @@
       "interface": {
         "displayName": "Kabo",
         "shortDescription": "Research for video creators",
-        "longDescription": "Research public YouTube, Instagram and TikTok accounts, compare competitors, find content trends, and analyze videos. Turn the evidence into content ideas and text scripts, with sources, sample sizes and limitations. Public evidence cannot establish private reach, retention or revenue. Kabo does not publish posts or send messages.\n\nThe bundled workflows require a host with Python 3, workspace file access, and a way to save complete tool results or download evidence. Local video files also require ffmpeg and ffprobe. Connect your Kabo account through the host’s OAuth flow. Requests may use your existing Kabo allowance.",
+        "longDescription": "Research public YouTube, Instagram and TikTok accounts, compare competitors, find content trends, and analyze videos. Turn the evidence into content ideas and text scripts, with sources, sample sizes and limitations. Public evidence cannot establish private reach, retention or revenue. Kabo does not publish posts or send messages.\n\nThe bundled workflows require a host with Python 3, workspace file access, and a way to save complete tool results or download evidence. Local video files also require ffmpeg and ffprobe. Connect your Kabo account through the host\u2019s OAuth flow. Requests may use your existing Kabo allowance.",
         "developerName": "Dealism",
         "category": "Productivity",
         "capabilities": [
@@ -36,7 +36,7 @@
         ]
       },
       "publication": {
-        "release_notes": "Kabo 1.0.9 checks topic fit before ranking short-window recommendations across Instagram, TikTok and YouTube. Instagram weekly discovery verifies original-post details, dates and plays. Reports retain exclusion reasons and disclose incomplete coverage. Includes the fifteen Skills maintained on main and preserves the approved-script video workflow from 1.0.8. OpenAI marketplace review remains separate."
+        "release_notes": "Kabo 1.0.10 checks content language before ranking short-window recommendations across Instagram, TikTok and YouTube. User-approved additional languages or unrestricted searches override account defaults for the current request. YouTube can use declared audio-language evidence when available; uncertain language is disclosed. Includes all fifteen Skills. OpenAI marketplace review remains separate."
       }
     }
   }
