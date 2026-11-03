@@ -592,7 +592,7 @@ def fetch_artifacts(tool, value, structured):
 COMPOSITE_SCHEMA = "kabo-composite-fetch.v1"
 COMPOSITE_RECORD = "kabo-composite-fetch.record.v1"
 COMPOSITE_TOOLS = {"collect_account_history", "collect_tiktok_video_candidates", "collect_youtube_recent_videos",
-                   "render_official_pages"}
+                   "render_official_pages", "collect_video_media"}
 
 
 def composite_result(tool, raw):

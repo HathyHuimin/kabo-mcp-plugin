@@ -23,6 +23,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+from datetime import datetime, timezone
 import sys
 from pathlib import Path
 from typing import Any
@@ -33,8 +34,6 @@ sys.path.insert(0, str(SCRIPTS))
 import static_host  # noqa: E402
 
 TOOL = "collect_video_media"
-# 看片的组合工具只有本 Skill 用：在这里登记给 static_host 的组合拆分，各 Skill 共用的 static_host.py 保持逐字相同。
-static_host.COMPOSITE_TOOLS.add(TOOL)
 STATE = Path("watch-media.json")
 PLAN = Path("media_job_plan.json")
 # 一次调用最多等 45 秒（Codex 工具超时 60 秒以内）；媒体一轮约三分钟，6 份结果够等满。
@@ -118,6 +117,7 @@ def hand_over_media(plan: dict[str, Any], args: argparse.Namespace, note: str = 
     first = len(list(results.glob("*.json"))) + 1 if results.is_dir() else 1
     file = results / f"{first:02d}-{TOOL}.json"
     current.setdefault("awaiting", []).append(str(file))
+    current["handed_at"] = datetime.now(timezone.utc).isoformat()
     save_state(current)
     videos = len(plan.get("jobs") or [])
     say((note + " " if note else "") +
@@ -132,11 +132,20 @@ def hand_over_media(plan: dict[str, Any], args: argparse.Namespace, note: str = 
         "minutes): " + resume_command(args))
 
 
+def staged_since(moment: str | None) -> bool:
+    if not moment:
+        return False
+    return any(str(record.get("staged_at") or "") >= moment for record in static_host.composite_records(TOOL))
+
+
 def take_saved() -> None:
     current = state()
     taken = current.setdefault("taken", {})
     for name in current.get("awaiting") or []:
         path = Path(name)
+        if not path.is_file() and staged_since(current.get("handed_at")):
+            # 宿主已用自己的方式把结果落进本 run（例如直接 stage），没有另存文件：照用已落的那份。
+            continue
         if not path.is_file():
             raise ValueError(f"{path} is missing: save the complete {TOOL} result there, then run the same "
                              "resume command again")

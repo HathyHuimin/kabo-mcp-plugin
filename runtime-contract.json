@@ -26,6 +26,7 @@
     "collect_account_history",
     "collect_instagram_trend_candidates",
     "collect_tiktok_video_candidates",
+    "collect_video_media",
     "collect_youtube_recent_videos",
     "collect_youtube_trend_candidates",
     "connect_public_account",
