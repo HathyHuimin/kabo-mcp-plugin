@@ -3,7 +3,7 @@ name: analyze-content-video
 description: "Diagnose one video or still-image post from its own timestamped evidence and say what to keep, recut or replace next; or break down how a video was made into steps one person can follow. Also exports a video's transcript as TXT or SRT and reports its cover and tags. Use for why a video flopped or took off, hook and retention review, a re-edit plan, an unpublished cut on this machine, how was this edited, or getting a video's subtitles."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Local video files also need ffmpeg and ffprobe. Kabo permission: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream public_video_measure_media_signals youtube_get_video youtube_get_channel youtube_list_channel_uploads lookup_instagram_post instagram_get_transcript instagram_resolve_profile instagram_list_posts instagram_list_reels tiktok_search_get_video tiktok_search_get_transcript tiktok_search_list_profile_videos
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream public_video_measure_media_signals youtube_get_video youtube_get_channel youtube_list_channel_uploads lookup_instagram_post instagram_get_transcript instagram_resolve_profile instagram_list_posts instagram_list_reels tiktok_search_get_video tiktok_search_get_transcript tiktok_search_list_profile_videos start_skill_run
 ---
 
 # Analyze Content Video
@@ -47,6 +47,8 @@ complete: do not probe scripts with `--help` or read their source. Quote paths a
 than `rg`. Write each JSON file you author at its absolute run path, then run the next command. A
 failed script or validator step ends the run: report it; never reserve a second run, repeat
 completed retrieval or rewrite a judgment to get past a validator.
+
+**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `analyze-content-video` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Data tools and complete evidence
 

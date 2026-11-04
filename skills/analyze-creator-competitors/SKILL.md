@@ -3,7 +3,7 @@ name: analyze-creator-competitors
 description: "Find and compare Instagram or YouTube competitors of a creator or product: discover comparable accounts from a name, handle, post link or niche, or compare named accounts; separate direct competitors from adjacent and media references; surface same-account outlier posts, repeated mechanisms, differentiation and topics nobody covers yet, optionally from audience comments. Use for competitor discovery, positioning gaps, or adapting proven topics, hooks or structures without copying."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts collect_instagram_trend_candidates collect_youtube_trend_candidates lookup_instagram_post collect_account_history instagram_search_accounts instagram_search_profiles instagram_list_comments youtube_search_channels youtube_get_channel youtube_list_comments
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts collect_instagram_trend_candidates collect_youtube_trend_candidates lookup_instagram_post collect_account_history instagram_search_accounts instagram_search_profiles instagram_list_comments youtube_search_channels youtube_get_channel youtube_list_comments start_skill_run
 ---
 
 # Analyze Creator Competitors
@@ -57,6 +57,8 @@ out what carries no judgment — the Request's `schema_version`, `request_id` an
 last 30 days, `window`; the intents file's `schema_version`, `platform` and a category lane's
 `popular_topic` that only repeats its `search_query` — the stages fill them. Give each `drive.py`
 command 120 s when the shell tool lets you choose, and never start a stage again while it runs.
+
+**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `analyze-creator-competitors` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Data calls
 

@@ -3,7 +3,7 @@ name: plan-platform-monetization
 description: "Check a YouTube, Instagram or TikTok account against the platform's own monetization programs (ads, memberships, subscriptions, gifts, rewards, paid content, commerce): which programs exist, which bars are met, how far the rest are, and revenue scenarios from stated rates. Also answers which-niche-pays-more questions. Not for content reviews, sponsorship pricing or checking what a live policy page says today."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Retrieving account facts also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for account facts only: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_get_channel youtube_list_channel_uploads instagram_resolve_profile tiktok_list_account_posts
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_get_channel youtube_list_channel_uploads instagram_resolve_profile tiktok_list_account_posts start_skill_run
 ---
 
 # Plan Platform Monetization
@@ -46,6 +46,8 @@ into the Skill directory. Every command here is complete: do not probe scripts w
 their source. Quote paths and use `grep` rather than `rg`. Write authored JSON with a single-quoted
 heredoc at its run path and chain the next command. A failed script step ends the run: report it,
 and never reopen the run, repeat completed retrieval or start a replacement run.
+
+**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `plan-platform-monetization` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Data calls
 

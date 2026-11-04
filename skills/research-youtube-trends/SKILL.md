@@ -3,7 +3,7 @@ name: research-youtube-trends
 description: "Research what is working on YouTube now: current high-performing videos, repeated mechanisms, emerging creators and Creator-fit directions in a niche or like a given video, ranked by exact public metrics and channel-relative baselines; the hottest videos of the last seven days; or an analysis of a supplied public-content Snapshot. Use for YouTube trend scans and outlier videos; a Shorts soundtrack ask gets an honest no-evidence answer. Not for private Analytics or full scripts."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read to read the Creator's saved account profile and workspace:write to save edits to it the user asks for."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_youtube_trend_candidates enrich_youtube_shortlist collect_youtube_recent_videos youtube_get_video list_connected_accounts get_creator_profile update_content_preferences
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_youtube_trend_candidates enrich_youtube_shortlist collect_youtube_recent_videos youtube_get_video list_connected_accounts get_creator_profile update_content_preferences start_skill_run
 ---
 
 # Research YouTube Trends
@@ -54,6 +54,8 @@ their source. Quote paths and use `grep` rather than `rg`. Write each artifact w
 heredoc chained with the command that reads it, or with the host's file tool. When a script says to
 stop and report, that is final. If the host cannot run these scripts, say which deliverable is
 unavailable before claiming any.
+
+**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `research-youtube-trends` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Data calls
 

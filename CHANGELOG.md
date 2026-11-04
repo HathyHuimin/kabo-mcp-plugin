@@ -2,6 +2,11 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 未发布
+
+- 每个按次计费的 Skill 在预留运行目录后调用一次 `start_skill_run`（Kabo 按 skill 记一次用量，同一运行不重复记）；额度用完时 Skill 停止并把账单链接交给用户，工具缺失时照常继续。`remake-viral-video` 只走视频额度，不声明。
+- 重新钉住目录契约（kabo `d214da530` 为基线，**合入 kabo 后须按合入提交重钉**）：新增 `start_skill_run`、`get_credit_balances`、`get_credit_tasks`、`claim_credit_task`，并带入已上线的 `collect_video_media`。**须在 Kabo 服务端部署这些工具之后再发布本插件。**
+
 ## 1.0.10（2026-11-03；GitHub Release）
 
 - 三平台最近七天推荐独立核对内容语言；只有领域与语言均合格的候选进入排序，语言不匹配或证据不足时如实留缺口。

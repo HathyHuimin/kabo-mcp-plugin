@@ -3,7 +3,7 @@ name: verify-platform-rule
 description: "Verify platform rules, rumours, thresholds, features and settings from registered official pages, with quotes, URLs and retrieval dates. Covers feature availability, entry paths, configuration and Instagram Insights timeframe/filter/sort controls. Use plan-platform-monetization for creator eligibility, diagnose-reach-drop for account reach diagnosis, and review-creator-account for account or owner-metric analysis. Not for pricing, content coaching or end-to-end operational playbooks."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download render_official_pages
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download render_official_pages start_skill_run
 metadata:
   version: "0.18.24"
 ---
@@ -55,6 +55,8 @@ source. Quote paths. A failed step is terminal unless its own message names a co
 this same run: report it, and never repeat completed retrieval or start a replacement run. If the
 host cannot run these scripts or save complete tool results, say which step is not possible here
 before claiming anything.
+
+**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `verify-platform-rule` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Retrieval
 

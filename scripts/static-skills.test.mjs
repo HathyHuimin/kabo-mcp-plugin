@@ -30,7 +30,7 @@ test("十五个固定 Skills 完整解包；根目录、宿主身份与唯一 MC
   assert.deepEqual(runtime.skills, ids);
   // 目录面已收敛到插件在用的工具：必需与可选两组恰好覆盖本仓钉住的 tools/list（契约不进包），不多不少。
   const pinnedNames = JSON.parse(await readFile(new URL("../contracts/directory-mcp/tools-list.json", import.meta.url))).tools.map(tool => tool.name).sort();
-  assert.equal(pinnedNames.length, 68);
+  assert.equal(pinnedNames.length, 73);
   assert.deepEqual([...runtime.requiredTools, ...runtime.optionalTools].sort(), pinnedNames);
   assert.ok(runtime.optionalTools.includes("public_video_measure_media_signals"));
   assert.equal(files.some(file => /^(plugin|bin|hooks)\//.test(file.name)), false);
