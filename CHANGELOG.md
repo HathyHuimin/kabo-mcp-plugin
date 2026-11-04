@@ -2,6 +2,13 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.12（未发布）
+
+- `remake-viral-video`：创作者只有照片时也能出片：`start-call --creator-photo`（1–4 个公开 JPEG/PNG 链接，与视频合计最多 4 个）
+  进 `creator.photo_urls`；只有照片时先向用户要一段本人说话的视频，实在没有才在 4 个预设音色里让用户选（`--voice-preset`）。
+  规则在 `references/creator-photos.md`，与网页端 0.1.35 一致。依赖 kabo#2011（`/mcp-pub` 服务端安全取图）与 runner V2-r72。
+- 生产回归：待补。
+
 ## 1.0.11（2026-11-04；GitHub Release）
 
 - `remake-viral-video`：说明收窄到「要成片时才用」，同网页端 creator-remake-web 0.1.36（creator-skills #955）：借参考结构写稿、

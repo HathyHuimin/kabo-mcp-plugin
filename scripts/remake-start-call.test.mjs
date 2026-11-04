@@ -70,3 +70,28 @@ test("稿件模式：--script-file 原样带上口播稿，与 --reference-url �
   writeFileSync(file, "   \n");
   assert.notEqual(startCall(null, ["--script-file", file, "--instagram-handle", "a"]).status, 0);
 });
+
+test("照片当长相素材：--creator-photo 进 creator.photo_urls；只有照片时先要录音，没有才给预设音色", () => {
+  const ref = ["--reference-url", "https://www.youtube.com/shorts/8u7NbUT0XW4"];
+  const photo = "https://example.com/me.jpg";
+  const preset = "536d3a5e000945adb7038665781a4aca";
+  const ok = startCall(null, [...ref, "--creator-photo", photo, "--voice-preset", preset, "--creator-name", "me"]);
+  assert.equal(ok.status, 0, ok.stderr);
+  const args = JSON.parse(ok.stdout).arguments;
+  assert.deepEqual(args.creator, { photo_urls: [photo] });
+  assert.equal(args.voice_preset, preset);
+  const mixed = startCall(null, [...ref, "--creator-photo", photo, "--creator-video", "https://www.instagram.com/reel/AbC123/", "--creator-name", "me"]);
+  assert.equal(mixed.status, 0, mixed.stderr);
+  assert.deepEqual(Object.keys(JSON.parse(mixed.stdout).arguments.creator).sort(), ["photo_urls", "video_urls"]);
+  for (const [extra, pattern] of [
+    [[...ref, "--creator-photo", photo, "--creator-name", "me"], /video of them speaking first/],
+    [[...ref, "--creator-photo", photo, "--voice-preset", "nope", "--creator-name", "me"], /--voice-preset must be one of/],
+    [[...ref, "--creator-photo", photo, "--creator-video", "https://www.instagram.com/reel/AbC123/", "--voice-preset", preset, "--creator-name", "me"], /only for photos/],
+    [[...ref, "--creator-photo", "file:///etc/passwd", "--voice-preset", preset, "--creator-name", "me"], /public http\(s\) link/],
+    [[...ref, "--creator-photo", photo, "--voice-preset", preset], /--creator-name is required/],
+  ]) {
+    const refused = startCall(null, extra);
+    assert.notEqual(refused.status, 0, extra.join(" "));
+    assert.match(refused.stderr, pattern);
+  }
+});
