@@ -27,6 +27,7 @@ print(json.dumps({
     "absent": merged(),
     "declared": merged(region="GB", region_source="account_declared"),
     "stated": merged(region="US", region_source="user_stated"),
+    "stated_unknown": merged(region="UNKNOWN", region_source="user_stated"),
     "nothing_derived": [merge_observed({"platform": "youtube", "region": "GB"},
                                        {**derived, "region": None}).get("region_source")],
 }))
@@ -36,6 +37,7 @@ print(json.dumps({
   assert.deepEqual(out.absent, ["GB", "account_declared"]);
   assert.deepEqual(out.declared, ["GB", "account_declared"]);
   assert.deepEqual(out.stated, ["US", "user_stated"]);
+  assert.deepEqual(out.stated_unknown, ["GB", "account_declared"]);
   assert.deepEqual(out.nothing_derived, [null]);
 });
 
@@ -64,4 +66,41 @@ print(json.dumps({
   assert.deepEqual(out.channel_only, { region: "GB", region_source: "account_declared" });
   assert.deepEqual(out.uploads_wins, { region: "US", region_source: "account_declared" });
   assert.equal(out.none, null);
+});
+
+// 从取数到评估走一遍真实脚本：模型按说明写 UNKNOWN/unknown，derive 从 get_channel 读到 GB，
+// 评估后频道声明的国家生效，按国家判的项目从 region_not_applicable 变成可判定、订阅数达标。
+test("derive 的国家经 assess CLI 进入计划，按国家判的项目可以判定", () => {
+  const out = probe(`
+import json, subprocess, sys, tempfile
+from datetime import date
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from derive_monetization_metrics import derive
+channel = {"connector_id": "youtube-public", "operation": "get_channel", "status": "completed",
+           "retrieved_at": "2026-11-04T05:00:00Z",
+           "data": {"rows": [{"metrics": {"subscribers": 6710000}, "channel_profile": {"country": "GB"}}]}}
+request = {"schema_version": "monetization-request.v1", "platform": "youtube", "account": "@example",
+           "region": "UNKNOWN", "region_source": "unknown", "participation": "unknown", "as_of": "2026-11-04",
+           "programs": None, "assumptions": [], "currency": "USD"}
+def assess(observed):
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        (tmp / "request.json").write_text(json.dumps(request))
+        command = [sys.executable, "-I", "-B", str(Path(sys.argv[1]) / "assess_monetization.py"),
+                   str(tmp / "request.json"), "--output", str(tmp / "plan.json")]
+        if observed is not None:
+            (tmp / "observed.json").write_text(json.dumps(observed))
+            command += ["--observed-metrics", str(tmp / "observed.json")]
+        subprocess.run(command, check=True, capture_output=True)
+        plan = json.loads((tmp / "plan.json").read_text())
+    ad_share = next(p for p in plan["programs"] if p["program_id"] == "youtube.ad_share")
+    return {"creator": [plan["creator"]["region"], plan["creator"]["region_source"]],
+            "rule_status": ad_share["rule_status"],
+            "subscribers": ad_share["paths"][0]["requirements"][0]["outcome"]}
+print(json.dumps({"derived": assess(derive("youtube", [channel], date(2026, 11, 4), {})),
+                  "request_only": assess(None)}))
+`);
+  assert.deepEqual(out.derived, { creator: ["GB", "account_declared"], rule_status: "usable", subscribers: "met" });
+  assert.equal(out.request_only.rule_status, "region_not_applicable");
 });

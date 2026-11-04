@@ -755,12 +755,14 @@ def merge_observed(request: dict[str, Any], derived: dict[str, Any]) -> dict[str
     derived_ids = {row.get("metric_id") for row in rows}
     kept = [row for row in given if row.get("metric_id") not in derived_ids]
     merged = {**request, "observed_metrics": kept + rows}
-    # The channel's declared country is the region unless the creator stated one. A region written
-    # without a source - typically the same declaration retyped - is replaced rather than kept, because
+    # The channel's declared country is the region unless the creator stated a country. A region written
+    # without a source - typically the same declaration retyped - or a "user_stated" UNKNOWN is replaced, because
     # build() treats a region with no source as unknown and the declaration would otherwise be lost.
     # The evaluation date is the request's when it has one.
     region = derived.get("region") or {}
-    if region.get("region") and request.get("region_source") != "user_stated":
+    stated = (request.get("region_source") == "user_stated"
+              and str(request.get("region") or "").strip().upper() not in ("", "UNKNOWN"))
+    if region.get("region") and not stated:
         merged["region"], merged["region_source"] = region["region"], region.get("region_source") or "account_declared"
     if not request.get("as_of") and derived.get("as_of"):
         merged["as_of"] = derived["as_of"]

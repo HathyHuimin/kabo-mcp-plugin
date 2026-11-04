@@ -92,8 +92,8 @@ first data call (or reuse a supplied readiness note).
 
    Where the country comes from differs by platform, and `region_source` records which:
    - YouTube declares it on the account. The retrieval in step 2 already carries it, and the derive
-     step puts it into the request as `account_declared`; leave `region` out of the request unless the
-     creator named a different country for this account.
+     step puts it into the request as `account_declared`; write `UNKNOWN` / `unknown` in the request
+     unless the creator named a different country for this account.
    - Instagram and TikTok report no country on any operation. Ask which country the account is
      registered in and record `user_stated`; if they do not say, `UNKNOWN`.
 
