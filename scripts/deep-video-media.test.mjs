@@ -4,7 +4,7 @@
 // 组合结果按后台对这组入参会给出的形状手写，走 stage 回退落盘。
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -127,6 +127,11 @@ test("看片一次组合调用：交接一个 call，续跑等到终态，按组
   }
   assert.match(third.out, /Authoring packet/);
   await readFile(path.join(run, "account_deep_authoring.json"), "utf8");
+  // Web 每条命令把同一个 run 挂在不同的绝对目录下：作者包的来源绑定仍认得这个 run。
+  const moved = path.join(workspace, "elsewhere", ".kabo-runs", path.basename(run));
+  await cp(run, moved, { recursive: true });
+  const reread = python("read_deep_synthesis_packet.py", ["deep_synthesis_input.json", "--authoring"], { cwd: moved, run: moved });
+  assert.equal(reread.code, 0, reread.out);
 });
 
 // 没有标准复盘时：fetch_catalog.py --workspace 一条命令占好 run 并交出一个 collect_account_history；
