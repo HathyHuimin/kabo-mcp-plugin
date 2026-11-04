@@ -69,7 +69,7 @@ batch call. Never retype, paste or edit returned data.
   whole, as `host-results/<NN>-<tool-name>.json`, and fetched with `--input` in place of `--id`):
 
   ```sh
-  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --id <result id>
+  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --id=<result id>
   ```
 
   Then place it with the `persist_envelope.py` or `persist_short_window.py` command the route names;

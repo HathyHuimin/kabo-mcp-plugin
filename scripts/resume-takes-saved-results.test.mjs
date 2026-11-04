@@ -65,7 +65,7 @@ def step(placed):
     return {"code": code, "out": out.getvalue()}
 
 report = {"run": str(run), "handed": step(False)}
-saved = [line.split("save it to ", 1)[1].rstrip(")") for line in report["handed"]["out"].splitlines()
+saved = [line.split("has no download url: ", 1)[1].rstrip(")") for line in report["handed"]["out"].splitlines()
          if line.startswith("  result ")]
 report["saved"] = saved
 if spec.get("id"):
@@ -153,7 +153,7 @@ for (const [skill, driver] of Object.entries(DRIVERS)) {
     assert.equal(report.handed.code, 0, handed);
     assert.deepEqual(report.saved, [path.join(report.run, "host-results", `01-${tool}.json`)]);
     assert.match(handed, /^call: /m);
-    assert.match(handed, /^  result 01 {2}\(no download url: save it to /m);
+    assert.match(handed, /^  result 01 {2}\(fallback file, only if this result has no download url: /m);
     assert.match(handed, /Do not save the results/);
     assert.match(handed, /never call get_research_data_download/i);
     assert.doesNotMatch(handed, /static_host\.py/, "the model runs no fetch or stage command itself");
@@ -227,7 +227,7 @@ print(json.dumps({"run": str(run), "handed": step(False), "resumed": step(True)}
   const report = JSON.parse(execFileSync("python3", ["-I", "-B", "-c", script,
     path.join(root, "skills", "research-instagram-trends", "scripts"), temp], { encoding: "utf8" }).trim().split("\n").at(-1));
   const file = path.join(report.run, "host-results", "01-enrich_instagram_shortlist.json");
-  assert.ok(report.handed.includes(`  result 01  (no download url: save it to ${file})`), report.handed);
+  assert.ok(report.handed.includes(`  result 01  (fallback file, only if this result has no download url: ${file})`), report.handed);
   assert.match(report.handed, /never call get_research_data_download/i);
   assert.doesNotMatch(report.handed, /static_host\.py/);
   assert.match(report.handed, /^Then run this one command right away.* --placed --id 01=<id>$/m);

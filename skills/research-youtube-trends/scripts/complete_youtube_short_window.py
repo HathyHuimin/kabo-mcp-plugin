@@ -305,7 +305,7 @@ def place(run: Path, result_id: str | None = None) -> dict[str, Any]:
         take_saved(run)
     records = static_host.composite_records(COLLECT_TOOL)
     if not records:
-        raise ValueError(f"no staged {COLLECT_TOOL} result in this run; run place again with --id <id>, the id "
+        raise ValueError(f"no staged {COLLECT_TOOL} result in this run; run place again with --id=<id>, the id "
                          f"from the call's download url (a result with no download url: save it whole to "
                          f"{run / 'host-results' / ('01-' + COLLECT_TOOL + '.json')} instead)")
     record = records[-1]

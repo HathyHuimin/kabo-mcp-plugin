@@ -12,7 +12,7 @@ call's result id in it (`--id NN=<id>`); the resume fetches every result itself.
   with a shell command or a browser. Its **result id** is the 22 characters between
   `research-export/v1/` and `.json` in that link. Do not save such a result: give its id to the resume
   command (`--id NN=<id>`, NN being the slot the hand-over printed under the call) or, where a step
-  fetches by itself, to `static_host.py fetch --tool <tool> --id <id>`. The script downloads the data
+  fetches by itself, to `static_host.py fetch --tool <tool> --id=<id>`. The script downloads the data
   by that id and checks its size and sha256. A result that lists `calls` has one id for the whole
   result: never call `get_research_data_download` or download anything per call.
 - Only a result with no download link (download unavailable, or a tool called without delivery) is

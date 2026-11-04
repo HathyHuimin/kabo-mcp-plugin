@@ -71,7 +71,7 @@ first data call (or reuse a supplied readiness note).
   and fetched with `--input` in place of `--id`), then place it as the next numbered Envelope:
 
   ```sh
-  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --id <result id>
+  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --id=<result id>
   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/persist_envelope.py' --dest snapshot/envelope-NN.json --connector <connector_id> --operation <operation> --handle '<verified handle>'
   ```
 

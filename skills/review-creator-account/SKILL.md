@@ -65,7 +65,7 @@ Narrow operations call `instagram_resolve_profile`, `instagram_list_posts` and
   Make exactly that call with the arguments verbatim, then run the printed resume command
   with each call's result id in it (`--id NN=<id>`: the 22 characters between `research-export/v1/` and `.json` in that result's download url), which fetches every result itself; save a result, whole, to the file named under its slot only when it has no download url. Never retype, paste or edit returned data.
 - **Calls you make yourself** (narrow operations) take `{"parameters": {…}, "delivery": "download"}`;
-  run `static_host.py fetch --tool <tool-name> --id <result id>` on each (the 22 characters between
+  run `static_host.py fetch --tool <tool-name> --id=<result id>` on each (the 22 characters between
   `research-export/v1/` and `.json` in its download url; a result with no download url is saved
   whole to a file under `host-results/` and fetched with `--input <that file>`), then persist it as
   `references/complete-review.md` says, with `--any-status` so a failure is recorded too.

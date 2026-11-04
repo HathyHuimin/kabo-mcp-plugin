@@ -87,7 +87,7 @@ task carries, or call `get_research_capabilities` once per run. The data tools t
   fetched with `--input` in place of `--id`):
 
   ```sh
-  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --id <result id>
+  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --id=<result id>
   ```
 
 - **Anything else** — no ready download, an expired link, a queued job, a refused result — follow

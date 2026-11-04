@@ -81,7 +81,7 @@ test("fetch 交出一条 render_official_pages：全部计划页面、带 source
   // 只有登记页本身带 source_id；随源一起读的 watch 页没有。
   assert.deepEqual(pages.map((p) => p.source_id), ["instagram.originality", undefined, "instagram.reels_feature", undefined]);
   // 交接只点名存放文件（绝对路径）与一条续跑命令，不再让模型自己跑 fetch / stage。
-  assert.ok(first.out.includes(`  result 01  (no download url: save it to ${path.join(run, "host-results", "01-render_official_pages.json")})`), first.out);
+  assert.ok(first.out.includes(`  result 01  (fallback file, only if this result has no download url: ${path.join(run, "host-results", "01-render_official_pages.json")})`), first.out);
   assert.doesNotMatch(first.out, /static_host\.py' (?:fetch|stage)/);
   assert.match(first.out, /^Then run this one command right away.*drive\.py' fetch .*--placed --id 01=<id>$/m);
   assert.match(first.out, /never call get_research_data_download/i);

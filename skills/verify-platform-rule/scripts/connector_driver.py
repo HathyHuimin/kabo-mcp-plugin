@@ -216,7 +216,8 @@ def await_results(tools: list[str]) -> list[Path]:
 
 
 def say_slot(file: Path) -> None:
-    say(f"  result {slot_of(file)}  (no download url: save it to {file})")
+    # 退路文件只在没有下载链接时才用；写成「存到」会让模型照着先存一份（实测）。
+    say(f"  result {slot_of(file)}  (fallback file, only if this result has no download url: {file})")
 
 
 def say_resume(files: list[Path] | None = None) -> None:

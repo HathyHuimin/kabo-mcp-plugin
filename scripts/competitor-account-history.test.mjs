@@ -58,7 +58,7 @@ function run(args, cwd, runDir) {
 const handed = (out) => {
   const lines = out.split("\n");
   return lines.flatMap((line, i) => line.startsWith("call: ")
-    ? [{ call: JSON.parse(line.slice(6)), save: lines[i + 1].split("save it to ")[1].slice(0, -1) }] : []);
+    ? [{ call: JSON.parse(line.slice(6)), save: lines[i + 1].split("has no download url: ")[1].slice(0, -1) }] : []);
 };
 
 const realpathOf = (dir) => realpath(dir);

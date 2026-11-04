@@ -67,7 +67,7 @@ individual call, never combined into one batch call. Never retype, paste or edit
   with each call's result id in it (`--id NN=<id>`: the 22 characters between `research-export/v1/` and `.json` in that result's download url), which fetches every result itself; save a result, whole, to the file named under its slot only when it has no download url.
 - **Short window** makes the one `collect_youtube_recent_videos` call its reference names, then runs
   the `complete_youtube_short_window.py place` command there with the call's result id
-  (`--id <result id>`), which fetches the result itself; never write an envelope or a typed result
+  (`--id=<result id>`), which fetches the result itself; never write an envelope or a typed result
   yourself.
 - **Readiness once.** In the short-window route, call `get_research_capabilities` once and reuse its
   answer; an operation it marks missing, unimplemented or not ready is a capability gap to report,

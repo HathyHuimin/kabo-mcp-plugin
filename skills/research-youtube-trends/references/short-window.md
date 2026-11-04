@@ -48,7 +48,7 @@ First read `references/short-window-topic-gate.md` and freeze its request contex
    expire in 10 minutes):
 
    ```bash
-   cd '<run directory>' && python3 '<skill directory>/scripts/complete_youtube_short_window.py' place --id <result id> --since <since> --until <until> --output short-window-input.json
+   cd '<run directory>' && python3 '<skill directory>/scripts/complete_youtube_short_window.py' place --id=<result id> --since <since> --until <until> --output short-window-input.json
    ```
 
    It writes each search and each `get_video` chunk as its own envelope file and merges them into

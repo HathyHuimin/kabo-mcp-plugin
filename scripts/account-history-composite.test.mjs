@@ -74,7 +74,7 @@ function composite(args, list, accountStatus, extra = {}) {
 // 模型做的事：调组合工具、把整份结果原样存进交接点名的文件（绝对路径）；之后只跑续跑命令，
 // 续跑自己 fetch（这里没有就绪下载，退回 stage）。
 async function answer(skill, run, fetched, result) {
-  const saved = fetched.split("\n").find((line) => line.startsWith("  result ")).split("save it to ")[1].slice(0, -1);
+  const saved = fetched.split("\n").find((line) => line.startsWith("  result ")).split("has no download url: ")[1].slice(0, -1);
   assert.ok(path.isAbsolute(saved) && saved.startsWith(run), saved);
   await writeFile(saved, JSON.stringify({ content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: result }));
 }
@@ -236,7 +236,7 @@ test("流量诊断：续跑时交接点名的文件还没存，停下并点名�
   const first = python(DIAGNOSE, "drive.py", ["fetch", "--platform", "instagram", "--handle", "neutral.creator", "--language", "en",
     "--question-file", "-"], { cwd: run, run, input: question });
   assert.equal(first.code, 0, first.out);
-  const saved = first.out.split("\n").find((line) => line.startsWith("  result ")).split("save it to ")[1].slice(0, -1);
+  const saved = first.out.split("\n").find((line) => line.startsWith("  result ")).split("has no download url: ")[1].slice(0, -1);
   const second = resume(resumeOf(first.out), question);
   assert.equal(second.code, 2, second.out);
   assert.ok(second.out.includes("no result for slot 01 (collect_account_history). Run the resume command again with --id 01=<id>"), second.out);
