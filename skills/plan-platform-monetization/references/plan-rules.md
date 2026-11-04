@@ -13,6 +13,9 @@ back. Its fields are in `references/monetization_request.schema.json`. The rules
   `analysis/observed-metrics.json`, and a count retyped there is replaced. Only a figure the
   creator told you goes in, with `basis: "user_supplied"`, and it takes precedence over the public
   reading of the same metric; a figure you reasoned toward does not go in at all.
+- `region` with `region_source`: on YouTube leave both out - the derive step fills the channel's
+  declared country as `account_declared`. Write a country only when the creator stated it for this
+  account (`user_stated`); a country without a source is read as unknown.
 - `assumptions` carries every rate to be modelled, each with a `role` and an `origin`.
   `user_supplied` is a figure the creator gave you; `model_estimate` is one you worked out to
   model a scenario. Record which it is - an estimate filed as `user_supplied` is read back as
