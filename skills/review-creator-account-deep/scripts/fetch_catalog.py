@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """Fetch a one-page catalog sample inside this deep run when no finished standard review exists.
 
-State comes only from what this run placed under `catalog/`. Each run prints one JSON object:
+The whole sample is one backend call, `collect_account_history` (KS9): Instagram `resolve_profile` +
+the first Feed page + the first Reels page, YouTube `get_channel` + the latest 50 uploads, TikTok one
+`list_account_posts` request (at most `CATALOG_CALL_CAP` catalog calls; the backend retries a briefly
+failed page once). Each run prints one JSON object:
 
-- `needs_calls`: the next public MCP calls, each with the file to save its complete result in, the
-  `static_host.py fetch` command for that file, and the `persist_many.py` commands that place the
-  fetched responses as `catalog/NN-<operation>.json` in issue order. Run them, then run this same
-  command again.
+- `needs_calls`: the one call to make, the absolute file to save its complete result in, and `rerun`
+  (this command with `--placed`), which fetches the saved result, places each call as
+  `catalog/NN-<operation>.json` in issue order, assembles the analysis and then runs `watch_media.py`
+  on it, so its output ends with the watch hand-over (workflow step 2).
 - `ok`: `account_analysis.json` is ready in this run.
 - `stopped`: the account cannot be reviewed here; tell the user the message and stop.
 
-The sample is one page per format: Instagram `resolve_profile` + the first Feed page + the first
-Reels page, YouTube `get_channel` + the latest 50 uploads, TikTok one `list_account_posts` request.
-A run makes at most `CATALOG_CALL_CAP` catalog calls, failures included. A failed page is retried
-once within that cap; a failed Instagram Feed page is not (Feed rows are not watchable).
-
-`--failed <operation>` records a call that returned no record as `catalog/NN-<operation>.failed`;
-`--budget-exhausted` issues no further call and assembles the pages already placed. When this run
-already holds `account_analysis.json`, nothing is fetched.
+`--workspace <dir>` reserves this request's run directory first (the same as `static_host.py init`),
+so reserving the run and handing over the catalog call are one command. `--call-failed` records that
+the call itself failed twice without returning a result. When this run already holds
+`account_analysis.json`, nothing is fetched.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -31,25 +31,19 @@ from typing import Any
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from persist_envelope import USABLE_STATUSES, row_count  # noqa: E402
-from static_host import CONNECTOR_TOOLS  # noqa: E402
 
 SCRIPTS = Path(__file__).resolve().parent
 CATALOG = Path("catalog")
-EXHAUSTED_MARK = CATALOG / "budget-exhausted"
-# 上次打印的请求及其发出编号；--failed 按它把失败记到原编号，重复传同一个 --failed 不会多记一次。
-ISSUED = CATALOG / "issued.json"
-HOST_FAILED = "host_call_failed"
 HOST_RESULTS = Path("host-results")
 ANALYSIS = Path("account_analysis.json")
 SNAPSHOT = Path("catalog_snapshot.json")
 IG, YT, TT = "instagram-discovery", "youtube-public", "tiktok-public"
+COMPOSITE_TOOL = "collect_account_history"
 CONTENT = {"instagram": ("list_posts", "list_reels"), "youtube": ("list_channel_uploads",),
            "tiktok": ("list_account_posts",)}
 YOUTUBE_PAGE, TIKTOK_LIMIT = 50, 100
-# 每次运行目录阶段最多发几次调用（失败也算）：IG 3 次 + 1 次重试；YT 2 次；TT 1 次。其余调用留给看片。
+# 目录阶段的组合调用在后台最多发几次底层调用：IG 3 次 + 1 次重试；YT 2 次；TT 1 次。其余额度留给看片。
 CATALOG_CALL_CAP = 4
-# 每页最多失败几次。Feed 行不可看片（深度版只看 Reels），失败一次就用 Reels 组装，不再为它花调用。
-MAX_FAILURES = {"list_posts": 1}
 NOT_FOUND = {"not_found", "validation_error"}
 QUOTA = "quota_exceeded"
 SAMPLE = {
@@ -103,36 +97,6 @@ def placed() -> list[dict[str, Any]]:
     return rows
 
 
-def mark_failed(operations: list[str]) -> list[str]:
-    """把失败且没有记录可落盘的调用记成 catalog/NN-<operation>.failed，返回实际新记的文件。
-
-    编号取上次打印的发出编号（与 persist 的 --dest 相同）；该编号已有信封或标记时不再记，所以
-    重跑时照抄同一个 --failed 不会把一次失败算成两次。没有打印记录时取最小的空编号。"""
-    if not operations:
-        return []
-    CATALOG.mkdir(exist_ok=True)
-    issued = json.loads(ISSUED.read_text(encoding="utf-8")) if ISSUED.exists() else []
-    taken = {int(path.name[:2]) for path in numbered()}
-    written = []
-    for operation in operations:
-        slots = [item["number"] for item in issued if item["operation"] == operation]
-        if issued and not slots:
-            # 上次打印的请求里没有它（多半是重跑时照抄了旧的 --failed）：不记，免得多算一次失败。
-            print(f"--failed {operation} ignored: the last printed requests did not include it", file=sys.stderr)
-            continue
-        if slots and all(number in taken for number in slots):
-            continue  # 这次发出已有信封或标记：重复的 --failed，不再计数
-        number = next(n for n in slots if n not in taken) if slots else \
-            next(n for n in range(1, 100) if n not in taken)
-        target = CATALOG / f"{number:02d}-{operation}.failed"
-        target.write_text(json.dumps({"operation": operation, "status": "failed", "error_code": HOST_FAILED,
-                                      "note": "the call failed without returning a record"},
-                                     ensure_ascii=False) + "\n", encoding="utf-8")
-        taken.add(number)
-        written.append(str(target))
-    return written
-
-
 def terminal(envelope: dict[str, Any]) -> bool:
     data = envelope.get("data") if isinstance(envelope.get("data"), dict) else {}
     if data.get("more_available") is False:
@@ -151,24 +115,6 @@ def state(rows: list[dict[str, Any]], operation: str) -> dict[str, Any]:
             "not_found": good is None and any(code in NOT_FOUND for code in codes)}
 
 
-def request(platform: str, operation: str, handle: str, channel_id: str | None,
-            identity: dict[str, Any] | None) -> dict[str, Any]:
-    if platform == "instagram":
-        params: dict[str, Any] = {"handle": handle}
-        if operation == "resolve_profile":
-            params["include_post_count"] = True
-        elif operation == "list_reels" and identity and identity.get("id"):
-            params["user_id"] = str(identity["id"])
-        return {"connector_id": IG, "operation": operation, "params": params}
-    if platform == "youtube":
-        if operation == "get_channel":
-            return {"connector_id": YT, "operation": operation,
-                    "params": {"channel_id": channel_id} if channel_id else {"handle": "@" + handle}}
-        return {"connector_id": YT, "operation": operation,
-                "params": {"channel_id": str((identity or {}).get("id")), "max_results": YOUTUBE_PAGE}}
-    return {"connector_id": TT, "operation": operation, "params": {"handle": "@" + handle, "limit": TIKTOK_LIMIT}}
-
-
 def resolved(platform: str, page: dict[str, Any]) -> dict[str, Any] | None:
     data = page.get("data") if isinstance(page.get("data"), dict) else {}
     if platform == "instagram":
@@ -179,40 +125,6 @@ def resolved(platform: str, page: dict[str, Any]) -> dict[str, Any] | None:
     channels = data.get("rows") or []
     channel = channels[0] if channels and isinstance(channels[0], dict) else {}
     return {"id": channel["id"]} if channel.get("id") else None
-
-
-def plan(platform: str, handle: str, channel_id: str | None, rows: list[dict[str, Any]],
-         exhausted: bool) -> list[dict[str, Any]]:
-    """下一轮要发的请求；空列表表示该组装了（取满，或额度/上限已到）。"""
-    exhausted = exhausted or len(rows) >= CATALOG_CALL_CAP or any(
-        row["envelope"].get("error_code") == QUOTA for row in rows)
-    room = CATALOG_CALL_CAP - len(rows)
-    label = channel_id or ("@" + handle)
-    identity = None
-    if platform != "tiktok":
-        operation = "resolve_profile" if platform == "instagram" else "get_channel"
-        current = state(rows, operation)
-        if current["page"] is None:
-            if current["not_found"]:
-                raise Stop("account_not_found", NOT_FOUND_MESSAGE.format(label=label))
-            if exhausted:
-                raise Stop("quota_exhausted", QUOTA_MESSAGE.format(what="the account profile"))
-            if current["failures"] >= 2:
-                raise Stop("service_failed", f"The data service failed {operation} twice. Tell the user the account "
-                                             "cannot be fetched right now and stop; do not guess whether it exists.")
-            return [request(platform, operation, handle, channel_id, None)]
-        identity = resolved(platform, current["page"])
-        if identity is None:
-            raise Stop("account_not_found", NOT_FOUND_MESSAGE.format(label=label))
-    pending = []
-    for operation in CONTENT[platform]:
-        current = state(rows, operation)
-        if current["not_found"] and platform == "tiktok":
-            raise Stop("account_not_found", NOT_FOUND_MESSAGE.format(label=label))
-        if current["page"] is None and current["failures"] < MAX_FAILURES.get(operation, 2) \
-                and not current["not_found"]:
-            pending.append(request(platform, operation, handle, channel_id, identity))
-    return [] if exhausted else pending[:max(room, 0)]
 
 
 def assemble(platform: str, handle: str, rows: list[dict[str, Any]], exhausted: bool) -> dict[str, Any]:
@@ -263,30 +175,67 @@ def run(command: list[str]) -> None:
         raise RuntimeError(f"{Path(command[0]).name} failed: {(done.stderr or done.stdout).strip()[-600:]}")
 
 
-def public_call(item: dict[str, Any], number: int) -> dict[str, Any]:
-    """一条请求对应一次具名 /mcp-pub 调用，完整结果存进 host-results/，再由 static_host.py fetch 落进暂存区。"""
-    tool = CONNECTOR_TOOLS[f"{item['connector_id']}/{item['operation']}"]
-    # catalog- 前缀：看片阶段的 host-results/NN-<tool>.json 从 01 起编号，两套编号不会撞名。
-    save_as = HOST_RESULTS / f"catalog-{number:02d}-{tool}.json"
-    return {"operation": item["operation"], "tool": tool,
-            "arguments": {"parameters": item["params"], "delivery": "download"},
-            "save_as": save_as.as_posix(),
-            "fetch": f"{script('static_host.py')} fetch --tool {tool} --input {quote(save_as.as_posix())}"}
+def history_call(platform: str, handle: str, channel_id: str | None) -> dict[str, Any]:
+    """一页样本的组合调用：IG 资料页 + Feed 首页 + Reels 首页，YT 频道 + 最新 50 条，TT 一次 100 条。"""
+    if platform == "instagram":
+        history: dict[str, Any] = {"max_items": 100, "max_pages": len(CONTENT["instagram"]),
+                                   "instagram_formats": {"posts": True, "reels": True}}
+        account: dict[str, Any] = {"handle": handle}
+    elif platform == "youtube":
+        history = {"max_items": YOUTUBE_PAGE, "max_pages": 1, "page_size": YOUTUBE_PAGE}
+        account = {"channel_id": channel_id} if channel_id else {"handle": "@" + handle}
+    else:
+        history = {"max_items": TIKTOK_LIMIT}
+        account = {"handle": handle}
+    return {"tool": COMPOSITE_TOOL, "arguments": {"platform": platform, "accounts": [account], "profile": True,
+                                                   "history": history, "on_identity_miss": "gap",
+                                                   "delivery": "download"}}
 
 
-def persist_commands(requests: list[dict[str, Any]], start: int, handle: str, platform: str) -> list[str]:
-    """每种 operation 一条 persist_many.py；--dest 编号即发出顺序，不按返回先后。"""
-    commands, number = [], start
-    for operation in dict.fromkeys(item["operation"] for item in requests):
-        dests = []
-        for item in requests:
-            if item["operation"] == operation:
-                dests += ["--dest", f"{CATALOG}/{number:02d}-{operation}.json"]
-                number += 1
-        bound = ["--handle", handle] * (len(dests) // 2) if platform != "youtube" else []
-        commands.append(" ".join([script("persist_many.py"), "--connector", requests[0]["connector_id"],
-                                  "--operation", operation, "--any-status", *dests, *bound]))
-    return commands
+def take_saved(path: Path) -> None:
+    """取回存好的组合结果（没有就绪下载时 stage）；宿主已自己落过盘、没另存文件时照用已落的那份。"""
+    import static_host
+    if not path.is_file():
+        if static_host.composite_records(COMPOSITE_TOOL):
+            return
+        raise ValueError(f"{path} is missing: save the complete {COMPOSITE_TOOL} result there, then run rerun again")
+    raw = path.read_bytes()
+    result = static_host.fetch(COMPOSITE_TOOL, raw)
+    if result.get("fetched") == 0:
+        static_host.stage(COMPOSITE_TOOL, raw)
+
+
+def place_composite() -> None:
+    """把最近一份组合结果按调用顺序逐字节写成 catalog/NN-<operation>.json；已放过就不再放。"""
+    import static_host
+    if numbered():
+        return
+    records = static_host.composite_records(COMPOSITE_TOOL)
+    if not records:
+        raise ValueError(f"no {COMPOSITE_TOOL} result was saved in this run; make the printed call first")
+    CATALOG.mkdir(exist_ok=True)
+    for number, call in enumerate(records[-1]["calls"], start=1):
+        body = Path(call["path"]).read_bytes()
+        operation = json.loads(body).get("operation") or str(call["tool"]).split("_", 1)[-1]
+        (CATALOG / f"{number:02d}-{operation}.json").write_bytes(body)
+
+
+def profile_check(platform: str, label: str, rows: list[dict[str, Any]]) -> None:
+    """资料页（IG / YT）拿不到：不存在如实说；其余说明不了账号在不在。"""
+    if platform == "tiktok":
+        current = state(rows, "list_account_posts")
+        if current["page"] is None and current["not_found"]:
+            raise Stop("account_not_found", NOT_FOUND_MESSAGE.format(label=label))
+        return
+    operation = "resolve_profile" if platform == "instagram" else "get_channel"
+    current = state(rows, operation)
+    if current["page"] is None or resolved(platform, current["page"]) is None:
+        if current["quota"]:
+            raise Stop("quota_exhausted", QUOTA_MESSAGE.format(what="the account profile"))
+        if current["page"] is not None or current["not_found"]:
+            raise Stop("account_not_found", NOT_FOUND_MESSAGE.format(label=label))
+        raise Stop("service_failed", f"The data service could not return {operation}. Tell the user the account "
+                                     "cannot be fetched right now and stop; do not guess whether it exists.")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -294,63 +243,72 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--platform", choices=sorted(CONTENT), required=True)
     parser.add_argument("--account", default="", help="the account the user named (with or without @)")
     parser.add_argument("--channel-id", help="YouTube only: the UC… channel id, instead of --account")
-    parser.add_argument("--budget-exhausted", action="store_true",
-                        help="a call was refused because the data quota is used up and returned no record: issue "
-                             "no further call and assemble the pages already placed")
-    parser.add_argument("--failed", action="append", default=[], metavar="OPERATION",
-                        help="this call failed without returning any record: skip its persist and rerun with this "
-                             "flag (repeatable)")
+    parser.add_argument("--workspace", help="reserve this request's run directory under this workspace first")
+    parser.add_argument("--placed", action="store_true", help="the printed call was made and its result saved")
+    parser.add_argument("--call-failed", action="store_true",
+                        help="the printed call failed twice without returning any result")
+    # 目录就绪后直接接着跑 watch_media.py（中间没有判断），把看片的交接一并打印。
+    parser.add_argument("--output-language", choices=("en", "zh-CN"), default="en")
+    parser.add_argument("--cap", type=int, default=10)
+    parser.add_argument("--named-content-id", action="append", default=[])
     args = parser.parse_args(argv)
     handle = args.account.strip().lstrip("@")
     if not handle and not (args.platform == "youtube" and args.channel_id):
         parser.error("--account is required (YouTube also accepts --channel-id)")
-    if ANALYSIS.exists():
-        print(json.dumps({"status": "ok", "account_analysis": str(ANALYSIS.resolve()), "reused": True,
-                          "next_action": "This run already holds account_analysis.json; nothing was fetched."},
-                         ensure_ascii=False))
-        return 0
     try:
-        if args.budget_exhausted:
-            CATALOG.mkdir(exist_ok=True)
-            EXHAUSTED_MARK.touch()
-        mark_failed(args.failed)
-        exhausted = EXHAUSTED_MARK.exists()
-        rows = placed()
-        requests = plan(args.platform, handle, args.channel_id, rows, exhausted)
-        if not requests:
-            print(json.dumps(assemble(args.platform, handle, rows, exhausted), ensure_ascii=False, indent=2))
+        if args.workspace and not os.environ.get("KABO_STATIC_RUN_DIR"):
+            import static_host
+            run_directory = static_host.init(args.workspace)
+            os.chdir(run_directory)
+            os.environ["KABO_STATIC_RUN_DIR"] = str(run_directory)
+        if ANALYSIS.exists():
+            print(json.dumps({"status": "ok", "account_analysis": str(ANALYSIS.resolve()), "reused": True,
+                              "next_action": "This run already holds account_analysis.json; nothing was fetched."},
+                             ensure_ascii=False))
             return 0
+        label = args.channel_id or ("@" + handle)
+        saved = (Path.cwd() / HOST_RESULTS / f"catalog-01-{COMPOSITE_TOOL}.json").resolve()
+        if args.placed or args.call_failed:
+            if args.call_failed and not numbered():
+                import static_host
+                if not static_host.composite_records(COMPOSITE_TOOL):
+                    raise Stop("service_failed", "The data service did not answer the catalog call. Tell the user "
+                                                 "the account cannot be fetched right now and stop; do not guess "
+                                                 "whether it exists.")
+            if not args.call_failed:
+                take_saved(saved)
+            place_composite()
+            rows = placed()
+            profile_check(args.platform, label, rows)
+            print(json.dumps(assemble(args.platform, handle, rows, False), ensure_ascii=False, indent=2))
+            sys.stdout.flush()
+            watch = [sys.executable, "-B", str(SCRIPTS / "watch_media.py"), str(ANALYSIS), "--cap", str(args.cap),
+                     "--output-language", args.output_language,
+                     *[part for content_id in args.named_content_id for part in ("--named-content-id", content_id)]]
+            return subprocess.run(watch).returncode
     except Stop as stop:
         print(json.dumps({"status": "stopped", "reason": stop.reason, "message": str(stop)}, ensure_ascii=False))
         return 0
     except (OSError, ValueError, RuntimeError) as error:
         print(f"catalog fetch failed: {error}", file=sys.stderr)
         return 1
-    start = len(rows) + 1
-    ISSUED.parent.mkdir(exist_ok=True)
-    ISSUED.write_text(json.dumps([{"number": start + i, "operation": item["operation"]}
-                                  for i, item in enumerate(requests)]) + "\n", encoding="utf-8")
     HOST_RESULTS.mkdir(exist_ok=True)
-    rerun = [script("fetch_catalog.py"), "--platform", args.platform]
+    rerun = [script("fetch_catalog.py"), "--platform", args.platform, "--output-language", args.output_language,
+             "--cap", str(args.cap)]
     rerun += ["--channel-id", quote(args.channel_id)] if args.channel_id else []
     rerun += ["--account", quote(args.account.strip())] if args.account.strip() else []
-    print(json.dumps({"status": "needs_calls", "catalog_calls": len(rows), "catalog_call_cap": CATALOG_CALL_CAP,
-                      "requests": [public_call(item, start + i) for i, item in enumerate(requests)],
-                      "persist": persist_commands(requests, start, handle, args.platform),
-                      "rerun": " ".join(rerun),
-                      "if_a_call_failed": " ".join([*rerun, "--failed", "<operation>"]),
-                      "if_quota_used_up": " ".join([*rerun, "--budget-exhausted"]),
-                      "next_action": "Make each request as its own individual call to its tool with exactly its "
-                                     "arguments, save each complete result as its save_as file (it is a small download "
-                                     "result: write the text the call returned with a heredoc; every call counts toward "
-                                     "catalog_call_cap, so never call a tool again just to save its result) and run its fetch "
-                                     "command (static_host.py stage on the same file when fetch reports no ready "
-                                     "download). Then run every persist command in order and run rerun. If a call "
-                                     "failed without returning any record (fetch and stage refuse it as an error with "
-                                     "no terminal evidence), do not retry it yourself and skip its persist command: "
-                                     "run if_a_call_failed (--failed <operation>) instead of rerun; this script decides "
-                                     "any retry. If a call was refused because the data quota is used up and nothing "
-                                     "could be saved, run if_quota_used_up (--budget-exhausted) instead. Never write or edit catalog/ files."},
+    rerun += [part for content_id in args.named_content_id for part in ("--named-content-id", quote(content_id))]
+    print(json.dumps({"status": "needs_calls", "run_directory": str(Path.cwd().resolve()),
+                      "call": history_call(args.platform, handle, args.channel_id),
+                      "save_as": str(saved),
+                      "rerun": " ".join([*rerun, "--placed"]),
+                      "if_the_call_failed": " ".join([*rerun, "--call-failed"]),
+                      "next_action": "Make this one call with exactly its arguments, save its complete result as "
+                                     "save_as as is, download link included (write the file with your file-write tool "
+                                     "or a single-quoted heredoc; never download anything yourself), then run rerun. "
+                                     "If the call itself fails without returning a result, make it once more; if it "
+                                     "fails again, run if_the_call_failed instead. Never write or edit catalog/ files. "
+                                     "Every later command in this run uses run_directory."},
                      ensure_ascii=False, indent=2))
     return 0
 

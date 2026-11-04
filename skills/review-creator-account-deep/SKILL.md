@@ -3,7 +3,7 @@ name: review-creator-account-deep
 description: "Deep-review a named public Instagram, TikTok or YouTube account: walk the standard account-analysis steps and watch a bounded set of its videos (frames and transcript) to say which practices to keep or stop and what to change in the next shoot. Reuses a finished review-creator-account review, else fetches a one-page catalog itself. Use when the creator asks for a deep review that actually watches videos. Not for a catalog-only review, a single-video teardown, competitors or trends."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Viewing frames needs a host that can display images to the model. Kabo permission: data."
-allowed-tools: get_research_capabilities collect_video_media get_research_data_job get_research_data_download read_research_data_artifacts instagram_resolve_profile instagram_list_posts instagram_list_reels youtube_get_channel youtube_list_channel_uploads tiktok_list_account_posts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream
+allowed-tools: get_research_capabilities collect_account_history collect_video_media get_research_data_job get_research_data_download read_research_data_artifacts instagram_resolve_profile instagram_list_posts instagram_list_reels youtube_get_channel youtube_list_channel_uploads tiktok_list_account_posts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream
 ---
 
 # Deep account review
@@ -34,12 +34,13 @@ never read credentials or ask for tokens in chat.
 ## Running commands
 
 `<skill directory>` is the folder holding this `SKILL.md`. Reserve exactly one run per request:
+without a finished standard review, step 1's `fetch_catalog.py --workspace` reserves it; with one,
 
 ```sh
 python3 '<skill directory>/scripts/static_host.py' init --workspace '<user-workspace>'
 ```
 
-It prints the run directory. Every later command carries it, because hosts keep neither environment
+prints the run directory. Every later command carries it, because hosts keep neither environment
 variables nor the working directory between commands:
 `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/…' …`.
 `<analysis>` is the catalog analysis step 1 settles on. Every command here is complete: do not probe
@@ -55,7 +56,8 @@ or display images, say which step is not possible here before claiming anything.
 All data comes from the Kabo MCP tools in `allowed-tools`. Call `get_research_capabilities` once per
 run and reuse its answer; an operation it marks unavailable is a capability gap to report.
 
-- The catalog tools are used only by step 1's `fetch_catalog.py`, which prints their calls.
+- Without a standard review, the catalog is **one** backend call, `collect_account_history`, printed
+  by step 1's `fetch_catalog.py`.
 - Watching is **one** backend call, `collect_video_media`, printed by `watch_media.py` (step 2): the
   backend queues every planned metadata, transcript and keyframe job and waits for them. Never call
   the `public_video_*` tools or `get_research_data_job` yourself for the watch set.
@@ -85,18 +87,20 @@ page per format, at most `CATALOG_CALL_CAP` (4) catalog calls per run.
 
    - **A finished standard review may exist:** read `references/standard-inputs.md` whole and reuse
      it as it says; `<analysis>` is `<standard run>/account_analysis.json`.
-   - **Otherwise** fetch a one-page catalog sample in this run (YouTube may pass
-     `--channel-id "<UC…>"` instead of `--account`):
+   - **Otherwise** reserve the run and fetch a one-page catalog sample with one backend call
+     (YouTube may pass `--channel-id "<UC…>"` instead of `--account`):
 
      ```sh
-     cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/fetch_catalog.py' --platform <instagram|youtube|tiktok> --account "<named account>"
+     python3 '<skill directory>/scripts/fetch_catalog.py' --workspace '<user-workspace>' --platform <instagram|youtube|tiktok> --account "<named account>" --output-language <en|zh-CN> [--cap 10] [--named-content-id "<id>"]
      ```
 
-     Each run prints one JSON. `needs_calls`: follow its `next_action` exactly, then run its
-     `rerun`. Never write or edit `catalog/` files. `ok`: `<analysis>` is this run's
-     `account_analysis.json`; this path has no standard report and a smaller sample, so quote only
-     the scripted catalog numbers and put its `sample_note` verbatim in `other_limitations`.
-     `stopped`: tell the user its `message` and stop; never review another account in its place.
+     It prints one JSON. `needs_calls`: its `run_directory` is this run's; make its one call, save
+     the result as `save_as`, then run its `rerun`, as its `next_action` says. Never write or edit
+     `catalog/` files. The rerun prints `ok` and continues straight into step 2 (its output ends
+     with the watch hand-over). On `ok`, `<analysis>` is this run's `account_analysis.json`; this
+     path has no standard report and a smaller sample, so quote only the scripted catalog numbers
+     and put its `sample_note` verbatim in `other_limitations`. `stopped`: tell the user its
+     `message` and stop; never review another account in its place.
 
    Step 2's command also computes the catalog-only numbers (`catalog_stability.json`), which watch
    nothing and do not change the standard review.
@@ -112,7 +116,8 @@ page per format, at most `CATALOG_CALL_CAP` (4) catalog calls per run.
 
 2. **Watch.** One command builds the catalog memo (`catalog_plus.md`), sizes the watch set
    (`watch_set.json`; named `content_id`s take seats first), plans the media requests and hands over
-   the single `collect_video_media` call:
+   the single `collect_video_media` call. After a fetched catalog, step 1's rerun has already run it;
+   after a standard review, run it yourself:
 
    ```sh
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/watch_media.py' '<analysis>' --output-language <en|zh-CN> [--cap 10] [--named-content-id "<id>"]

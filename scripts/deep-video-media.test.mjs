@@ -4,7 +4,7 @@
 // 组合结果按后台对这组入参会给出的形状手写，走 stage 回退落盘。
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -127,4 +127,67 @@ test("看片一次组合调用：交接一个 call，续跑等到终态，按组
   }
   assert.match(third.out, /Authoring packet/);
   await readFile(path.join(run, "account_deep_authoring.json"), "utf8");
+});
+
+// 没有标准复盘时：fetch_catalog.py --workspace 一条命令占好 run 并交出一个 collect_account_history；
+// 续跑按调用顺序逐字节放进 catalog/、组装分析，并直接接上看片的交接。
+const NOW_S = Math.floor(Date.now() / 1000);
+const igEnvelope = (operation, data) => ({
+  schema_version: "1.0", connector_id: "instagram-discovery", operation, provider: "fixture", status: "completed", summary: "ok",
+  limitations: [], credential_values_recorded: false, request_id: `req-${operation}`, evidence_ref: `ev-${operation}`,
+  raw_sha256: "a".repeat(64), retrieved_at: new Date().toISOString(), data,
+});
+const igRow = (code, index, reel) => ({
+  code, pk: `${code}-pk`, taken_at: NOW_S - (index + 1) * 3 * 86400, like_count: 1000 + 37 * index, comment_count: 20 + index,
+  ...(reel ? { play_count: 20000 + 900 * index, media_type: 2, product_type: "clips" } : { media_type: 1 }),
+  user: { username: "neutral.creator", pk: "u1" }, caption: { text: `Fixture caption ${code}` },
+});
+const igPage = (prefix, count, reel) => ({ rows: Array.from({ length: count }, (_, i) => igRow(`${prefix}${i}`, i, reel)), count, more_available: false });
+
+test("目录一次组合调用：--workspace 占 run 并交一个 call，续跑逐字节放置、组装分析并接上看片交接", async (t) => {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "kabo-deep-catalog-"));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  const first = python("fetch_catalog.py", ["--workspace", workspace, "--platform", "instagram", "--account", "@neutral.creator"], { cwd: os.tmpdir() });
+  assert.equal(first.code, 0, first.out);
+  const handed = JSON.parse(first.out);
+  assert.equal(handed.status, "needs_calls");
+  assert.ok(handed.run_directory.startsWith(await realpath(workspace)));
+  assert.deepEqual(handed.call, { tool: "collect_account_history", arguments: {
+    platform: "instagram", accounts: [{ handle: "neutral.creator" }], profile: true,
+    history: { max_items: 100, max_pages: 2, instagram_formats: { posts: true, reels: true } }, on_identity_miss: "gap", delivery: "download" } });
+  const list = [
+    ["instagram_resolve_profile", igEnvelope("resolve_profile", { profile: { id: "u1", pk: "u1", username: "neutral.creator", follower_count: 12000, media_count: 9 } })],
+    ["instagram_list_posts", igEnvelope("list_posts", igPage("FP", 3, false))],
+    ["instagram_list_reels", igEnvelope("list_reels", igPage("RL", 6, true))],
+  ];
+  const result = { schema_version: "kabo-composite-fetch.v1", tool: "collect_account_history", status: "completed",
+    calls: list.map(([tool, envelope]) => ({ tool, parameters: { handle: "neutral.creator" }, group: "acct-0", attempts: 1, result: envelope })),
+    summary: { accounts: [] }, coverage: { deadline_reached: false, unfinished: [], provider_calls: 3 }, limitations: [] };
+  await save(handed.save_as, result);
+  const second = shell(handed.rerun);
+  assert.equal(second.code, 0, second.out);
+  assert.match(second.out, /"status": "ok"/);
+  for (const [index, [, envelope]] of list.entries()) {
+    const placed = JSON.parse(await readFile(path.join(handed.run_directory, `catalog/0${index + 1}-${envelope.operation}.json`), "utf8"));
+    assert.deepEqual(placed, envelope);
+  }
+  const media = calls(second.out);
+  assert.equal(media.length, 1);
+  assert.equal(media[0].tool, "collect_video_media");
+});
+
+test("目录组合调用：资料页不存在如实说；调用两次都失败就停下", async (t) => {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "kabo-deep-catalog-"));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  const first = JSON.parse(python("fetch_catalog.py", ["--workspace", workspace, "--platform", "instagram", "--account", "ghost"], { cwd: os.tmpdir() }).out);
+  const missing = { ...igEnvelope("resolve_profile", undefined), status: "failed", error_code: "not_found" };
+  await save(first.save_as, { schema_version: "kabo-composite-fetch.v1", tool: "collect_account_history", status: "failed",
+    calls: [{ tool: "instagram_resolve_profile", parameters: { handle: "ghost" }, group: "acct-0", attempts: 1, result: missing }],
+    summary: { accounts: [] }, coverage: { deadline_reached: false, unfinished: [], provider_calls: 1 }, limitations: [] });
+  const second = shell(first.rerun);
+  assert.match(second.out, /"reason": "account_not_found"/);
+
+  const other = JSON.parse(python("fetch_catalog.py", ["--workspace", workspace, "--platform", "instagram", "--account", "x"], { cwd: os.tmpdir() }).out);
+  const failed = shell(other.if_the_call_failed);
+  assert.match(failed.out, /"reason": "service_failed"/);
 });
