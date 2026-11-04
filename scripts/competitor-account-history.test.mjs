@@ -54,11 +54,11 @@ function run(args, cwd, runDir) {
   return { code: result.status, out: (result.stdout ?? "") + (result.stderr ?? "") };
 }
 
-// 一个阶段交出的调用：每条 call: 行与它下面的 save: 文件。
+// 一个阶段交出的调用：每条 call: 行与它下面槽位行里的退路文件。
 const handed = (out) => {
   const lines = out.split("\n");
   return lines.flatMap((line, i) => line.startsWith("call: ")
-    ? [{ call: JSON.parse(line.slice(6)), save: lines[i + 1].trim().replace(/^save: /, "") }] : []);
+    ? [{ call: JSON.parse(line.slice(6)), save: lines[i + 1].split("save it to ")[1].slice(0, -1) }] : []);
 };
 
 const realpathOf = (dir) => realpath(dir);
@@ -66,7 +66,7 @@ const runDirOf = (out) => /^run directory: (.+)$/m.exec(out)?.[1];
 // 交接末尾打印的「一条命令续跑」：去掉 cd / 环境变量前缀，只留参数。
 const oneCommand = (out) => {
   const line = out.split("\n").find((l) => l.startsWith("Then run this one command"));
-  const command = line.slice(line.indexOf("cd '"));
+  const command = line.slice(line.indexOf("cd '")).replace(/( --id \d+=<id>)+$/, "");
   return [...command.slice(command.indexOf("drive.py'") + "drive.py'".length).matchAll(/'([^']*)'|(\S+)/g)]
     .map((m) => m[1] ?? m[2]);
 };

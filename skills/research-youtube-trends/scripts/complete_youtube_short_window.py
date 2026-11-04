@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Fill YouTube Search rows with get_video plays. Search has no statistics.
 
-`place` first fetches (or, with no ready download, stages) each saved
-host-results/NN-collect_youtube_recent_videos.json not taken yet, then splits this run's staged
+`place` first fetches the collection by its result id (`--id`), or else fetches (or, with no ready
+download, stages) each saved host-results/NN-collect_youtube_recent_videos.json not taken yet, then
+splits this run's staged
 collect_youtube_recent_videos result (searches, then get_video in
 chunks of 50) into envelope-NN.json, envelope-detail-NN.json and video-id-chunks.json, then merges them
 into the short-window input.
@@ -287,7 +288,7 @@ SEARCH_TOOL, DETAIL_TOOL = "youtube_search_videos", "youtube_get_video"
 USABLE = {"completed", "completed_partial"}
 
 
-def place(run: Path) -> dict[str, Any]:
+def place(run: Path, result_id: str | None = None) -> dict[str, Any]:
     """Split this run's collect_youtube_recent_videos record into the files merge reads.
 
     Searches become envelope-NN.json and the get_video chunks envelope-detail-NN.json, numbered in
@@ -297,11 +298,16 @@ def place(run: Path) -> dict[str, Any]:
     """
     import static_host  # the record and the envelopes static_host.py fetch/stage wrote, never model text
 
-    take_saved(run)
+    if result_id:
+        # 结果编号（下载链接路径里的 22 个字符）：脚本按编号自己取，模型不存结果。
+        static_host.fetch_id(COLLECT_TOOL, result_id)
+    else:
+        take_saved(run)
     records = static_host.composite_records(COLLECT_TOOL)
     if not records:
-        raise ValueError(f"no staged {COLLECT_TOOL} result in this run; save its complete result to "
-                         f"{run / 'host-results' / ('01-' + COLLECT_TOOL + '.json')} and run place again")
+        raise ValueError(f"no staged {COLLECT_TOOL} result in this run; run place again with --id <id>, the id "
+                         f"from the call's download url (a result with no download url: save it whole to "
+                         f"{run / 'host-results' / ('01-' + COLLECT_TOOL + '.json')} instead)")
     record = records[-1]
     queries = (record.get("summary") or {}).get("queries")
     if not isinstance(queries, list) or not queries:
@@ -389,12 +395,13 @@ def main() -> int:
     place_cmd.add_argument("--since", required=True)
     place_cmd.add_argument("--until", required=True)
     place_cmd.add_argument("--output", type=Path, required=True)
+    place_cmd.add_argument("--id", help=f"the {COLLECT_TOOL} result id from its download url")
     args = parser.parse_args()
     try:
         if args.command == "place":
             import static_host
             run = static_host.run_dir()
-            placed = place(run)
+            placed = place(run, args.id)
             files = [run / name for name in placed["searches"] + placed["details"]]
             result = merge(files, args.since, args.until, chunks=load_json(run / "video-id-chunks.json"))
             write_json(args.output, result)

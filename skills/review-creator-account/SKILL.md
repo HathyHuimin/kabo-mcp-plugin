@@ -2,7 +2,7 @@
 name: review-creator-account
 description: "Review an Instagram, TikTok or YouTube account: what works, what hurts, what to continue, stop or test, benchmarks, content patterns, follower loss and own-account wording audits. Also calculates engagement rate, conditional growth estimates and owner follower-contribution rankings from public data, an owner export or supplied numbers. Not for diagnosing a reach drop or shadowban, Insights UI help, trends, ideas, cadence plans, drafts, one-video edits or monetization."
 license: MIT
-compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read for saved account context and workspace:write only to connect a public account or save the user's profile edits on request."
+compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read for saved account context and workspace:write only to connect a public account or save the user's profile edits on request."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_account_history instagram_resolve_profile instagram_list_posts instagram_list_reels get_kabo_info list_connected_accounts get_creator_profile get_social_connection connect_public_account update_content_preferences
 ---
 
@@ -62,11 +62,12 @@ Narrow operations call `instagram_resolve_profile`, `instagram_list_posts` and
 `instagram_list_reels` themselves, as `references/narrow-operations.md` says.
 
 - **Hand-over.** `drive.py` exits 0 after printing a `call:` line. That pause is unfinished work.
-  Make exactly that call with the arguments verbatim; save the complete result to the file named
-  under it, then run the printed resume command, which fetches the saved file itself. Never retype, paste or edit returned data.
+  Make exactly that call with the arguments verbatim, then run the printed resume command
+  with each call's result id in it (`--id NN=<id>`: the 22 characters between `research-export/v1/` and `.json` in that result's download url), which fetches every result itself; save a result, whole, to the file named under its slot only when it has no download url. Never retype, paste or edit returned data.
 - **Calls you make yourself** (narrow operations) take `{"parameters": {…}, "delivery": "download"}`;
-  save each complete result as `host-results/<NN>-<tool-name>.json`, run
-  `static_host.py fetch --tool <tool-name> --input '<that file>'`, then persist it as
+  run `static_host.py fetch --tool <tool-name> --id <result id>` on each (the 22 characters between
+  `research-export/v1/` and `.json` in its download url; a result with no download url is saved
+  whole to a file under `host-results/` and fetched with `--input <that file>`), then persist it as
   `references/complete-review.md` says, with `--any-status` so a failure is recorded too.
 - **Readiness.** A complete public review needs no readiness check. Any other data call needs one
   `get_research_capabilities` call per run; reuse its answer.

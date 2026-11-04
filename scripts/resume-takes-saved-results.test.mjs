@@ -1,9 +1,9 @@
-// 交接与续跑之间只剩「存文件 → 跑一条续跑命令」（docs/skills-spec.md KS8）：交接给每条调用点名一个
-// 运行目录 host-results/ 下的绝对路径，续跑（--placed）自己对这些文件跑 static_host 的 fetch（没有就绪下载时
-// stage），再放置。实测里模型在两步之间走偏过：把组合结果的 calls[] 逐个拿去 get_research_data_download、
-// 用命令行参数写文件、在错的目录里跑 stage。这里对每个驱动 Skill 的 connector_driver.py 副本（连同它自己的
-// static_host.py）在进程内走一遍：下载路径（假 HTTPS，不联网）、内联 stage 回退、点名文件缺失时的提示、
-// 同一文件不重复取。
+// 交接与续跑之间只剩「调用 → 把结果编号填进续跑命令」（docs/skills-spec.md KS8）：交接给每条调用一个编号槽位，
+// 续跑（--placed --id NN=<编号>）自己按编号向 Kabo 取那份下载字节、按响应头的 sha256 与长度校验，再放置
+// （kabo ADR-0084「2026-11-04」）。模型手抄结果是插件交接的头号故障（patch 写坏、签名链接抄漏、改写字段），
+// 所以存文件只剩退路：没有下载链接的结果存进槽位点名的 host-results/ 文件，续跑照旧 fetch / stage。
+// 这里对每个驱动 Skill 的 connector_driver.py 副本（连同它自己的 static_host.py）在进程内走一遍：按编号取
+// （假 HTTPS，不联网）、存文件退路（下载与内联 stage）、槽位既无编号也无文件时的提示、同一槽位不重复取。
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -15,7 +15,9 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const SIGNED = "https://storage.googleapis.com/kabo-media/_temporary/research-export/v1/resume.json?X-Goog-Signature=SIGNATURE";
+const RESULT_ID = "Neutral_Result-Id01234";
+const SIGNED = `https://storage.googleapis.com/kabo-media/_temporary/research-export/v1/${RESULT_ID}.json?X-Goog-Signature=SIGNATURE`;
+const BY_ID = `https://kabo.sh/v1/research-downloads/${RESULT_ID}`;
 
 // 每个场景一个进程：导入该 Skill 的 connector_driver / static_host，替换 urllib 的 HTTPS 收发，
 // 先让 fetch_round 交接（打印并 SystemExit 0），再按场景把结果存进点名的文件、带 --placed 续跑。
@@ -31,7 +33,10 @@ class FakeHTTPS(urllib.request.HTTPSHandler):
     def https_open(self, req):
         requests.append(req.full_url)
         body = base64.b64decode(spec["download"])
-        headers = http.client.parse_headers(io.BytesIO(b"Content-Type: application/json\r\n\r\n"))
+        import hashlib
+        head = ("Content-Type: application/json\r\nContent-Length: %d\r\nX-Content-SHA256: %s\r\n\r\n"
+                % (len(body), hashlib.sha256(body).hexdigest())).encode()
+        headers = http.client.parse_headers(io.BytesIO(head))
         response = urllib.response.addinfourl(io.BytesIO(body), headers, req.full_url, 200)
         response.msg = "fake"
         return response
@@ -60,9 +65,12 @@ def step(placed):
     return {"code": code, "out": out.getvalue()}
 
 report = {"run": str(run), "handed": step(False)}
-saved = [line[len("  save: "):] for line in report["handed"]["out"].splitlines() if line.startswith("  save: ")]
+saved = [line.split("save it to ", 1)[1].rstrip(")") for line in report["handed"]["out"].splitlines()
+         if line.startswith("  result ")]
 report["saved"] = saved
-if spec["result"] is not None:
+if spec.get("id"):
+    cd.RESULT_IDS["01"] = spec["id"]
+elif spec["result"] is not None:
     for name in saved:
         with open(name, "w") as stream:
             json.dump(spec["result"], stream)
@@ -139,41 +147,52 @@ async function drive(t, skill, spec) {
 for (const [skill, driver] of Object.entries(DRIVERS)) {
   const tool = driver.composite ?? driver.single[2];
 
-  test(`${skill}：交接只点名绝对路径与一条续跑命令；续跑自己下载（假 HTTPS）、校验并放置，再跑不重复取`, async (t) => {
-    const report = await drive(t, skill, scenario(driver, { download: true }));
+  test(`${skill}：交接给每条调用一个槽位与一条带 --id 的续跑命令；续跑按编号自己取（假 HTTPS）、校验并放置，再跑不重复取`, async (t) => {
+    const report = await drive(t, skill, { ...scenario(driver, { download: true }), id: RESULT_ID });
     const handed = report.handed.out;
     assert.equal(report.handed.code, 0, handed);
     assert.deepEqual(report.saved, [path.join(report.run, "host-results", `01-${tool}.json`)]);
     assert.match(handed, /^call: /m);
-    assert.match(handed, /never call get_research_data_download/);
-    assert.match(handed, /never by passing the result as a command-line argument/);
+    assert.match(handed, /^  result 01 {2}\(no download url: save it to /m);
+    assert.match(handed, /Do not save the results/);
+    assert.match(handed, /never call get_research_data_download/i);
     assert.doesNotMatch(handed, /static_host\.py/, "the model runs no fetch or stage command itself");
     const resume = handed.split("\n").filter((line) => line.startsWith("Then run this one command"));
     assert.equal(resume.length, 1, handed);
-    assert.ok(resume[0].includes(`cd '${report.run}' && `) && resume[0].endsWith(" --placed"), resume[0]);
+    assert.ok(resume[0].includes(`cd '${report.run}' && python3 `), resume[0]);
+    assert.doesNotMatch(resume[0], /KABO_STATIC_RUN_DIR/, "the run is found from the working directory");
+    assert.ok(resume[0].endsWith(" --placed --id 01=<id>"), resume[0]);
     assert.equal(report.resumed.code, 0, report.resumed.out);
-    assert.match(report.resumed.out, new RegExp(`01-${tool}\\.json: fetched ${tool}`));
+    assert.match(report.resumed.out, new RegExp(`result 01: fetched by id ${tool}`));
     assert.match(report.resumed.out, /^PLACED \[.+\]$/m);
-    assert.deepEqual(report.requests, [SIGNED], "one download, made by the resume");
+    assert.deepEqual(report.requests, [BY_ID], "one download by id, made by the resume");
     // 同一命令再跑：这一轮已放置，不再下载。
     assert.equal(report.again.code, 0, report.again.out);
     assert.doesNotMatch(report.again.out, /fetched|staged|PLACED/);
   });
 
+  test(`${skill}：没交编号而存了带下载链接的结果时，续跑照旧下载（假 HTTPS）、校验并放置`, async (t) => {
+    const report = await drive(t, skill, scenario(driver, { download: true }));
+    assert.equal(report.resumed.code, 0, report.resumed.out);
+    assert.match(report.resumed.out, new RegExp(`result 01: fetched ${tool}`));
+    assert.match(report.resumed.out, /^PLACED \[.+\]$/m);
+    assert.deepEqual(report.requests, [SIGNED]);
+  });
+
   test(`${skill}：结果没有就绪下载时续跑退回 stage；${driver.composite ? "模型存下的整份组合结果照收" : "内联信封照收"}`, async (t) => {
     const report = await drive(t, skill, scenario(driver, { download: false }));
     assert.equal(report.resumed.code, 0, report.resumed.out);
-    assert.match(report.resumed.out, new RegExp(`01-${tool}\\.json: staged ${tool}`));
+    assert.match(report.resumed.out, new RegExp(`result 01: staged ${tool}`));
     const placed = JSON.parse(/^PLACED (.+)$/m.exec(report.resumed.out)[1]);
     assert.equal(placed.length, driver.composite ? driver.calls.length + 1 : 1, report.resumed.out);
     assert.deepEqual(report.requests, []);
   });
 
-  test(`${skill}：续跑时点名的文件不存在，一句话点名文件与该存什么，什么都不放`, async (t) => {
+  test(`${skill}：续跑时槽位既无编号也无文件，一句话点名槽位与该补的 --id，什么都不放`, async (t) => {
     const report = await drive(t, skill, { ...scenario(driver, { download: false, saved: false }), again: false });
     assert.equal(report.resumed.code, 2, report.resumed.out);
     assert.ok(report.resumed.out.includes(
-      `STOPPED no saved result at ${report.saved[0]} (save the complete ${tool} result there)`), report.resumed.out);
+      `STOPPED no result for slot 01 (${tool}). Run the resume command again with --id 01=<id>`), report.resumed.out);
     assert.doesNotMatch(report.resumed.out, /PLACED/);
   });
 }
@@ -208,9 +227,9 @@ print(json.dumps({"run": str(run), "handed": step(False), "resumed": step(True)}
   const report = JSON.parse(execFileSync("python3", ["-I", "-B", "-c", script,
     path.join(root, "skills", "research-instagram-trends", "scripts"), temp], { encoding: "utf8" }).trim().split("\n").at(-1));
   const file = path.join(report.run, "host-results", "01-enrich_instagram_shortlist.json");
-  assert.ok(report.handed.includes(`  save: ${file}`), report.handed);
-  assert.match(report.handed, /never call get_research_data_download/);
+  assert.ok(report.handed.includes(`  result 01  (no download url: save it to ${file})`), report.handed);
+  assert.match(report.handed, /never call get_research_data_download/i);
   assert.doesNotMatch(report.handed, /static_host\.py/);
-  assert.match(report.handed, /^Then run this one command right away .* --placed$/m);
-  assert.ok(report.resumed.includes(`STOPPED no saved result at ${file} (save the complete enrich_instagram_shortlist result there)`), report.resumed);
+  assert.match(report.handed, /^Then run this one command right away.* --placed --id 01=<id>$/m);
+  assert.ok(report.resumed.includes("STOPPED no result for slot 01 (enrich_instagram_shortlist)"), report.resumed);
 });

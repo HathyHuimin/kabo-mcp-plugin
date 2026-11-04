@@ -32,7 +32,8 @@ async function newRun(t, skill) {
 }
 
 const calls = (out) => out.split("\n").filter((line) => line.startsWith("call: ")).map((line) => JSON.parse(line.slice(6)));
-const resumeOf = (out) => { const line = out.split("\n").find((l) => l.startsWith("Then run this one command")); return line.slice(line.indexOf("cd '")); };
+// 这些场景走存文件的退路：去掉续跑命令末尾待填的 --id 占位。
+const resumeOf = (out) => { const line = out.split("\n").find((l) => l.startsWith("Then run this one command")); return line.slice(line.indexOf("cd '")).replace(/( --id \d+=<id>)+$/, ""); };
 
 function envelope(connector_id, operation, data, extra = {}) {
   return {
@@ -73,7 +74,7 @@ function composite(args, list, accountStatus, extra = {}) {
 // 模型做的事：调组合工具、把整份结果原样存进交接点名的文件（绝对路径）；之后只跑续跑命令，
 // 续跑自己 fetch（这里没有就绪下载，退回 stage）。
 async function answer(skill, run, fetched, result) {
-  const saved = fetched.split("\n").find((line) => line.startsWith("  save: ")).slice(8);
+  const saved = fetched.split("\n").find((line) => line.startsWith("  result ")).split("save it to ")[1].slice(0, -1);
   assert.ok(path.isAbsolute(saved) && saved.startsWith(run), saved);
   await writeFile(saved, JSON.stringify({ content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: result }));
 }
@@ -110,7 +111,7 @@ test("账号复盘 Instagram：一次组合调用交出 100 条合计上限与�
   await answer(REVIEW, run, first.out, result);
   const second = resume(resumeOf(first.out), question);
   assert.equal(second.code, 0, second.out);
-  assert.match(second.out, /01-collect_account_history\.json: staged collect_account_history/);
+  assert.match(second.out, /result 01: staged collect_account_history/);
   assert.match(second.out, /list_posts 2 page\(s\)\/5 rows, list_reels 1 page\(s\)\/4 rows; snapshot flags: --complete-operation list_posts --complete-operation list_reels/);
   assert.match(second.out, /account-review-synthesis-input\.v1/);
   assert.deepEqual(await placedOperations(run), ["resolve_profile", "list_posts", "list_reels", "list_posts"]);
@@ -235,10 +236,10 @@ test("流量诊断：续跑时交接点名的文件还没存，停下并点名�
   const first = python(DIAGNOSE, "drive.py", ["fetch", "--platform", "instagram", "--handle", "neutral.creator", "--language", "en",
     "--question-file", "-"], { cwd: run, run, input: question });
   assert.equal(first.code, 0, first.out);
-  const saved = first.out.split("\n").find((line) => line.startsWith("  save: ")).slice(8);
+  const saved = first.out.split("\n").find((line) => line.startsWith("  result ")).split("save it to ")[1].slice(0, -1);
   const second = resume(resumeOf(first.out), question);
   assert.equal(second.code, 2, second.out);
-  assert.ok(second.out.includes(`no saved result at ${saved} (save the complete collect_account_history result there)`), second.out);
+  assert.ok(second.out.includes("no result for slot 01 (collect_account_history). Run the resume command again with --id 01=<id>"), second.out);
   assert.deepEqual(await placedOperations(run), []);
   // 存好之后同一条续跑命令即可放置；再跑一次不重复取。
   await answer(DIAGNOSE, run, first.out, composite(calls(first.out)[0].arguments, [

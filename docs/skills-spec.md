@@ -159,6 +159,15 @@ skill 内容（`SKILL.md`、`references/`、脚本输出）一律用英文。本
     字节不经模型、只经脚本，校验也在脚本里。
   - 这份结果只有链接与摘要、不含数据，模型原样写进文件（宿主导出或 heredoc）不算抄写证据：
     抄错一个字符会在主机或 sha256 校验上失败，不会落下错的数据。
+  - **结果编号（2026-11-04 起优先）**：连这份小结果也不让模型存。envelope 下载链接路径里
+    `research-export/v1/<编号>.json` 的 22 字符就是结果编号（kabo ADR-0084「2026-11-04」）；模型只把
+    编号交给脚本——驱动交接的续跑命令 `--id NN=<编号>`，或 `static_host.py fetch --tool <工具名>
+    --id <编号>`——脚本向 `https://kabo.sh/v1/research-downloads/<编号>` 取同一份字节，按响应头的
+    `Content-Length` 与 `X-Content-SHA256` 校验后照 `fetch` 落盘。原因：1.0.10 的 Codex 回归里，模型
+    存这份小结果仍是交接的头号故障（patch 写坏、签名链接抄漏、改写 `calls[].tool`、存错目录；程序从
+    返回值写文件 37/40 成功，模型手抄 3/10），而插件不注册生命周期钩子、只装 Skills 的安装也没有
+    钩子，宿主替模型落盘的路走不通。没有下载链接的结果（下载不可用、未带 delivery）仍按上面存文件。
+    产物（帧、转写）没有编号，仍按下面逐项下载。
   - **帧与图片同样走下载**：`read_research_data_artifacts` 读帧也带 `delivery: "download"`，
     `fetch` 把图片落成与 `stage` 相同的 `<id>-<i>.<jpg|png|webp>` + `.meta`，输出里逐项给出绝对 `path`，
     模型再用宿主自己的读文件 / 看图工具打开它才算看过。原因：Claude Code 2.1.308 把内联图片另存进

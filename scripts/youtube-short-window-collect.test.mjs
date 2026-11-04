@@ -182,7 +182,8 @@ test("place 自己 stage 存在 host-results/ 的整份组合结果；没存时�
   const file = path.join(run, "host-results", "01-collect_youtube_recent_videos.json");
   const missing = place(run);
   assert.equal(missing.code, 2, missing.out);
-  assert.ok(missing.out.includes(`save its complete result to ${file} and run place again`), missing.out);
+  assert.ok(missing.out.includes(`run place again with --id <id>`) && missing.out.includes(`save it whole to ${file} instead`),
+    missing.out);
   const value = collection();
   await writeFile(file, JSON.stringify({ content: [{ type: "text", text: JSON.stringify(value) }], structuredContent: value }));
   const placed = place(run);

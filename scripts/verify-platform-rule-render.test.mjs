@@ -81,10 +81,10 @@ test("fetch 交出一条 render_official_pages：全部计划页面、带 source
   // 只有登记页本身带 source_id；随源一起读的 watch 页没有。
   assert.deepEqual(pages.map((p) => p.source_id), ["instagram.originality", undefined, "instagram.reels_feature", undefined]);
   // 交接只点名存放文件（绝对路径）与一条续跑命令，不再让模型自己跑 fetch / stage。
-  assert.ok(first.out.includes(`  save: ${path.join(run, "host-results", "01-render_official_pages.json")}`), first.out);
+  assert.ok(first.out.includes(`  result 01  (no download url: save it to ${path.join(run, "host-results", "01-render_official_pages.json")})`), first.out);
   assert.doesNotMatch(first.out, /static_host\.py' (?:fetch|stage)/);
-  assert.match(first.out, /^Then run this one command right away .*drive\.py' fetch .*--placed$/m);
-  assert.match(first.out, /never call get_research_data_download/);
+  assert.match(first.out, /^Then run this one command right away.*drive\.py' fetch .*--placed --id 01=<id>$/m);
+  assert.match(first.out, /never call get_research_data_download/i);
 });
 
 test("组合结果按 page-<i> 绑回：读到的页面可引用，失败 / 未渲染 / 跳出主机的记为 unreachable，报告通过校验", async (t) => {
@@ -134,6 +134,6 @@ test("续跑时交接点名的文件不存在：一句话点名文件与该存�
   const placed = python("drive.py", [...FETCH, "--placed"], { cwd: run, run });
   assert.equal(placed.code, 2, placed.out);
   const file = path.join(run, "host-results", "01-render_official_pages.json");
-  assert.ok(placed.out.includes(`no saved result at ${file} (save the complete render_official_pages result there)`), placed.out);
+  assert.ok(placed.out.includes("no result for slot 01 (render_official_pages). Run the resume command again with --id 01=<id>"), placed.out);
   assert.equal(existsSync(path.join(run, "analysis", "rule-input.json")), false);
 });
