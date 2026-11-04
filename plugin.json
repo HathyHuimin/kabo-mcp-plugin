@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "kabo",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Public creator research with bundled workflows and Kabo MCP evidence.",
   "author": {
     "name": "Dealism",
@@ -36,7 +36,7 @@
         ]
       },
       "publication": {
-        "release_notes": "Kabo 1.0.10 checks content language before ranking short-window recommendations across Instagram, TikTok and YouTube. User-approved additional languages or unrestricted searches override account defaults for the current request. YouTube can use declared audio-language evidence when available; uncertain language is disclosed. Includes all fifteen Skills. OpenAI marketplace review remains separate."
+        "release_notes": "Kabo 1.0.11 makes the remake Skill load only when you want a finished video; script writing, video breakdowns, account reviews, growth advice and content ideas go to their own Skills. Includes all fifteen Skills. OpenAI marketplace review remains separate."
       }
     }
   }
