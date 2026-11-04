@@ -772,10 +772,10 @@ def download_result(result_id):
         raise ValueError(f"Download failed ({label}); if this host blocks network access for scripts, save the "
                          "complete tool result to a file and run static_host.py fetch --input <file> on it") from None
     if status == 404:
-        raise ValueError("no result under this id: it expired (ids last 10 minutes) or was mistyped. If that call's "
-                         "result has an evidence_ref, call get_research_data_download with it (no new fetch, no "
-                         "allowance) and use the id in its new download url; otherwise make the same call again "
-                         "and use the id from its new result")
+        raise ValueError("no result under this id: it expired (ids last 10 minutes) or was mistyped. If that call was "
+                         "a data tool (not a lookup_* tool) and its result has an evidence_ref, call "
+                         "get_research_data_download with it (no new fetch, no allowance) and use the id in its new "
+                         "download url; otherwise make the same call again and use the id from its new result")
     if status == "headers":
         raise ValueError("Kabo did not return the size and sha256 for this id; nothing was written")
     if status != 200:
