@@ -1,6 +1,6 @@
 ---
 name: plan-platform-monetization
-description: "Check a YouTube, Instagram or TikTok account against the platform's own monetization programs (ads, memberships, subscriptions, gifts, rewards, paid content, commerce): which programs exist, which bars are met, how far the rest are, and revenue scenarios from stated rates. Also answers which-niche-pays-more questions. Not for content reviews, sponsorship pricing or checking what a live policy page says today."
+description: "Which official ways YouTube, Instagram or TikTok pay creators (ads, memberships, subscriptions, gifts, rewards, paid content, commerce), asked about a named account, stated numbers or no account: which programs exist, which bars are met, how far the rest are (e.g. subscribers or watch hours still needed for YPP), and revenue scenarios from stated rates. Also which niches pay more. Not for content reviews, sponsorship pricing or quoting a live policy page."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Retrieving account facts also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for account facts only: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_get_channel youtube_list_channel_uploads instagram_resolve_profile tiktok_list_account_posts
