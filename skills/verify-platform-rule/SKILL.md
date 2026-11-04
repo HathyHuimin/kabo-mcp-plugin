@@ -118,8 +118,9 @@ ready, report the missing capability and stop.
 
    Verdicts are `confirmed`, `refuted`, `partly_true` (with `scope`), `no_official_text` (with
    `checked_sources`) and `not_checked` (with `unreached_source`); evidence is `source_id:Pstart-Pend`
-   references, never copied quotes. The driver binds the original passages, validates and renders;
-   fix the named judgments without refetching.
+   references, never copied quotes. `refuted` needs selected text that contradicts the assertion;
+   pages that are silent on it give `no_official_text`. The driver binds the original passages,
+   validates and renders; fix the named judgments without refetching.
 
 ## Boundaries
 

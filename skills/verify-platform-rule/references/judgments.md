@@ -5,14 +5,25 @@ Read this whole file before writing the judgments for `drive.py report`. The JSO
 
 Write statements as separate assertions. Use evidence references `source_id:Pstart-Pend`
 (or `source_id:Pnumber`), not copied quotes, URLs or retrieval dates. Choose complete statements
-with their conditions; do not cherry-pick a passage that changes the page's meaning.
-Supply a `gloss` translating the selected words, not summarizing them, when the page's language
-differs from the user's. Original text is never replaced with its translation.
+with their conditions; do not cherry-pick a passage that changes the page's meaning. Complete means
+keeping the conditions the assertion depends on, not quoting a whole section: select the shortest
+range that carries them.
+Supply a `gloss` when the page's language differs from the user's: translate every sentence in the
+selected range, in order, and nothing else. No summary, no lead-in such as "the page says", and no
+conclusion about the claim; if a range is too long to translate whole, narrow the range. Original
+text is never replaced with its translation. What the evidence means for the claim belongs in the
+claim's `statement` (and `scope` or `inference` where those are allowed), never in a gloss.
 
-- `confirmed` / `refuted`: selected evidence settles the assertion.
+- `confirmed`: the selected text states what the assertion says, with its conditions.
+- `refuted`: the selected text itself states something incompatible with the assertion, such as a
+  different requirement or limit, an explicit permission, or that the rule does not apply. A page
+  that lists related requirements, tips or conditions and omits the asserted one does not refute
+  it: help and guidance pages are not exhaustive lists.
 - `partly_true`: evidence plus `scope` explaining which part holds and its limits.
 - `no_official_text` - relevant pages were read but do not answer the claim. List `checked_sources`.
-  This is not a claim that the platform has no rule.
+  This is not a claim that the platform has no rule. It is also the verdict when a page covers the
+  same topic without the asserted requirement: an assertion that the platform requires something,
+  checked against pages that never state it, is `no_official_text`, not `refuted`.
 - `not_checked`: name the relevant unread page in `unreached_source`.
 Only `no_official_text` and `not_checked` claims may carry `inference`, with no evidence. Explain
 uncertainty and practical implications separately from platform facts. For an unsupported
