@@ -188,3 +188,15 @@ def _zh_note(facts: dict) -> str:
 
 def canonical_note(evidence: dict, analysis: dict, view: dict) -> str:
     return measurement_note(measurement_basis(evidence, analysis, view), note_language(view))
+
+
+def note_matches(note, evidence: dict, analysis: dict, view: dict) -> bool:
+    """新结果按视图语言写 data_note；更早版本给 zh 视图写的是英文行，回放时两种都认。"""
+    facts = measurement_basis(evidence, analysis, view)
+    accepted = {measurement_note(facts, note_language(view))}
+    if note_language(view) != "en":
+        try:
+            accepted.add(measurement_note(facts, "en"))
+        except ValueError:
+            pass
+    return note in accepted

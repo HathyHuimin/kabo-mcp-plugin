@@ -15,7 +15,8 @@ positions. The schemas, deterministic computation, renderers and validators ship
 **Delivery.** A diagnosis ends with `finish_diagnosis.py`, which prints the validated
 `report/VIDEO_DIAGNOSIS.md`. Relay it once, complete. A Chinese or English report already comes
 out in the creator's language: relay it unchanged, with at most one short sentence of your own
-before it. Only for another language, localize every heading, label, unit and conclusion while
+before it. The italic line under the summary is the report's measurement basis, which the creator
+needs to judge how far to trust it: keep it, it is not a run diagnostic. Only for another language, localize every heading, label, unit and conclusion while
 keeping structure, numbers, facts and limitations; a quoted post or video title stays in its
 original wording. Never summarize, retype numbers, append a
 second paraphrased report or narrate artifact writing, validation, file paths, call counts, credits
@@ -162,7 +163,9 @@ measured sound, as *Judging sound* in `references/craft-teardown.md` says.
 ## Diagnosis
 
 1. **Whose video.** Use the creator's explicit statement for `own_unpublished`, `own_published` or
-   `third_party`; a URL or silence proves none of these. With only a public URL, choose `unknown`:
+   `third_party`; a URL or silence proves none of these. "This is my Short I posted last week" is
+   such a statement: choose `own_published` even when owner metrics are not connected, and record
+   them as unavailable instead of downgrading to `unknown`. With only a public URL, choose `unknown`:
    answer the observable opening, pacing and transcript in public-only scope, with
    `owner_data=null`, `acquire.owner_metrics=skip` and no baseline. Never fetch owner data, claim
    measured retention or issue source revisions under `unknown`; offer conditional next-version

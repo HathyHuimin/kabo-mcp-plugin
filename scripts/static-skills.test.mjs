@@ -162,7 +162,7 @@ test("ACV 中文视图渲染中文标签与中文 data_note，英文视图逐字
   const probe = `
 import json, sys
 sys.path.insert(0, sys.argv[1])
-from creator_measurement_basis import canonical_note
+from creator_measurement_basis import canonical_note, note_matches
 from render_video_report import render
 from build_creator_result import build
 evidence = {"content_ref": {"platform": "youtube"}, "owner_metrics": {"status": "unavailable"},
@@ -187,6 +187,12 @@ request = {"source": {"acquisition": "public_url"}}
 for language in ("zh-CN", "en"):
     built = build({"creator_view": view(language)}, analysis, {"images": images, "owner_metrics": {"status": "unavailable"}}, request)
     out["image " + language] = built["creator_view"]["data_note"]
+zh, en = view("zh-CN"), view("en")
+english_line = canonical_note(evidence, analysis, en)
+out["replay"] = {"zh view, older English line": note_matches(english_line, evidence, analysis, zh),
+                 "zh view, Chinese line": note_matches(canonical_note(evidence, analysis, zh), evidence, analysis, zh),
+                 "en view, Chinese line": note_matches(canonical_note(evidence, analysis, zh), evidence, analysis, en),
+                 "zh view, edited line": note_matches(english_line.replace("14", "15"), evidence, analysis, zh)}
 print(json.dumps(out, ensure_ascii=False))
 `;
   const scripts = path.join(import.meta.dirname, "..", "skills", "analyze-content-video", "scripts");
@@ -207,6 +213,9 @@ print(json.dumps(out, ensure_ascii=False))
   assert.equal(out.None.report, out.en.report);
   assert.equal(out["image zh-CN"], "图文帖：返回 5 个位置，4 个可用；总数未知；完整度未知；后台数据不可用。");
   assert.equal(out["image en"], "Image post: 4/5 returned positions available; total count unknown; completeness unknown; owner metrics unavailable.");
+  // 更早版本给 zh 视图写的是英文 data_note；回放仍要认，改过数字的行照样拦。
+  assert.deepEqual(out.replay, {"zh view, older English line": true, "zh view, Chinese line": true,
+                                "en view, Chinese line": false, "zh view, edited line": false});
 });
 
 // 证据原文自带量级词（转录 "27 B" / "27 billion"、caption "27B"）时，报告照写不能判成编造；

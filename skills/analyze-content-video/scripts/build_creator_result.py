@@ -24,7 +24,7 @@ from typing import Any
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from creator_measurement_basis import canonical_note, note_language
+from creator_measurement_basis import canonical_note, note_language, note_matches
 
 SCHEMA_VERSION = "creator-task-result.v2-final"
 TASK = "analyze_content_video"
@@ -296,10 +296,10 @@ def main() -> int:
         evidence, analysis = load(args.evidence), load(args.analysis)
         if not record(evidence.get("images")).get("media_type") in ("image", "image_carousel"):
             try:
-                expected = canonical_note(evidence, analysis, document['creator_view'])
+                matches = note_matches(document['creator_view'].get('data_note'), evidence, analysis, document['creator_view'])
             except ValueError as error:
                 raise SystemExit(str(error)) from error
-            if document['creator_view'].get('data_note') != expected:
+            if not matches:
                 raise SystemExit("creator_view.data_note disagrees with the recorded measurement basis")
         args.output.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         print(json.dumps({"status": "ok", "output": str(args.output), "built": False,
