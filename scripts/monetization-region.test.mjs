@@ -61,11 +61,17 @@ print(json.dumps({
     "channel_only": derive("youtube", [channel("gb")], as_of, {})["region"],
     "uploads_wins": derive("youtube", [channel("GB"), uploads("US")], as_of, {})["region"],
     "none": derive("youtube", [channel(None)], as_of, {})["region"],
+    "later": derive("youtube", [channel(None), channel("GB")], as_of, {})["region"],
+    "later_subscriber_rows": sum(1 for row in derive("youtube", [channel(None), channel("GB")], as_of, {})["observed_metrics"]
+                                 if row["metric_id"] == "youtube.subscribers"),
 }))
 `);
   assert.deepEqual(out.channel_only, { region: "GB", region_source: "account_declared" });
   assert.deepEqual(out.uploads_wins, { region: "US", region_source: "account_declared" });
   assert.equal(out.none, null);
+  // 先到的响应只有订阅数、后到的才带国家时，两样都要拿到，订阅数只记一次。
+  assert.deepEqual(out.later, { region: "GB", region_source: "account_declared" });
+  assert.equal(out.later_subscriber_rows, 1);
 });
 
 // 从取数到评估走一遍真实脚本：模型按说明写 UNKNOWN/unknown，derive 从 get_channel 读到 GB，

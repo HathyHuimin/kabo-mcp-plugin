@@ -102,7 +102,8 @@ first data call (or reuse a supplied readiness note).
 
 2. Retrieve public account facts for that platform only, and place each successful response as an
    Envelope as described above (`snapshot/envelope-01.json`, `-02`, … in call order):
-   - YouTube: `youtube_get_channel` for the subscriber count, then `youtube_list_channel_uploads`
+   - YouTube: `youtube_get_channel` with `include: ["channel_profile"]` for the subscriber count and
+     the declared country, then `youtube_list_channel_uploads`
      with `max_results: 50`, following `cursor` until the 90-day window is covered or the chain ends.
    - Instagram: `instagram_resolve_profile` for the follower count.
    - TikTok: `tiktok_list_account_posts` with the normalized handle. Its response carries
