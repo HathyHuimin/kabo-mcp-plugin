@@ -689,6 +689,11 @@ def fetch_round(calls: list[dict[str, Any]], args: argparse.Namespace, place_res
     if key in done:
         return False
     handed = dict(current.get("handed") or {})
+    if args.placed and key not in handed:
+        # 这一轮还没交接过（例如阶段在交接前就因为模型写的产物报错停了），--placed 没有可放置的结果：
+        # 照常交接，免得模型自己去调取数工具、把编号交给一个没有槽位的续跑（实测白白多取一次）。
+        say("[drive] --placed, but this round was not handed over yet; handing it over now")
+        args.placed = False
     if key in handed:
         # 交接点名的结果文件由续跑自己 fetch / stage，模型只存文件、跑一条续跑命令。
         take_handed_results(calls, str(handed[key]), args.placed, optional)

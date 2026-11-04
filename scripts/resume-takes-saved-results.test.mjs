@@ -64,7 +64,7 @@ def step(placed):
             code = 2
     return {"code": code, "out": out.getvalue()}
 
-report = {"run": str(run), "handed": step(False)}
+report = {"run": str(run), "handed": step(bool(spec.get("placed_first")))}
 saved = [line.split("has no download url: ", 1)[1].rstrip(")") for line in report["handed"]["out"].splitlines()
          if line.startswith("  result ")]
 report["saved"] = saved
@@ -186,6 +186,15 @@ for (const [skill, driver] of Object.entries(DRIVERS)) {
     const placed = JSON.parse(/^PLACED (.+)$/m.exec(report.resumed.out)[1]);
     assert.equal(placed.length, driver.composite ? driver.calls.length + 1 : 1, report.resumed.out);
     assert.deepEqual(report.requests, []);
+  });
+
+  test(`${skill}：这一轮还没交接就带 --placed 跑时，照常交接、不报缺结果；按编号续跑照样放置`, async (t) => {
+    const report = await drive(t, skill, { ...scenario(driver, { download: true }), id: RESULT_ID, placed_first: true, again: false });
+    assert.equal(report.handed.code, 0, report.handed.out);
+    assert.match(report.handed.out, /--placed, but this round was not handed over yet; handing it over now/);
+    assert.match(report.handed.out, /^  result 01 /m);
+    assert.equal(report.resumed.code, 0, report.resumed.out);
+    assert.match(report.resumed.out, /^PLACED \[.+\]$/m);
   });
 
   test(`${skill}：续跑时槽位既无编号也无文件，一句话点名槽位与该补的 --id，什么都不放`, async (t) => {
