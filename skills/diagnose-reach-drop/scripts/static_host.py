@@ -730,10 +730,11 @@ RESULT_ID_IN_URL = re.compile(r"/research-export/v1/([A-Za-z0-9_-]{22})\.json(?:
 
 
 def result_id_of(text):
-    """The result id the model gave: the id itself, or a download url that contains one."""
-    text = str(text).strip()
-    if RESULT_ID.fullmatch(text):
-        return text
+    """The result id the model gave: the id itself (a trailing `.json` too), or a download url that contains one."""
+    text = str(text).strip().strip("'\"")
+    bare = text[:-len(".json")] if text.endswith(".json") else text
+    if RESULT_ID.fullmatch(bare.rsplit("/", 1)[-1]):
+        return bare.rsplit("/", 1)[-1]
     found = RESULT_ID_IN_URL.search(text)
     if found:
         return found.group(1)
@@ -783,7 +784,9 @@ def download_result(result_id):
 
 def fetch_id(tool, text):
     """`fetch` for a result given by its id: download, check, and store it the way fetch does."""
-    if tool not in COMPOSITE_TOOLS | {RESIGN_TOOL} | set(CONNECTOR_TOOLS.values()) | JOB_TOOLS:
+    # 聚合工具（collect_* / enrich_*）只在部分副本里有；共享段不能直接引用，按 renew_hint 的办法取。
+    aggregates = set(globals().get("AGGREGATE_TOOLS", ()))
+    if tool not in COMPOSITE_TOOLS | {RESIGN_TOOL} | set(CONNECTOR_TOOLS.values()) | JOB_TOOLS | aggregates:
         raise ValueError("Not a declared evidence tool")
     if tool == "read_research_data_artifacts":
         raise ValueError("Artifact results have no result id; save the complete result and run fetch on it")
@@ -799,6 +802,11 @@ def fetch_id(tool, text):
         return {**split_composite(tool, full, {"delivery": "download"}), "fetched": [summary(descriptor)]}
     if full.get("schema_version") == COMPOSITE_SCHEMA:
         raise ValueError("This id holds a composite result; pass the composite tool's name")
+    schema = globals().get("AGGREGATE_SCHEMAS", {}).get(tool)
+    if schema and full.get("schema_version") != schema:
+        raise ValueError(f"This id holds no {tool} result; check that the id belongs to that call")
+    if tool in aggregates:
+        full = {key: item for key, item in full.items() if key != "download"}
     try:
         check_envelope(tool, full)
     except ValueError as error:

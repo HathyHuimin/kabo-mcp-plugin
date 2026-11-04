@@ -1176,3 +1176,17 @@ for (const skill of fetchSkills) {
     for (const result of Object.values(report)) assert.equal(result.stderr.includes(RESULT_ID), false, result.stderr);
   });
 }
+
+test("fetch --id：聚合工具（collect_*）按编号取，按本副本的 schema 校验；编号带 .json 也认", async (t) => {
+  const typed = Buffer.from(JSON.stringify({ schema_version: "youtube-trend-candidate-set.v1", items: [], coverage: {} }));
+  const other = Buffer.from(JSON.stringify({ schema_version: "youtube-trend-enrichment.v1", items: [] }));
+  const report = await harness(t, "research-youtube-trends", [
+    { name: "typed", command: "fetch", tool: "collect_youtube_trend_candidates", id: `${RESULT_ID}.json`, result: {}, responses: { [BY_ID]: byId(typed) } },
+    { name: "wrongSchema", command: "fetch", tool: "collect_youtube_trend_candidates", id: RESULT_ID, result: {}, responses: { [BY_ID]: byId(other) } },
+  ]);
+  assert.equal(report.typed.exit, 0, report.typed.stderr);
+  assert.equal(JSON.parse(report.typed.stdout).staged, 1);
+  assert.equal(report.wrongSchema.exit, 1);
+  assert.match(report.wrongSchema.stderr, /This id holds no collect_youtube_trend_candidates result/);
+  assert.deepEqual(Object.keys(report.wrongSchema.files), []);
+});
