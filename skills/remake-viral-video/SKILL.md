@@ -1,6 +1,6 @@
 ---
 name: remake-viral-video
-description: "Have Kabo make a finished MP4 with the creator in it, from footage the user gives: a remake of a viral talking-head or voice-over reference (90 s or less; talking videos may cut to screens or show a product), or the creator saying a script they approved. Kabo generates it on its servers, not you. Use when asked to remake or copy a viral video onto themselves or a named creator, or to turn their script into a talking video. For only a script use script writing; for a teardown, video analysis."
+description: "Have Kabo make a finished MP4 with the creator in it, from footage the user gives: a remake of a viral talking-head or voice-over reference (90 s or less; may cut to screens or show a product), or the creator saying a script they approved. Kabo generates it on its servers. Use only when a finished video is wanted. Not for writing or adapting a script (script writing), breaking down a video's editing, sound or format (video analysis), or account audits, growth advice and content ideas."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub with its remake tools, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return. Kabo permission: video."
 allowed-tools: start_remake_video get_remake_video render_remake_video

@@ -2,6 +2,11 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.11（2026-11-04；GitHub Release）
+
+- `remake-viral-video`：说明收窄到「要成片时才用」，同网页端 creator-remake-web 0.1.36（creator-skills #955）：借参考结构写稿、
+  拆解剪辑/音效/格式、账号诊断、增长建议与选题不触发复刻（线上出现过写稿/拆解/诊断请求误加载复刻技能）。
+
 ## 1.0.10（2026-11-03；GitHub Release）
 
 - 三平台最近七天推荐独立核对内容语言；只有领域与语言均合格的候选进入排序，语言不匹配或证据不足时如实留缺口。
