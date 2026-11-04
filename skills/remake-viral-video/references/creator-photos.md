@@ -10,12 +10,12 @@ video of them speaking or, only when there is none, from a stock voice.
   is required.
 - **Voice**: with at least one `--creator-video` of the creator speaking, the voice is cloned from
   it. With photos only, first ask the user for a public link to a video of the creator speaking
-  (10-30 seconds is enough). Only if they have none, offer the four stock voices and wait for
-  their pick, then add `--voice-preset '<id>'`:
-  - `933563129e564b19a115bedd57b7406a`: female, young, soft and conversational
-  - `b545c585f631496c914815291da4e893`: female, young, bright
-  - `536d3a5e000945adb7038665781a4aca`: male, calm and professional
-  - `802e3bc2b27e49c2995d23ef70e6ac89`: male, young and energetic
+  (10-30 seconds is enough). Only if they have none, offer the four stock voices by number and name
+  and wait for their pick, then add `--voice-preset '<id>'`:
+  1. Female soft: `933563129e564b19a115bedd57b7406a`
+  2. Female bright: `b545c585f631496c914815291da4e893`
+  3. Male calm: `536d3a5e000945adb7038665781a4aca`
+  4. Male energetic: `802e3bc2b27e49c2995d23ef70e6ac89`
   Never pick a stock voice for the user, and never use one when a video of them speaking exists.
 - `start_remake_video` may refuse with `validation_error` before anything is charged:
   `voice_sample_needed` (photos only, no voice: ask as above), `photo_url_unreadable` or
