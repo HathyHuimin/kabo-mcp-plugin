@@ -84,7 +84,7 @@ test("fetch 交出一条 render_official_pages：全部计划页面、带 source
   assert.ok(first.out.includes(`  result 01  (fallback file, only if this result has no download url: ${path.join(run, "host-results", "01-render_official_pages.json")})`), first.out);
   assert.doesNotMatch(first.out, /static_host\.py' (?:fetch|stage)/);
   assert.match(first.out, /^Then run this one command right away.*drive\.py' fetch .*--placed --id 01=<id>$/m);
-  assert.match(first.out, /never call get_research_data_download/i);
+  assert.match(first.out, /call get_research_data_download only when the resume says an id expired/);
 });
 
 test("组合结果按 page-<i> 绑回：读到的页面可引用，失败 / 未渲染 / 跳出主机的记为 unreachable，报告通过校验", async (t) => {

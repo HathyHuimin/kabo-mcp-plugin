@@ -155,7 +155,7 @@ for (const [skill, driver] of Object.entries(DRIVERS)) {
     assert.match(handed, /^call: /m);
     assert.match(handed, /^  result 01 {2}\(fallback file, only if this result has no download url: /m);
     assert.match(handed, /Do not save the results/);
-    assert.match(handed, /never call get_research_data_download/i);
+    assert.match(handed, /Never download anything yourself; call get_research_data_download only when the resume says an id expired/);
     assert.doesNotMatch(handed, /static_host\.py/, "the model runs no fetch or stage command itself");
     const resume = handed.split("\n").filter((line) => line.startsWith("Then run this one command"));
     assert.equal(resume.length, 1, handed);
@@ -197,6 +197,35 @@ for (const [skill, driver] of Object.entries(DRIVERS)) {
   });
 }
 
+// 同一个编号交给两个槽位：后一个会被当成「已持有」跳过、少一份结果，所以续跑在取之前就拒掉，什么都不下载。
+const DUPLICATE = String.raw`
+import json, os, sys
+from pathlib import Path
+scripts, workspace, given = sys.argv[1], sys.argv[2], sys.argv[3]
+sys.path.insert(0, scripts)
+import static_host
+run = static_host.init(workspace)
+os.environ["KABO_STATIC_RUN_DIR"] = str(run)
+os.chdir(run)
+import connector_driver as cd
+static_host.download_result = lambda result_id: (_ for _ in ()).throw(AssertionError("downloaded"))
+cd.RESULT_IDS.update({"01": given, "02": given})
+try:
+    cd.take_saved_results([("t", run / "host-results/01-t.json"), ("t", run / "host-results/02-t.json")])
+    print("TAKEN")
+except cd.StageError as error:
+    print("STOPPED", error)
+`;
+for (const skill of Object.keys(DRIVERS)) {
+  test(`${skill}：两个槽位交了同一个编号时，续跑点名这两个槽位、什么都不下载`, async (t) => {
+    const temp = await mkdtemp(path.join(os.tmpdir(), "kabo-resume-dup-"));
+    t.after(() => rm(temp, { recursive: true, force: true }));
+    const out = execFileSync("python3", ["-I", "-B", "-c", DUPLICATE, path.join(root, "skills", skill, "scripts"), temp,
+      `${RESULT_ID}.json`], { encoding: "utf8" });
+    assert.match(out, /^STOPPED slots 01 and 02 were given the same result id/m, out);
+  });
+}
+
 // research-instagram-trends 的精简补全交接自己打印（不走 call: 行），同样点名绝对路径、记下待取文件，续跑照样取。
 test("research-instagram-trends：精简补全交接点名绝对路径与一条续跑命令；文件缺失时续跑点名它", async (t) => {
   const temp = await mkdtemp(path.join(os.tmpdir(), "kabo-resume-lean-"));
@@ -228,7 +257,7 @@ print(json.dumps({"run": str(run), "handed": step(False), "resumed": step(True)}
     path.join(root, "skills", "research-instagram-trends", "scripts"), temp], { encoding: "utf8" }).trim().split("\n").at(-1));
   const file = path.join(report.run, "host-results", "01-enrich_instagram_shortlist.json");
   assert.ok(report.handed.includes(`  result 01  (fallback file, only if this result has no download url: ${file})`), report.handed);
-  assert.match(report.handed, /never call get_research_data_download/i);
+  assert.match(report.handed, /call get_research_data_download only when the resume says an id expired/);
   assert.doesNotMatch(report.handed, /static_host\.py/);
   assert.match(report.handed, /^Then run this one command right away.* --placed --id 01=<id>$/m);
   assert.ok(report.resumed.includes("STOPPED no result for slot 01 (enrich_instagram_shortlist)"), report.resumed);

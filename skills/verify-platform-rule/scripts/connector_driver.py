@@ -194,7 +194,8 @@ SAVE_RULE = ("Do not save the results. Each result's download url holds its resu
              "`research-export/v1/` and `.json`. Put each call's id into the resume command below as "
              "`--id <slot>=<id>`. Only for a result with no download url, save that result whole, as returned, "
              "to the file named for its slot (with the host's file-write tool, never as a command-line argument) "
-             "and leave its `--id` out. Never call get_research_data_download or download anything yourself.")
+             "and leave its `--id` out. Never download anything yourself; call get_research_data_download only "
+             "when the resume says an id expired.")
 
 
 def slot_of(file: Path) -> str:
@@ -264,6 +265,19 @@ def take_saved_results(pairs: list[tuple[str, Path]]) -> None:
             raise StageError(f"no result id for slot {slot_of(path)} ({tool}) and cannot read {path} "
                              f"({error.strerror or error}). Run the resume command again with "
                              f"--id {slot_of(path)}=<id>, the id from that call's download url") from None
+    # 同一个编号交给两个槽位，后一个槽位会被当成「已持有」跳过、少一份结果：续跑前就拒掉。
+    seen: dict[str, str] = {}
+    for tool, path, raw, given in read:
+        if not given:
+            continue
+        try:
+            key = static_host.result_id_of(given)
+        except ValueError:
+            continue  # 取的时候按编号格式报错
+        if key in seen:
+            raise StageError(f"slots {seen[key]} and {slot_of(path)} were given the same result id; each call's "
+                             "result has its own id. Run the resume command again with each slot's own id") from None
+        seen[key] = slot_of(path)
     taken = dict(state().get(TAKEN) or {})
     for tool, path, raw, given in read:
         digest = hashlib.sha256(raw if raw is not None else ("id:" + given).encode()).hexdigest()

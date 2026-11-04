@@ -762,8 +762,10 @@ def download_result(result_id):
         raise ValueError(f"Download failed ({label}); if this host blocks network access for scripts, save the "
                          "complete tool result to a file and run static_host.py fetch --input <file> on it") from None
     if status == 404:
-        raise ValueError("no result under this id: it expired (ids last 10 minutes) or was mistyped. Make the same "
-                         "call again and use the id from its new result")
+        raise ValueError("no result under this id: it expired (ids last 10 minutes) or was mistyped. If that call's "
+                         "result has an evidence_ref, call get_research_data_download with it (no new fetch, no "
+                         "allowance) and use the id in its new download url; otherwise make the same call again "
+                         "and use the id from its new result")
     if status == "headers":
         raise ValueError("Kabo did not return the size and sha256 for this id; nothing was written")
     if status != 200:
@@ -869,7 +871,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("init").add_argument("--workspace", required=True)
-    # 两个子命令都只从文件或 stdin 读完整结果；下载链接不进 argv，不出现在进程列表里。
+    # 两个子命令都只从文件或 stdin 读完整结果，签名下载链接不进 argv；`fetch --id` 只收结果编号（10 分钟有效），
+    # 交接也只让模型交编号（docs/skills-spec.md KS7.3）。
     for name in ("stage", "fetch"):
         command = commands.add_parser(name)
         command.add_argument("--tool", required=True)

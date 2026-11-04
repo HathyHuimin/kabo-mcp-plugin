@@ -14,7 +14,10 @@ call's result id in it (`--id NN=<id>`); the resume fetches every result itself.
   command (`--id NN=<id>`, NN being the slot the hand-over printed under the call) or, where a step
   fetches by itself, to `static_host.py fetch --tool <tool> --id=<id>`. The script downloads the data
   by that id and checks its size and sha256. A result that lists `calls` has one id for the whole
-  result: never call `get_research_data_download` or download anything per call.
+  result: never call `get_research_data_download` or download anything per call. Ids exist only for
+  whole-result links (`research-export/v1/`); `read_research_data_artifacts` returns per-artifact
+  links with no id, so save that small result in `host-results/` and run `static_host.py fetch
+  --tool read_research_data_artifacts --input <file>` on it.
 - Only a result with no download link (download unavailable, or a tool called without delivery) is
   saved: the result itself, whole and unchanged, to the absolute path the hand-over names for its
   slot in the run's `host-results/` folder, written with the host's file-write ability or a
