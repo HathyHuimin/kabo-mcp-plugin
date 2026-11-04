@@ -689,6 +689,104 @@ def fetch_composite(tool, raw):
     return {**split_composite(tool, full, {"delivery": "download"}), "fetched": [summary(descriptor)]}
 
 
+# 按结果编号取下载（kabo ADR-0084「2026-11-04」）：下载就绪的结果，其签名链接路径里有一个 22 字符的结果编号
+# （`research-export/v1/<编号>.json`）。模型只交编号，不再整份抄结果；脚本向 Kabo 按编号取同一份字节，
+# 按响应头里的 sha256 与长度校验后照 fetch 落盘。编号与签名链接同一张不记名票、同一个到期时刻（10 分钟）。
+# 本段在各 Skill 的副本里逐字相同（scripts/shared-copies.test.mjs）。
+RESULT_URL = "https://kabo.sh/v1/research-downloads/"
+RESULT_ID = re.compile(r"[A-Za-z0-9_-]{22}")
+RESULT_ID_IN_URL = re.compile(r"/research-export/v1/([A-Za-z0-9_-]{22})\.json(?:\?|$)")
+
+
+def result_id_of(text):
+    """The result id the model gave: the id itself (a trailing `.json` too), or a download url that contains one."""
+    text = str(text).strip().strip("'\"")
+    bare = text[:-len(".json")] if text.endswith(".json") else text
+    if RESULT_ID.fullmatch(bare.rsplit("/", 1)[-1]):
+        return bare.rsplit("/", 1)[-1]
+    found = RESULT_ID_IN_URL.search(text)
+    if found:
+        return found.group(1)
+    raise ValueError("A result id is the 22 letters, digits, - or _ between research-export/v1/ and .json in the "
+                     "result's download url")
+
+
+def download_result(result_id):
+    """GET the bytes Kabo holds under one result id, with their sha256, only if both match its headers."""
+    request = urllib.request.Request(RESULT_URL + result_id, method="GET", headers={"Accept-Encoding": "identity"})
+    hasher, chunks, total = hashlib.sha256(), [], 0
+    try:
+        with build_opener().open(request, timeout=DOWNLOAD_TIMEOUT) as response:
+            status = response.status
+            size = response.headers.get("Content-Length")
+            digest = str(response.headers.get("X-Content-SHA256") or "")
+            if status == 200 and (not str(size or "").isdigit() or int(size) > MAX_BYTES or
+                                  not re.fullmatch(r"[0-9a-f]{64}", digest)):
+                status = "headers"
+            while status == 200 and total <= int(size):
+                chunk = response.read(min(1024 * 1024, int(size) + 1 - total))
+                if not chunk:
+                    break
+                hasher.update(chunk)
+                chunks.append(chunk)
+                total += len(chunk)
+    except urllib.error.HTTPError as error:
+        status = error.code
+        error.close()
+    except Exception as error:
+        reason = str(error.reason)[:160] if isinstance(error, urllib.error.URLError) else ""
+        reason = "" if "http" in reason.lower() else reason
+        label = f"{type(error).__name__}: {reason}" if reason else type(error).__name__
+        raise ValueError(f"Download failed ({label}); if this host blocks network access for scripts, save the "
+                         "complete tool result to a file and run static_host.py fetch --input <file> on it") from None
+    if status == 404:
+        raise ValueError("no result under this id: it expired (ids last 10 minutes) or was mistyped. If that call was "
+                         "a data tool (not a lookup_* tool) and its result has an evidence_ref, call "
+                         "get_research_data_download with it (no new fetch, no allowance) and use the id in its new "
+                         "download url; otherwise make the same call again and use the id from its new result")
+    if status == "headers":
+        raise ValueError("Kabo did not return the size and sha256 for this id; nothing was written")
+    if status != 200:
+        raise ValueError(f"Download failed (HTTP {status}); try again, or make the same call again for a new id")
+    if total != int(size) or hasher.hexdigest() != digest:
+        raise ValueError("Download does not match its declared size and sha256; nothing was written")
+    return b"".join(chunks), digest
+
+
+def fetch_id(tool, text):
+    """`fetch` for a result given by its id: download, check, and store it the way fetch does."""
+    # 聚合工具（collect_* / enrich_*）只在部分副本里有；共享段不能直接引用，按 renew_hint 的办法取。
+    aggregates = set(globals().get("AGGREGATE_TOOLS", ()))
+    if tool not in COMPOSITE_TOOLS | {RESIGN_TOOL} | set(CONNECTOR_TOOLS.values()) | JOB_TOOLS | aggregates:
+        raise ValueError("Not a declared evidence tool")
+    if tool == "read_research_data_artifacts":
+        raise ValueError("Artifact results have no result id; save the complete result and run fetch on it")
+    raw, digest = download_result(result_id_of(text))
+    full = json.loads(raw.decode("utf-8"))
+    if not isinstance(full, dict):
+        raise ValueError("Downloaded evidence must be an object")
+    descriptor = {"kind": "envelope", "sha256": digest, "bytes": len(raw)}
+    if tool in COMPOSITE_TOOLS:
+        if full.get("schema_version") != COMPOSITE_SCHEMA or full.get("tool") != tool:
+            raise ValueError(f"This id holds no {tool} result; check that the id belongs to that call")
+        full = {key: item for key, item in full.items() if key != "download"}
+        return {**split_composite(tool, full, {"delivery": "download"}), "fetched": [summary(descriptor)]}
+    if full.get("schema_version") == COMPOSITE_SCHEMA:
+        raise ValueError("This id holds a composite result; pass the composite tool's name")
+    schema = globals().get("AGGREGATE_SCHEMAS", {}).get(tool)
+    if schema and full.get("schema_version") != schema:
+        raise ValueError(f"This id holds no {tool} result; check that the id belongs to that call")
+    if tool in aggregates:
+        full = {key: item for key, item in full.items() if key != "download"}
+    try:
+        check_envelope(tool, full)
+    except ValueError as error:
+        raise ValueError(f"{error}; check that the id belongs to the {tool} call") from None
+    body = json.dumps(full, ensure_ascii=False).encode()
+    result = store(tool, full, [(evidence_id() + ".json", body, {"delivery": "download"})])
+    return {**result, "fetched": [summary(descriptor)]}
+
+
 def composite_records(tool=None):
     """This run's staged composite records, oldest first; each call carries the absolute path of its envelope."""
     directory = run_dir() / "snapshot/.host-evidence"
@@ -751,11 +849,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("init").add_argument("--workspace", required=True)
-    # 两个子命令都只从文件或 stdin 读完整结果；下载链接不进 argv，不出现在进程列表里。
+    # 两个子命令都只从文件或 stdin 读完整结果，签名下载链接不进 argv；`fetch --id` 只收结果编号（10 分钟有效），
+    # 交接也只让模型交编号（docs/skills-spec.md KS7.3）。
     for name in ("stage", "fetch"):
         command = commands.add_parser(name)
         command.add_argument("--tool", required=True)
         command.add_argument("--input", default="-")
+    # 下载就绪的结果只交编号（或含编号的下载链接），不存文件。
+    command.add_argument("--id", help="the result id from the result's download url, instead of --input")
     command = commands.add_parser("job-call")
     command.add_argument("--tool", required=True)
     command.add_argument("--parameters", required=True)
@@ -765,6 +866,8 @@ def main():
         print(init(args.workspace))
     elif args.command == "job-call":
         print(json.dumps(job_call(args.tool, args.parameters, args.attempt), ensure_ascii=False))
+    elif args.command == "fetch" and args.id:
+        print(render_result(fetch_id(args.tool, args.id)))
     else:
         if args.input == "-":
             raw = sys.stdin.buffer.read(MAX_BYTES + 1)

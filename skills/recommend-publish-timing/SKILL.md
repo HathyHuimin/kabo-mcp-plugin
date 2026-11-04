@@ -2,7 +2,7 @@
 name: recommend-publish-timing
 description: "Answer when to publish from this creator's own history, at the finest resolution that history can carry. Use when a creator asks what time or day to post. Not for generic best-time charts or platform-wide peaks."
 license: MIT
-compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
+compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download instagram_resolve_profile instagram_list_posts instagram_list_reels youtube_get_channel youtube_list_channel_uploads tiktok_list_account_posts
 ---
 
@@ -81,11 +81,13 @@ task carries, or call `get_research_capabilities` once per run. The data tools t
 - Make the account call and the history calls in one response, each as its own individual call.
   Read a job id with `get_research_data_job` and `wait_s` (up to 30) until terminal.
 - **Save and fetch.** Never retype or paste returned data. A result holds a download link: never
-  download it yourself with a shell command or a browser. Save the result itself, link included,
-  numbered in call order, as `host-results/<NN>-<tool-name>.json`, and fetch it at once:
+  download it yourself with a shell command or a browser, and do not save the result: fetch it at once
+  by its result id, the 22 characters between `research-export/v1/` and `.json` in its download url
+  (only a result with no download url is saved whole, as `host-results/<NN>-<tool-name>.json`, and
+  fetched with `--input` in place of `--id`):
 
   ```sh
-  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --input 'host-results/<NN>-<tool-name>.json'
+  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --id=<result id>
   ```
 
 - **Anything else** — no ready download, an expired link, a queued job, a refused result — follow

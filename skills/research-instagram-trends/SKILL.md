@@ -2,7 +2,7 @@
 name: research-instagram-trends
 description: "Find what is working on Instagram Reels: scan a niche or a supplied Reel for repeated mechanisms, the hottest posts, emerging creators and Reels in a topic that beat their own accounts' usual; list the last seven days' hottest Reels; read the daily Reels audio board of trending and rising sounds; suggest soundtrack for named scenes; or analyze a supplied public-content Snapshot. Use for more hot Reels like this one. Not for a known creator's profile, YouTube, private Insights or scripts."
 license: MIT
-compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read to read the Creator's saved account profile and workspace:write to save edits to it the user asks for."
+compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read to read the Creator's saved account profile and workspace:write to save edits to it the user asks for."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_instagram_trend_candidates enrich_instagram_shortlist lookup_instagram_post instagram_get_transcript instagram_baseline_search_reels instagram_baseline_search_music creator_trends_get_instagram_audio_board list_connected_accounts get_creator_profile update_content_preferences
 ---
 
@@ -71,21 +71,21 @@ into one batch call. Never retype, paste or edit returned data.
 | `enrich_instagram_shortlist` | typed `trend-enrichment.v1` | Workflow `rank` |
 
 - **Hand-over.** A Workflow stage that needs data exits 0 after printing the calls (`call:` lines,
-  or one named tool with its JSON arguments printed above it), each followed by the file to save its
-  result in, and ends with the resume command, which fetches each saved file itself. That pause is
-  unfinished work: make exactly those calls with the arguments verbatim, all in one response, do
-  what it prints, then run the resume command. The collector takes about 80 s and the enrichment
+  or one named tool with its JSON arguments printed above it), each followed by its numbered slot,
+  and ends with the resume command. That pause is unfinished work: make exactly those calls with the
+  arguments verbatim, all in one response, then run the resume command with each call's result id in it (`--id NN=<id>`: the 22 characters between `research-export/v1/` and `.json` in that result's download url), which fetches every result itself; save a result, whole, to the file named under its slot only when it has no download url. The collector takes about 80 s and the enrichment
   about 40 s: wait for each result. Still read candidates from a collector's inline `items` where a
   stage asks you to.
 - **Other paths** make the calls their reference names. Data tools take
   `{"parameters": {…}, "delivery": "download"}`; `lookup_instagram_post` takes `{"post": …,
-  "include": […], "delivery": "download"}`. Save each complete result as
-  `host-results/<NN>-<tool-name>.json` (numbered in call order across the run; the result itself,
-  link included: never download the link yourself), fetch it at once, and place it with the
-  `persist_envelope.py` command the reference names:
+  "include": […], "delivery": "download"}`. Fetch each result at once by its result id, the 22
+  characters between `research-export/v1/` and `.json` in its download url (never download the link
+  yourself; only a result with no download url is saved whole, as `host-results/<NN>-<tool-name>.json`,
+  and fetched with `--input` in place of `--id`), and place it with the `persist_envelope.py` command
+  the reference names:
 
   ```sh
-  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --input 'host-results/<NN>-<tool-name>.json'
+  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --id=<result id>
   ```
 
 - **Readiness once.** Outside the Workflow, call `get_research_capabilities` once and check that the

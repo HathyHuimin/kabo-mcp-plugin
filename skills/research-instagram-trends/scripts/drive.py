@@ -827,8 +827,8 @@ def hand_over_lean(call: dict[str, Any]) -> None:
     cd.say(f"This host does not fetch the enrichment for scripts. Call `enrich_instagram_shortlist` exactly once "
            f"with the JSON printed above (also in {ENRICH_CALL}) verbatim as the tool arguments — every item and "
            "every top-level field, `window` included; do not add, drop or reorder items. " + cd.SAVE_RULE)
-    cd.say(f"  save: {saved}")
-    cd.say_resume()
+    cd.say_slot(saved)
+    cd.say_resume([saved])
     raise SystemExit(0)
 
 
@@ -866,7 +866,8 @@ def hand_over_inline(calls: list[dict[str, Any]], args: argparse.Namespace, plac
     finally:
         # Split on newlines only: a caption can hold U+2028 and the like, which splitlines() also breaks on.
         for line in buffer.getvalue().rstrip("\n").split("\n"):
-            if line and not (handed and line.startswith((cd.HANDOVER_PREFIX, "Hand-over:", "  save: ", "  then: ",
+            if line and not (handed and line.startswith((cd.HANDOVER_PREFIX, "Hand-over:", "  result ", "  then: ",
+                                                             "Then run this one command",
                                                              "When every result above is fetched"))):
                 cd.say(line)
     if handed:

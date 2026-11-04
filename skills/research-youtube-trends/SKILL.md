@@ -2,7 +2,7 @@
 name: research-youtube-trends
 description: "Research what is working on YouTube now: current high-performing videos, repeated mechanisms, emerging creators and Creator-fit directions in a niche or like a given video, ranked by exact public metrics and channel-relative baselines; the hottest videos of the last seven days; or an analysis of a supplied public-content Snapshot. Use for YouTube trend scans and outlier videos; a Shorts soundtrack ask gets an honest no-evidence answer. Not for private Analytics or full scripts."
 license: MIT
-compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read to read the Creator's saved account profile and workspace:write to save edits to it the user asks for."
+compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read to read the Creator's saved account profile and workspace:write to save edits to it the user asks for."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_youtube_trend_candidates enrich_youtube_shortlist collect_youtube_recent_videos youtube_get_video list_connected_accounts get_creator_profile update_content_preferences
 ---
 
@@ -63,11 +63,11 @@ individual call, never combined into one batch call. Never retype, paste or edit
 
 - **Hand-over.** A `drive.py` stage that needs data exits 0 after printing a `call:` line per call.
   That pause is unfinished work. Make exactly those calls with the arguments verbatim, all in one
-  response; save each complete result to the file named under it, then run the printed resume
-  command, which fetches each saved file itself.
-- **Short window** makes the one `collect_youtube_recent_videos` call its reference names, saves
-  the complete result to the file that reference names, then runs the
-  `complete_youtube_short_window.py place` command there, which fetches the saved file itself; never write an envelope or a typed result
+  response, then run the printed resume command
+  with each call's result id in it (`--id NN=<id>`: the 22 characters between `research-export/v1/` and `.json` in that result's download url), which fetches every result itself; save a result, whole, to the file named under its slot only when it has no download url.
+- **Short window** makes the one `collect_youtube_recent_videos` call its reference names, then runs
+  the `complete_youtube_short_window.py place` command there with the call's result id
+  (`--id=<result id>`), which fetches the result itself; never write an envelope or a typed result
   yourself.
 - **Readiness once.** In the short-window route, call `get_research_capabilities` once and reuse its
   answer; an operation it marks missing, unimplemented or not ready is a capability gap to report,
