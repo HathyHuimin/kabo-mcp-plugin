@@ -16,7 +16,12 @@
 - `plan-platform-monetization`：保留频道声明的国家；说明覆盖用户给出数字与没有账号的问题（#85、#86）。
 - `analyze-content-video`：中文视图的报告标签本地化，不再回退到后台分析（#87）。
 - 规范文档只保留英文版 `docs/skills-spec.md`（#93）。
-- 生产回归：待补。
+- 生产回归（Codex，OAuth 连 `kabo.sh/mcp-pub`，测试账号，装 `#stable` = `4e9343a`）：
+  `review-creator-account-deep`（@mkbhd YouTube）交付 creator_report，目录 1 次 `collect_account_history`、看片 `collect_video_media`，
+  10 条视频全部看过，交接全用结果编号，模型手写保存 0；`review-creator-account`（@veritasium YouTube）交付 creator_report，
+  1 次 `collect_account_history`、结果编号交接、模型手写保存 0，`start_skill_run` 各记一次且未被额度拒绝。
+  遗留（不阻塞发布）：账号复盘首跑一次因模型在局限说明里写了 provider 被报告校验拦下，改写后重跑已交付的路径又报「报告与来源不一致」没能救回，
+  重跑一次正常交付；深度复盘那轮预留了两个运行目录，`start_skill_run` 记了两次。
 
 ## 1.0.13（2026-11-05；GitHub Release）
 
