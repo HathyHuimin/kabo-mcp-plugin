@@ -2,6 +2,10 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.16（2026-11-06；GitHub Release）
+
+- `create-script-and-packaging`：用户自己给定方向时，记录方向的脚本会打印下一步，模型接着写脚本包、校验并渲染 `SCRIPT_PACKAGE.md`，不再在这一步直接回答（#107）。
+
 ## 1.0.15（2026-11-05；GitHub Release）
 
 - `review-creator-account`：报告被校验器拒收后，删掉未过校验的报告，改完 synthesis 重跑同一条命令即可出报告；
