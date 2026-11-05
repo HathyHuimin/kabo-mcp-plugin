@@ -2,10 +2,21 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
-## 未发布
+## 1.0.14（2026-11-05；GitHub Release）
 
-- 每个按次计费的 Skill 在预留运行目录后调用一次 `start_skill_run`（Kabo 按 skill 记一次用量，同一运行不重复记）；额度用完时 Skill 停止并把账单链接交给用户，工具缺失时照常继续。`remake-viral-video` 只走视频额度，不声明。
-- 重新钉住目录契约（kabo `d214da530` 为基线，**合入 kabo 后须按合入提交重钉**）：新增 `start_skill_run`、`get_credit_balances`、`get_credit_tasks`、`claim_credit_task`，并带入已上线的 `collect_video_media`。**须在 Kabo 服务端部署这些工具之后再发布本插件。**
+- 交接改为交结果编号（#83）：取数结果带一个短编号，模型只把编号填进续跑命令，脚本按编号下载、核对长度与 sha256 后落盘，
+  不再让模型把结果写成文件；没有编号的结果仍按原方式保存。对照 1.0.10 的同一批 30 轮输入，模型手写保存从多次降为 0。
+- `review-creator-account-deep`（#79）：目录取数交出一次 `collect_account_history`，看片的元数据、字幕与抽帧交出一次
+  `collect_video_media`，两处交接都交结果编号；创作依据按运行名与相对路径绑定。
+- 每个按次计费的 Skill 在预留运行目录后调用一次 `start_skill_run`（Kabo 按 skill 记一次用量，同一运行不重复记）；额度用完时 Skill 停止并把账单链接交给用户，
+  工具缺失时照常继续。`remake-viral-video` 只走视频额度，不声明（#95）。
+- 目录契约重钉到已部署的 kabo `096d598ba`（73 个工具，含 `start_skill_run`、`get_credit_balances`、`get_credit_tasks`、`claim_credit_task`、`collect_video_media`）。
+- `verify-platform-rule`：判「谣言」须有官方原文相矛盾，未提及不算反驳；释义只翻译不概括；说明里点名门槛变化类传言与登记页面（#88）。
+- `diagnose-reach-drop`：流量来源分组可带各自的日历窗口；通用窗口只按发布时长（#92、#96）。
+- `plan-platform-monetization`：保留频道声明的国家；说明覆盖用户给出数字与没有账号的问题（#85、#86）。
+- `analyze-content-video`：中文视图的报告标签本地化，不再回退到后台分析（#87）。
+- 规范文档只保留英文版 `docs/skills-spec.md`（#93）。
+- 生产回归：待补。
 
 ## 1.0.13（2026-11-05；GitHub Release）
 
