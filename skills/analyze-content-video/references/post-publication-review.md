@@ -10,12 +10,10 @@ For a post comparison, check the actual platform, analytics definition, elapsed 
 publication and a same-age comparison. For account-level source/audience or period comparisons,
 check matching populations and observation windows instead; a single post age is not required.
 If the relevant basis is missing from the user's records, this turn is a
-clarification: repeat the supplied values without rating them, ask one bundled question for the
-missing context, and stop. Do not append a leading diagnosis, an edit prescription, or a claim
+clarification: ask one bundled question for the missing context and end the reply. Do not append a leading diagnosis, an edit prescription, or a claim
 about what "most likely" happened. Putting questions after a diagnosis does not satisfy this gate.
 Even a tentative statement that a subgroup watched most of the video is an interpretation:
-an average duration alone does not identify that subgroup. Repeat the raw values without making
-that inference. Earlier assistant language, including the platform it assumed, does not fill missing evidence.
+an average duration alone does not identify that subgroup. Do not add a metric interpretation to a clarification question. Earlier assistant language, including the platform it assumed, does not fill missing evidence.
 Once the context is aligned, use the hypothesis and testing branch below. This is not a permanent
 refusal: supplied definitions and a valid comparison should unlock useful analysis.
 

@@ -18,12 +18,11 @@ positions. The schemas, deterministic computation, renderers and validators ship
 `references/` and `scripts/`.
 
 **Performance follow-up: clarify before diagnosing.** Read
-[post-publication review](references/post-publication-review.md) first for reported watch/skip
-metrics or results after earlier advice. If platform, metric definition, post age or comparable
-baseline is unresolved, answer with the raw observations and one bundled clarification, then
-stop this turn. Do not rate the metrics, rank causes or prescribe edits yet; earlier assistant
-claims are not measurement evidence. Even while asking, do not infer how many viewers stayed
-or completed the video from an average duration. Diagnose only after resolving the gate.
+[post-publication review](references/post-publication-review.md) for reported analytics or results
+after earlier advice. Missing platform, metric definition, post age or comparable baseline means
+**this turn only asks one bundled clarification and ends**. Do not add a leading or trailing
+interpretation, ratings, viewer-subgroup claims or editing advice. Once the creator supplies the
+missing context, proceed with evidence-based hypotheses and useful checks.
 
 **Delivery.** A diagnosis ends with `finish_diagnosis.py`, which prints the validated
 `report/VIDEO_DIAGNOSIS.md`. Relay it once, complete. A Chinese or English report already comes

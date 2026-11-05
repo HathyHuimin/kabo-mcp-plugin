@@ -15,6 +15,11 @@ observed ages. It is not a monthly deadline series, and adding it repeatedly to 
 stock does not make it one. Keep this distinction even under a "conditional" label. Engagement
 combining likes and comments is not a like rate; never use it to compute future likes.
 
+For the missing-input branch, the reply has two parts only: a brief correction of the unsupported
+earlier estimate and a concrete request for the dated records or explicit assumptions needed.
+End there; do not append a table of unknowns, a different-target forecast, or an offer to produce
+percentage odds later. Once inputs arrive, the supported calculation path below is available.
+
 ## Require source rows, not reconstructed summaries
 
 A prior report's median, quartiles or posting pace is useful context, but does not provide the
