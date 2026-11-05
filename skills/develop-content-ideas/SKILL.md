@@ -3,7 +3,7 @@ name: develop-content-ideas
 description: "Turn a creator's account review, trend or competitor research, a video analysis, a video's YouTube or TikTok comments, or an explicit topic into distinct content ideas the creator can compare and choose from. Use when a creator asks what to make next, wants a first batch of topics for a new account, wants ideas that fit a time or equipment budget, wants follow-up ideas from a video's comments, or wants new hooks for a weak topic. Not for diagnosing an account or planning a posting calendar."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching a video's comments also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for comments only: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_list_comments tiktok_discovery_list_comments tiktok_discovery_list_comment_replies
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_list_comments tiktok_discovery_list_comments tiktok_discovery_list_comment_replies start_skill_run
 ---
 
 # Develop Content Ideas
@@ -52,6 +52,8 @@ the run, repeat completed prep, reset the generation budget or start a replaceme
 or claim a run-record status yourself. For ideas from a video's comments, read
 `references/comment-evidence.md` whole before the first call: it holds the calls, the save, fetch
 and persist commands, failure handling and the projection.
+
+**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `develop-content-ideas` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Prep
 

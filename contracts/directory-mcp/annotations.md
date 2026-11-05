@@ -17,6 +17,10 @@ OAuth 通过 `securitySchemes` 与 `_meta.securitySchemes` 同值声明。下表
 | update_script | workspace:write | false | true | false | 替换用户已有正文；属主、乐观锁及幂等回执防止越权、重放与覆盖较新版本。 |
 | connect_public_account | workspace:write | false | true | true | 使用当前用户取数额度核验公开身份并建立观察关系；换绑须携带当前账号与版本。不进行官方 OAuth、不投递分析或同步任务。 |
 | update_content_preferences | workspace:write | false | true | false | 改本人对已绑定账号的画像偏好，remove / merge / reset 会去掉已有修改；必填 expected_version，改主打内容另带 basis。重放时版本已变必回 409、不会重复生效，所以不带幂等键（待目录面负责人确认）。不访问第三方、不启动生成、不扣 credits。 |
+| start_skill_run | data | false | false | false | 宿主声明一次 skill 运行：按 (用户, run_id) 幂等记一笔 Regular credits（价格读价表）。额度用完先拦；开关关闭、内部或审核账号不记。不访问第三方、不改产品数据。 |
+| get_credit_balances | workspace:read | true | false | false | 读取当前账号的 Regular 与 Video credits，与网页 GET /v1/credits 同一条 present()。用量已达标时会把当日任务奖励入账，这是网页打开额度时就会做的结算；不扣费、不发起充值。 |
+| get_credit_tasks | workspace:read | true | false | false | 读取当前账号的任务墙。每日任务若今天已完成，这次读取会把奖励入账，与网页打开额度时同一条结算；不领取一次性任务、不扣费。 |
+| claim_credit_task | workspace:write | false | false | false | 用户要求时领取一条一次性任务的 Regular credits；条件不满足或已领过则不发，账本唯一约束保证重放不重复入账。不领取每日任务。 |
 | collect_instagram_trend_candidates | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
 | enrich_instagram_shortlist | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
 | collect_youtube_trend_candidates | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
@@ -25,6 +29,7 @@ OAuth 通过 `securitySchemes` 与 `_meta.securitySchemes` 同值声明。下表
 | collect_tiktok_video_candidates | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
 | collect_youtube_recent_videos | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
 | render_official_pages | data | true | false | true | 读取第三方公开数据；不占账号额度、不创建账号记录（服务端调用审计与证据副本不算）。 |
+| collect_video_media | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
 | analyze_content_video | video | false | false | true | 创建账号拥有的视频分析记录（新分析需有效 Pro 订阅）；同一幂等键重放原分析，不发布或改动源视频。 |
 | get_analysis_run | video | true | false | false | 仅查询当前用户持有的已存分析，不启动任务、不读取任意外部地址。 |
 | start_remake_video | video | false | false | true | 取第三方公开视频（占取数额度）并创建账号拥有的复刻任务（占每日复刻名额）；idempotency_key 必填，同键同入参重放或续做同一任务，不发布或改动源视频。 |

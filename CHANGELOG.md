@@ -2,6 +2,11 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 未发布
+
+- 每个按次计费的 Skill 在预留运行目录后调用一次 `start_skill_run`（Kabo 按 skill 记一次用量，同一运行不重复记）；额度用完时 Skill 停止并把账单链接交给用户，工具缺失时照常继续。`remake-viral-video` 只走视频额度，不声明。
+- 重新钉住目录契约（kabo `d214da530` 为基线，**合入 kabo 后须按合入提交重钉**）：新增 `start_skill_run`、`get_credit_balances`、`get_credit_tasks`、`claim_credit_task`，并带入已上线的 `collect_video_media`。**须在 Kabo 服务端部署这些工具之后再发布本插件。**
+
 ## 1.0.13（2026-11-05；GitHub Release）
 
 - `remake-viral-video`：选口播模型按意思理解（同网页端 kas#320 / creator-remake-web 0.1.39）：确认话术不再要求「回编号 / 回 OK」，
