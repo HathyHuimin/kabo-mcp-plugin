@@ -1,6 +1,6 @@
 ---
 name: create-script-and-packaging
-description: "Write a script, hooks and platform packaging (titles, captions, tags, thumbnail or cover briefs) for a topic the creator chose; adapt a specified video into written clips, hooks or carousel copy; rewrite openings, CTAs, captions or cover text; or propose new openings and cover text for an existing script. Use after an idea is picked or when a creator asks for a script or copy on a stated topic. Not for choosing ideas, trend research, publish timing, new artwork, CTR predictions or publishing."
+description: "Write scripts, hooks and platform packaging for a chosen topic; continue an existing draft or help plan part 2 of a previous post; adapt a specified video into written clips or carousel copy; rewrite openings, CTAs, captions or cover text. Use for a chosen idea, a stated topic or a referenced earlier episode. Not for choosing ideas, trend research, publish timing, new artwork, CTR predictions or publishing."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Optional saved-script access requires the Kabo MCP at https://kabo.sh/mcp-pub. Source-video facts and channel samples come from the creator or existing evidence. Optional image operations need host image download, resize and preview. Kabo permissions, saved scripts only: workspace:read to read, workspace:write to save or replace on request."
 allowed-tools: list_scripts get_script save_script update_script start_skill_run
@@ -18,6 +18,16 @@ and the contracts below. The schemas, builders, validators and renderers ship in
 this into a video", hand the resolved script and production requirements to the host's media
 capability as `references/media-delivery.md` says, and check that capability against the concrete
 subjects, essential actions and required sound before promising a finished video.
+
+**Before any sequel, resolve its source.** If the user means a published post but its actual
+content is absent, first ask for its script, link or a summary including the ending. Until that
+content is available, offer at most a plot-free structure: no invented scenes, dialogue or
+characters, including examples borrowed from another series in the account history. A title,
+account review or earlier creative suggestion is not the post. This boundary also applies to
+"how should I do part 2?" and overrides the generic creative-draft fallback.
+If the user instead selects a draft already in the conversation, use that draft without asking
+for it again: check the latest applicable text, character states and stopping point, then continue
+from there. Read `references/source-adaptation.md` for both routes.
 
 When the host supports one, run this Skill in a foreground sub-agent, because a full package takes
 several steps, and wait for its final result before replying; never run it in the background and
@@ -153,6 +163,7 @@ suggestions labelled as estimates.
    useful `draft_needs_user_input` with explicit placeholders and one question batch; with a
    concrete topic, include the requested copy in the same response. Never mark it shoot-ready or
    turn a proposed audience, CTA, resource, course benefit or health claim into a confirmed input.
+   Missing predecessor content follows the sequel boundary above, not this creative-draft fallback.
 10. Check Hook-to-payoff alignment, single CTA, duration, evidence, claims, voice, originality,
     production feasibility and Packaging consistency.
 11. Validate, render and record, in order, stopping on any nonzero exit (the validator takes

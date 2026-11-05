@@ -8,11 +8,25 @@ Do not add source research to an independent creative brief.
 
 ## Continue an episode without repeating it
 
-Resolve which episode the user means before writing its sequel. Reuse its actual
-script or source observations already available in this conversation. For "my
-latest post", verify the current listing and then the selected post's content.
+Resolve whether the user is continuing an available draft or an actual published episode.
+For a draft the user supplied or selected in the conversation, use the latest applicable
+text for that selection, not a superseded outline. Check established events, character states
+and the last completed action; start after that stopping point. Do not replay a completed part
+or silently undo a state such as an injury, disappearance or lost ability. Any change must happen
+in the new story before it is relied on. This is draft continuity, not proof of publication;
+do not ask the user to resupply text that is already available.
+
+For a published episode, reuse its actual script, a creator-provided summary or source
+observations already available in this conversation. For "my latest post", a listing can
+identify a candidate, but only the selected post's content establishes its story.
 An account review, title, thumbnail, genre or remembered character is not the
 episode. A previous assistant proposal is not proof of what the creator posted.
+If the actual content is absent, the first response asks for the script, link or a summary
+with the ending. At most add a generic structure for advancing a sequel, without specific
+characters, plot events or sample dialogue. Do not infer the missing story from another
+series in the same account, even as an illustrative example. Advice about "how to make part 2"
+has the same boundary as a request to write it. A supplied link still needs content retrieval
+before it supports episode-specific writing.
 
 From that source, identify the established events, the ending/reveal and any
 unresolved question. Keep the source reference attached to those facts; source
