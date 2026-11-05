@@ -6,6 +6,41 @@ analysis task; actual edited media needs a media execution capability from the
 host, which this Skill does not provide.
 Do not add source research to an independent creative brief.
 
+## Finish a supplied partial draft
+
+For an available draft, distinguish appending its missing ending from rewriting or expanding it.
+"Continue" or "finish this part" means append from the latest applicable stopping point;
+return the whole earlier section only when the user asks for a full rewrite or expansion.
+Do not require proof of publication or ask for the same draft again.
+
+1. Copy the selected partial draft verbatim into `previous-script.txt` in the workspace. Identify
+   its final action, already completed beats and current character states. A superseded outline
+   does not override the latest selected text.
+2. Write only the missing continuation into `continuation.md`. Its first new action follows the
+   source's last action; do not restart the part. One brief orienting sentence is enough. Preserve
+   established past events. A new twist may add consequences, not replace what already happened.
+3. Read `previous-script.txt` and `continuation.md` back in full after writing. Check the actual
+   output, not an intended outline: each action and spoken line must be possible in that character's
+   current state. Depict a recovery or other state change before relying on it. Explicitly attribute
+   recorded voices, imitations, gestures and inner thoughts; do not let them read as ordinary speech.
+   Remove any repeated completed sequence, including a paraphrase, before delivery.
+4. Run the literal-overlap check on those actual files:
+
+   ```sh
+   python3 '<skill directory>/scripts/check_continuation_overlap.py' --source '<workspace>/previous-script.txt' --continuation '<workspace>/continuation.md'
+   ```
+
+   A nonzero result requires fixing the indicated input or repeated passages, then checking the
+   same files again. Never edit this checker or call its success semantic validation. It catches
+   substantial copied passages, not plot or character errors; step 3 remains required.
+5. Deliver the checked continuation itself. Do not generate a second, different version in the
+   final reply. Keep work files out of the creative text unless the user asks to download them.
+
+For an explicit complete rewrite or expansion, preserve the selected story's facts and states
+and read the finished text back as in step 3; literal overlap is expected and the append-only
+check does not apply. For a published post with missing content, use the clarification boundary
+below instead of manufacturing either source file.
+
 ## Continue an episode without repeating it
 
 Resolve which episode the user means before writing its sequel. Reuse its actual
