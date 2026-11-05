@@ -6,9 +6,25 @@ analysis task; actual edited media needs a media execution capability from the
 host, which this Skill does not provide.
 Do not add source research to an independent creative brief.
 
-## Continue an episode without repeating it
+## Continue an episode or draft without repeating it
 
-Resolve which episode the user means and establish its actual content before
+First distinguish continuing a published episode from completing a draft the
+user supplied or selected. An available selected draft is sufficient for a
+fictional continuation; do not ask for publication evidence or another copy.
+Use the latest applicable selected text, not a conflicting earlier outline or
+superseded ending. For "complete this part", continue after its last written
+beat rather than restarting the part, unless the user requested a full rewrite.
+
+Before writing, identify the source's stopping point, current character states
+and established story rules: who knows what, what each character can do, and
+what has already changed or been revealed. Carry those constraints into each
+new action and line of dialogue. A condition may change as a new plot event,
+but show its cause or occurrence before using the changed ability or state;
+do not silently borrow a reversal from an older version. Check the complete
+continuation against this source before delivery. This is a writing check,
+not a request for new user inputs or a native-package requirement.
+
+For a published sequel, resolve which episode the user means and establish its actual content before
 giving episode-specific advice, including advice about how to approach a sequel
 rather than a request for its full script. Reuse its actual script, the user's
 description of its ending and unresolved point, or source observations already
@@ -42,9 +58,9 @@ Do not generate a supposed continuation from the topic alone. If the creator say
 recheck the source and identify the repeated beat before proposing a replacement;
 do not repeat an unchanged failed retrieval or offer another guessed episode.
 An independent new story is a different deliverable and needs the user's choice.
-An assistant draft explicitly selected for editing can support a fictional
-continuation as a draft; follow the source-role distinction in
-[request-routing.md](request-routing.md), without claiming it was published.
+Keep a selected draft's fictional continuity distinct from claims about a
+published episode; use [request-routing.md](request-routing.md) if the source
+reference itself is ambiguous.
 
 Preserve the requested output, source identity, target platform, language and
 requested quantity while obtaining evidence. A URL identifies source material;
