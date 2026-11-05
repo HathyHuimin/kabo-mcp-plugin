@@ -8,6 +8,11 @@ allowed-tools: list_scripts get_script save_script update_script start_skill_run
 
 # Create Script and Packaging
 
+When the host supports one, run this Skill in a foreground sub-agent, because a full package takes
+several steps, and wait for its final result before replying; never run it in the background and
+tell the user the report will come later. Without a foreground sub-agent, follow the same steps in
+the main thread.
+
 Write the requested script or packaging while preserving its selected promise, evidence basis,
 originality boundaries and Creator constraints. Route first: a concrete topic with unconfirmed
 audience, goal or CTA uses the creative-draft route; a native package uses a frozen `SelectedIdea`
@@ -24,18 +29,16 @@ or confirmed the exact source link, use the permitted recovery path in `referenc
 before asking for missing content; do not ask for that link again. A post list alone does not
 confirm which episode is meant. If the published content remains unavailable, this turn is a
 clarification only: ask for the missing script, source link or summary including the ending,
-then end the response and wait. Do not append a structure,
+then end the response and wait. Keep the question neutral: do not supply character names,
+plot facts or a candidate series from account metadata or earlier unrelated suggestions.
+Those identities are part of the missing source, not assumptions to build into the question.
+Do not append a structure,
 hook, sample line or plot suggestion. A title, account review or earlier creative suggestion is
 not the post; other series in the account do not supply its characters or events. This boundary
 also applies to "how should I do part 2?" and overrides the generic creative-draft fallback.
 If the user instead selects a draft already in the conversation, use that draft without asking
 for it again: check the latest applicable text, character states and stopping point, then continue
 from there. Read `references/source-adaptation.md` for both routes.
-
-When the host supports one, run this Skill in a foreground sub-agent, because a full package takes
-several steps, and wait for its final result before replying; never run it in the background and
-tell the user the report will come later. Without a foreground sub-agent, follow the same steps in
-the main thread.
 
 **Native package delivery.** The Creator-facing result is `SCRIPT_PACKAGE.md`, written by the
 renderer after both validators pass. Deliver it once, exactly as rendered: never summarize, rewrite or retype it, and
