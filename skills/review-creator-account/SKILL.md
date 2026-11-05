@@ -1,6 +1,6 @@
 ---
 name: review-creator-account
-description: "Review an Instagram, TikTok or YouTube account: what works, what hurts, what to continue, stop or test, benchmarks, content patterns, follower loss and own-account wording audits. Also calculates engagement rate, conditional growth estimates and owner follower-contribution rankings from public data, an owner export or supplied numbers. Not for diagnosing a reach drop or shadowban, Insights UI help, trends, ideas, cadence plans, drafts, one-video edits or monetization."
+description: "Review Instagram, TikTok or YouTube account performance, patterns, follower loss and wording. Calculate engagement, owner follower contributions and conditional growth; use also for forecast continuations and requests for growth probabilities, even after an earlier answer gave estimates. Work from public data, owner exports or supplied numbers. Not for reach-drop diagnosis, Insights UI help, trends, ideas, cadence plans, drafts, video edits or monetization."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read for saved account context and workspace:write only to connect a public account or save the user's profile edits on request."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_account_history instagram_resolve_profile instagram_list_posts instagram_list_reels get_kabo_info list_connected_accounts get_creator_profile get_social_connection connect_public_account update_content_preferences start_skill_run
@@ -16,6 +16,11 @@ For forecasts, probabilities or a longer-horizon follow-up, read
 [growth-estimation.md](references/growth-estimation.md) before answering. Recheck the target,
 measurement and evidence; earlier assistant projections are not observations. Conditional
 arithmetic cannot supply calibrated odds, even when the user asks for them.
+Before any numeric forecast table, identify the supporting dated observations and assumptions for
+each metric, then use the calculation script. With no supported trajectory or explicit user rate,
+give a correction and the minimum data needed, not guessed monthly values. A request to extend
+an earlier estimate is not approval to treat that estimate as a user-supplied growth rate.
+Calling invented numbers "subjective", "illustrative" or "conditional" does not make them valid.
 
 **Delivery.** The final step prints `creator_report: <path>` and then `ACCOUNT_REVIEW.md`. Deliver
 that report once, immediately, in full and in the user's requested language (`output_language`):
