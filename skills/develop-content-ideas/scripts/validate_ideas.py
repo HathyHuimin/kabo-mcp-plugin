@@ -1074,8 +1074,8 @@ def presentation_inputs_are_safe(idea_set: Any) -> bool:
     schema = load(IDEA_SET_SCHEMA)
     # 提前检查只保证容器形状与可哈希性；枚举和范围错误仍由完整 schema 拒绝。
     fields = ("status", "task_intent", "source_mode")
-    guard = {"type": "object", "required": [*fields, "evidence_summary", "ideas"],
-             "properties": {field: {"type": "string"} for field in fields}}
+    guard = {"type": "object", "properties": {
+        field: {"type": "string"} for field in fields}}
     guard["properties"]["overview"] = {"type": "object"}
     guard["properties"]["evidence_summary"] = {
         "type": "object", "properties": {"data_gaps": {
