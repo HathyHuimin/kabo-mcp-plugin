@@ -79,6 +79,9 @@ one source route:
   without crossing a user turn. Check the selected quote and zero-based index before prep.
   Pass `--conversation-context conversation-source.json`. Prep retains the original bytes and
   derives `conversation_context`; never write that field into `intent.json`.
+  For a chat-only follow-up with no new literal topic or required research, use
+  `prepare_conversation_inputs.py` from `references/prep.md` to construct these inputs from the
+  visible message export instead of manually retyping the source and request layout.
 
 Do not combine both routes, paste history into `user_brief`, invent a previous IdeaSet, or read host
 session files. Reuse context already visible to the Agent; only request missing source material

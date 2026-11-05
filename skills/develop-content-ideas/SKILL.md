@@ -82,9 +82,14 @@ handle each prep decision. Also read the fields and definitions for this task in
 
 1. Copy each upstream JSON artifact into the run unchanged (`cp`); a trend or competitor report
    counts only with its `*_idea_context.json` projection. Never write a projection by hand.
-2. Write `intent.json` (no `upstream_sources`, `idea_context`, `continuation_context` or
-   `conversation_context`), then run
-   prep once with the artifact flags this run has:
+2. For a chat-only follow-up with no new literal topic or required external evidence, use
+   `prepare_conversation_inputs.py` as *Chat-only continuation inputs* in `references/prep.md`
+   specifies. It copies the selected visible messages and prepares valid request fields; do not
+   hand-retype their JSON layout. For other requests, write `intent.json` (no `upstream_sources`,
+   `idea_context`, `continuation_context` or `conversation_context`). For either route, run prep
+   once with the artifact flags this run has. The chat route must include
+   `--conversation-context conversation-source.json` as shown in `references/prep.md`; the
+   command below is the base form for other inputs:
 
    ```sh
    cd '<run directory>' && python3 '<skill directory>/scripts/run_ideas_stages.py' prep --intent intent.json --run-dir .
