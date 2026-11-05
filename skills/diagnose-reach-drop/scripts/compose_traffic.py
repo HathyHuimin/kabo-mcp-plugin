@@ -86,16 +86,14 @@ def answer_text(finding, answer, zh=False):
                         f"On the matched window, this source's share {share_word} and its estimated per-record source amount {count_word}. This is a source-mix and performance signal, not proof of platform enforcement.")
             amount = (fact.get("count_change") or {}).get("difference")
             if (fact.get("window_basis") or [None])[0] == "calendar" and type(amount) in (int, float) and math.isfinite(amount):
-                share_word = ("下降" if share < 0 else "上升" if share > 0 else "持平") if zh else (
-                    "fell" if share < 0 else "rose" if share > 0 else "was unchanged")
-                amount_word = ("下降" if amount < 0 else "上升" if amount > 0 else "持平") if zh else (
-                    "fell" if amount < 0 else "rose" if amount > 0 else "was unchanged")
-                estimated = any(group.get("estimated_from_share") for group in fact.get("groups", []))
-                amount_name = ("由占比估算的来源量" if estimated else "来源量") if zh else (
-                    "its amount estimated from the reported shares" if estimated else "its amount")
-                return (f"两个日历周期相比，所给数据中该来源占比{share_word}，{amount_name}{amount_word}；这描述的是所给数据的来源变化，不能单独证明原因或平台限制。"
-                        if zh else
-                        f"Between the two calendar periods in the supplied data, this source's share {share_word} and {amount_name} {amount_word}. This describes the supplied data, not a cause or platform enforcement.")
+                # One English sentence; the delivery step translates it into the creator's language.
+                estimated = [bool(group.get("estimated_from_share")) for group in fact.get("groups", [])]
+                amount_name = ("its amount, estimated from the reported shares," if estimated and all(estimated) else
+                               "its amount, partly estimated from the reported shares," if any(estimated) else "its amount")
+                share_word = "fell" if share < 0 else "rose" if share > 0 else "was unchanged"
+                amount_word = "fell" if amount < 0 else "rose" if amount > 0 else "was unchanged"
+                return (f"Between the two calendar periods in the supplied data, this source's share {share_word} and "
+                        f"{amount_name} {amount_word}. This describes the supplied data, not a cause or platform enforcement.")
             return ("现有同窗口数据可以判断该来源占比变化，但缺少匹配的总量，不能确定绝对来源量如何变化，也不能据此证明平台限制。"
                     if zh else
                     "The matched-window data establishes the source-share change, but without matching totals it cannot establish the absolute source-amount change or platform enforcement.")

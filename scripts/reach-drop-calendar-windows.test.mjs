@@ -75,15 +75,15 @@ test("direct counts with an unchanged share say so, without an estimate note", a
     q.groups[0] = { ...q.groups[0], totals: [1000], counts: [300] };
     q.groups[1] = { label: "Week 2", totals: [2000], counts: [600], content_ids: ["account-week-2"], window: { ...W2 } };
   }));
-  assert.match(verdict, /所给数据中该来源占比持平，来源量上升/, out + verdict);
-  assert.doesNotMatch(verdict, /估算|estimated/);
+  assert.match(verdict, /in the supplied data, this source's share was unchanged and its amount rose\./, out + verdict);
+  assert.doesNotMatch(verdict, /estimated/);
 });
 
 test("two calendar weeks get a period verdict, not 'missing matching totals'", async () => {
   const { out, verdict } = await prepare(brief());
-  assert.match(verdict, /两个日历周期相比，所给数据中该来源占比下降，由占比估算的来源量下降/, out + verdict);
-  assert.match(verdict, /Between the two calendar periods in the supplied data, this source's share fell and its amount estimated from the reported shares fell/);
-  assert.doesNotMatch(verdict, /账号来源结构|account's source mix/);
+  assert.match(verdict, /Between the two calendar periods in the supplied data, this source's share fell and its amount, partly estimated from the reported shares, fell\./, out + verdict);
+  assert.doesNotMatch(verdict, /amount, estimated from the reported shares/);
+  assert.doesNotMatch(verdict, /两个日历周期|account's source mix/);
   assert.doesNotMatch(verdict, /缺少匹配的总量|without matching totals/);
 });
 
