@@ -757,9 +757,10 @@ def stage_report(args: argparse.Namespace) -> None:
             if path.is_file() and not path.is_symlink():
                 path.unlink()
         AUTHORING_CORRECTION_MARKER.write_text("needs_revision\n", encoding="utf-8")
-        raise cd.StageError(f"{error}\nThe unvalidated report was removed. Correct only the authored "
-                            f"synthesis text this names, in this same open run, then repeat this same "
-                            f"report command.") from None
+        raise cd.StageError(f"{error}\nThe unvalidated report was removed. If the message above names "
+                            f"authored synthesis text, correct only that text in this same open run, then "
+                            f"repeat this same report command. If it names no authored field (a file, "
+                            f"permission or other system error), this step failed: report it and stop.") from None
     report = (output_dir / "ACCOUNT_REVIEW.md").resolve()
     # 本 run 从未返回 needs_revision 时，这次 report 就是最终步：两个校验器刚在同一份字节上通过，
     # verify-report 再跑一遍只会重复 compose 和两次校验。

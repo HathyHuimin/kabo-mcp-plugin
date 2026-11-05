@@ -269,11 +269,24 @@ def untouched_run(workspace: str) -> Path | None:
                 continue
         except (OSError, ValueError):
             continue
-        # 只有 init 建的空目录与标记文件：任何已落盘的文件都说明这个 run 已经开始，不能认领。
+        # 只有 init 建的空目录与标记文件：任何已落盘的文件（包括别的请求留下的认领标记）都说明这个 run
+        # 已经开始，跳过它接着找。认领用独占创建，两个请求不会同时认领同一个 run。
         if any(path.is_file() and path != marker for path in run.rglob("*")):
-            return None
-        return run
+            continue
+        if claim(run):
+            return run
     return None
+
+
+CLAIM = ".catalog-claim"
+
+
+def claim(run: Path) -> bool:
+    try:
+        os.close(os.open(run / CLAIM, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
+        return True
+    except FileExistsError:
+        return False
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -297,7 +310,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.workspace and not os.environ.get("KABO_STATIC_RUN_DIR"):
             import static_host
-            run_directory = untouched_run(args.workspace) or static_host.init(args.workspace)
+            run_directory = untouched_run(args.workspace)
+            if run_directory is None:
+                run_directory = Path(static_host.init(args.workspace))
+                claim(run_directory)
             os.chdir(run_directory)
             os.environ["KABO_STATIC_RUN_DIR"] = str(run_directory)
         if ANALYSIS.exists():
