@@ -24,9 +24,10 @@ When the referent is unique and its needed content is available, reuse it and
 complete the requested work without asking the user to supply it again. Check
 the requested version and scope rather than automatically using the newest draft.
 When several lists, scripts or episodes remain plausible, ask only which one is
-intended. When the referenced content is missing, first use any permitted recovery
-path for that same source, then ask only for the missing item or passage if it
-cannot be recovered. A matching title, account, genre or remembered summary does
+intended. When the referenced content is missing, first check the available evidence
+for that same source, then follow the evidence boundary in `source-adaptation.md`.
+Ask only for the missing item or passage; request a link only when none was supplied.
+A matching title, account, genre or remembered summary does
 not fill in absent content. Preserve known constraints and independent completed
 work while resolving the gap.
 
@@ -36,10 +37,11 @@ a creative proposal nor permission to edit proves that it was posted. A sequel t
 an actual published episode needs that episode's content, ending and unresolved
 point under [source-adaptation.md](source-adaptation.md), before supplying any
 episode-specific recap or new events. The same check applies to practical advice
-that would fill in those events. For a creator-supplied or confirmed exact source link, use the
-permitted recovery path before asking for missing content; do not request the link again.
-If published content is still unavailable, ask only for its missing script, source link or
-summary with the ending and stop this turn. Do not append craft examples or suggested plot.
+that would fill in those events. For a creator-supplied or confirmed exact source link, follow the
+evidence boundary before asking for missing content; do not request the link again.
+When clarification is needed, ask only for the missing script or a summary with the ending and
+unresolved point. Offer a source link as an alternative only when none was supplied, then stop
+this turn. Do not append craft examples or suggested plot.
 For an existing script's
 cover/opening alternatives, retain [partial-script-edits.md](partial-script-edits.md)
 and its exact-message, version and authorized-scope checks. Those structural checks
