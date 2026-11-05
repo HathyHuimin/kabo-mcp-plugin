@@ -15,12 +15,15 @@ observed ages. It is not a monthly deadline series, and adding it repeatedly to 
 stock does not make it one. Keep this distinction even under a "conditional" label. Engagement
 combining likes and comments is not a like rate; never use it to compute future likes.
 
-For the missing-input branch, the reply has two parts only: a brief correction of the unsupported
-earlier estimate and a concrete request for the dated records or explicit assumptions needed.
+For a growth-only request with missing inputs, ask for the dated records or supported explicit
+assumptions needed. Correct an unsupported earlier estimate only when one actually exists; a
+first forecast request does not imply a previous error.
 Ask for values from the user; do not suggest invented example rates or turn a combined engagement
 rate into a proposed like rate. Keep the request within the supported calculation contracts.
-End there; do not append a table of unknowns, a different-target forecast, or an offer to produce
-percentage odds later. Once inputs arrive, the supported calculation path below is available.
+For that growth-only reply, end there; do not append a table of unknowns, a different-target
+forecast, or an offer to produce percentage odds later. If forecasting is part of a complete
+account review, deliver the other supported review results and identify the forecast input gap
+without invented predictions. Once inputs arrive, the supported calculation path is available.
 
 ## Require source rows, not reconstructed summaries
 

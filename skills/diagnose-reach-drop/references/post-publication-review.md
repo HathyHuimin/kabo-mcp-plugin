@@ -61,9 +61,9 @@ A retention/skip pattern can make an opening worth testing; it cannot by itself 
 opening as the cause. For each proposed explanation, state what evidence would support or weaken
 it and a feasible check. Keep title/caption-based hypotheses separate from unseen video content.
 
-While essential context is missing, give a concise clarification and, if useful, a conditional
-check plan with no causal ranking. Do not present the full diagnosis as complete. With sufficient
-records, use the existing calculation/report workflow and preserve its evidence limits.
+While essential context is missing, end the reply after the bundled clarification question.
+Do not append a check plan or diagnosis. Once the missing basis is supplied, offer the test plan
+and use the existing calculation/report workflow while preserving its evidence limits.
 
 Prefer one change at a time, a like-for-like comparison at an agreed post age, and a decision
 rule for the next iteration. Explain that an observational comparison can remain confounded:

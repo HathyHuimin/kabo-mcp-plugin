@@ -22,9 +22,10 @@ For a forecast or longer-horizon follow-up, read
 Keep the account or post and requested metric from the preceding question; do not substitute a
 new-content batch for an existing post or calendar-month outcome. Prior assistant estimates are
 not observations. Raw dated inputs must support a calculation in `estimate_growth.py`; a report
-summary's median and cadence cannot replace its missing source rows. If inputs are missing,
-briefly correct the earlier estimate, ask for the missing dated records or an explicit assumption,
-and end the reply. Do not append a forecast or promise future percentage predictions. Never
+summary's median and cadence cannot replace its missing source rows. For a growth-only request with missing inputs,
+correct an earlier unsupported estimate only if one exists, ask for the missing dated records or
+supported explicit assumption, and end the reply. In a complete account review, deliver the
+supported review and state the forecast gap; do not block other supported results. Do not append a forecast or promise future percentage predictions. Never
 bypass the script with mental or ad-hoc arithmetic. Supported stock and content-scenario calculations remain available as the reference
 specifies. Additional snapshots enable conditional arithmetic, not calibrated odds; never promise
 percentage predictions merely in exchange for more history.
