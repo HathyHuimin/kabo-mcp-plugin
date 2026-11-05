@@ -250,17 +250,18 @@ go-ahead. After it, preview the stills once (narration.md), then build the argum
 `--talking-model` / `--models-from` and render as below.
 For a talking video, show the user the model options from the waiting_script result
 (`talking_model_choices`, else `talking_models`) in their order, each with its label and its
-estimated cost (`est_usd`), and say that the first one is the default. Do not add a recommendation of your own, drop options or
-change the order. Unless the user already named a listed model (below), end your reply there and wait for the
-answer; the job waits at the script gate.
-When the conversation resumes, continue here in the same run directory.
+estimated cost (`est_usd`). Do not add a recommendation of your own, drop options or change the
+order. Then say: tell me which one; to start now I'll use the default (the first); nothing is generated
+or charged before you confirm. Do not ask for a number or "OK". Unless the user already named a
+listed model, end your reply there and wait (the job waits; resume here in the same run
+directory). Read the answer by its meaning, in any language:
 
-- A model from the list, by number or name: use its `id`.
-- A plain go-ahead with no choice ("OK", "yes", or the same in their language): the first option.
-- The user already named one of the listed models earlier in this conversation (for example in the
-  first request): use it without asking again. Tell them the model and its estimated cost, then
-  render.
-- A question about the options: answer it from the list, then wait for their choice.
+- It picks an option -- by number, name or description: use that option's `id`.
+- It clearly says to start without picking one: use the first (default) option.
+- They named a listed model earlier (say, in the first request): use it without asking again;
+  tell them the model and its cost, then render.
+- A question about the options: answer from the list, then wait.
+- Unclear, or about something else: ask once, briefly; do not render.
 
 Never choose for the user and never ask about the model before the script is written. Then build
 the arguments (this repeats the check):
