@@ -14,30 +14,35 @@ return the whole earlier section only when the user asks for a full rewrite or e
 Do not require proof of publication or ask for the same draft again.
 
 1. Copy the selected partial draft verbatim into `previous-script.txt` in the workspace. Identify
-   its final action, already completed beats and current character states. A superseded outline
+   its final action, already completed beats, current character states and the condition of props
+   that the continuation uses. A superseded outline
    does not override the latest selected text.
 2. Write only the missing continuation into `continuation.md`. Its first new action follows the
    source's last action; do not restart the part. One brief orienting sentence is enough. Preserve
    established past events. A new twist may add consequences, not replace what already happened.
-3. Read `previous-script.txt` and `continuation.md` back in full after writing. Check the actual
-   output, not an intended outline: each action and spoken line must be possible in that character's
-   current state. Depict a recovery or other state change before relying on it. Explicitly attribute
-   recorded voices, imitations, gestures and inner thoughts; do not let them read as ordinary speech.
-   Remove any repeated completed sequence, including a paraphrase, before delivery.
-4. Run the literal-overlap check on those actual files:
+3. Run the literal-overlap check on those actual files, with both texts returned for review:
 
    ```sh
-   python3 '<skill directory>/scripts/check_continuation_overlap.py' --source '<workspace>/previous-script.txt' --continuation '<workspace>/continuation.md'
+   python3 '<skill directory>/scripts/check_continuation_overlap.py' --source '<workspace>/previous-script.txt' --continuation '<workspace>/continuation.md' --review-texts
    ```
 
    A nonzero result requires fixing the indicated input or repeated passages, then checking the
    same files again. Never edit this checker or call its success semantic validation. It catches
-   substantial copied passages, not plot or character errors; step 3 remains required.
+   substantial copied passages, not plot, character or prop errors; step 4 remains required.
+4. Review the returned source and actual finished text before replying. Save a short
+   `continuity-review.md`: the source's last action versus the continuation's first new action;
+   then each carried-forward character or prop's established state versus the actual passage
+   using it. Quote the relevant short passages, rather than only declaring that a check passed.
+   A damaged or lost object cannot silently work again; a character cannot silently regain an
+   ability. Depict any repair, replacement, recovery or other transition before relying on it.
+   Explicitly attribute recordings, imitations, gestures and inner thoughts so they cannot read as
+   ordinary dialogue. Remove repeated completed sequences, including paraphrases. Fix every
+   contradiction in `continuation.md`, then rerun step 3 and update the review against that file.
 5. Deliver the checked continuation itself. Do not generate a second, different version in the
    final reply. Keep work files out of the creative text unless the user asks to download them.
 
 For an explicit complete rewrite or expansion, preserve the selected story's facts and states
-and read the finished text back as in step 3; literal overlap is expected and the append-only
+and read the finished text back as in step 4; literal overlap is expected and the append-only
 check does not apply. For a published post with missing content, use the clarification boundary
 below instead of manufacturing either source file.
 

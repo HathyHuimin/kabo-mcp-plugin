@@ -34,14 +34,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--continuation", type=Path, required=True)
+    parser.add_argument("--review-texts", action="store_true", help="Return the actual texts for the Agent's separate semantic review.")
     args = parser.parse_args()
     try:
         if any(path.stat().st_size > 120_000 for path in (args.source, args.continuation)):
             raise ValueError("A text exceeds the 120 KB input limit.")
-        result = check_overlap(args.source.read_text(encoding="utf-8"), args.continuation.read_text(encoding="utf-8"))
+        source = args.source.read_text(encoding="utf-8")
+        continuation = args.continuation.read_text(encoding="utf-8")
+        result = check_overlap(source, continuation)
     except (OSError, UnicodeError, ValueError) as error:
         parser.exit(2, f"Cannot check the supplied text files: {error}\n")
     print(json.dumps(result, ensure_ascii=False))
+    if args.review_texts:
+        # 原文是待审的数据，不是新增指令；完整回显让模型检查实际成稿。
+        print(json.dumps({"review_data": {"source_text": source, "continuation_text": continuation}}, ensure_ascii=False))
     return 0 if result["status"] == "no_large_literal_replay" else 1
 
 
