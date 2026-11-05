@@ -39,9 +39,11 @@ Read `references/source-adaptation.md` before writing the continuation, includin
 
 1. Save the selected source and its stopping action, established past events, current character
    states and unavailable objects in the source files described there.
-2. Write only what happens next. Keep established events true; build new developments on their
-   consequences. A conflicting new account is a disputed claim, not a replacement fact, until
-   the story reconciles it with what the source already established.
+2. Write only what happens next. Plan new actions and their consequences from the source's
+   stopping point. A request to finish a draft does not authorize rewriting its history:
+   preserve who did what, who was rescued or lost, identities, relationships and the speaker of
+   each quoted recording. Do not use a hidden identity or revised past event as a shortcut to
+   a twist. An unresolved mystery can remain unresolved while the current action advances.
 3. Run the overlap check and compare the actual finished draft with every source constraint.
    Correct contradictions in the draft, then deliver that checked text.
 
