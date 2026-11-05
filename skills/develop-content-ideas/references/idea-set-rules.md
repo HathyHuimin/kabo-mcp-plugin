@@ -59,6 +59,8 @@ assets rather than silently downgrading that deliverable.
 - Apply hard filters first (exclusions, missing required source, impossible production budget),
   then rank Creator fit, evidence strength, differentiation, timeliness, and production feasibility
   with stable rank/title tie-breakers. `selection_status` remains `candidate` until the user
-  selects an idea.
+  selects an idea. For variants of one selected example, the fixed scaffold and mechanism are
+  required similarities. Assess distinctness and differentiation only in the permitted variable
+  slots and their consequences; a change of mechanism is a mismatch, not a higher novelty score.
 - Large supported counts must be prepared as supported batches in the same core generation budget;
   do not split a batch request into hidden sub-tasks to bypass the two-call target.
