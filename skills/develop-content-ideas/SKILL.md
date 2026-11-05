@@ -1,8 +1,8 @@
 ---
 name: develop-content-ideas
-description: "Turn a creator's account review, trend or competitor research, a video analysis, a video's YouTube or TikTok comments, or an explicit topic into distinct content ideas the creator can compare and choose from. Use when a creator asks what to make next, wants a first batch of topics for a new account, wants ideas that fit a time or equipment budget, wants follow-up ideas from a video's comments, or wants new hooks for a weak topic. Not for diagnosing an account or planning a posting calendar."
+description: "Turn a creator's account review, trend or competitor research, a video analysis, a video's YouTube or TikTok comments, an explicit topic, or earlier conversation into distinct content ideas the creator can compare and choose from. Use when a creator asks what to make next, wants more ideas or variations in the style of an earlier direction (including one with titles or hooks), wants a first batch of topics for a new account, wants ideas that fit a time or equipment budget, wants follow-up ideas from a video's comments, or wants new hooks for a weak topic. Not for diagnosing an account or planning a posting calendar."
 license: MIT
-compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching a video's comments also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for comments only: data."
+compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching a video's comments also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for comments only: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_list_comments tiktok_discovery_list_comments tiktok_discovery_list_comment_replies
 ---
 
@@ -47,7 +47,8 @@ with `--help` or read their source. Quote paths and use `grep` rather than `rg`.
 and `idea_set.json` at the run root with a single-quoted heredoc or the host's file tool, and make
 model authorship and the one permitted revision between stage commands, never inside one.
 
-A nonzero exit from a script ends the run (for core, see Core step 5): report it, and never reopen
+A nonzero exit from a script ends the run (for core, see Core step 5), except prep's explicit
+`invocation_error` for an unreadable intent path as `references/prep.md` defines. Report terminal failures, and never reopen
 the run, repeat completed prep, reset the generation budget or start a replacement run. Do not write
 or claim a run-record status yourself. For ideas from a video's comments, read
 `references/comment-evidence.md` whole before the first call: it holds the calls, the save, fetch
@@ -63,7 +64,8 @@ handle each prep decision. Also read the fields and definitions for this task in
 
 1. Copy each upstream JSON artifact into the run unchanged (`cp`); a trend or competitor report
    counts only with its `*_idea_context.json` projection. Never write a projection by hand.
-2. Write `intent.json` (no `upstream_sources`, `idea_context` or `continuation_context`), then run
+2. Write `intent.json` (no `upstream_sources`, `idea_context`, `continuation_context` or
+   `conversation_context`), then run
    prep once with the artifact flags this run has:
 
    ```sh
@@ -85,7 +87,7 @@ invent extra critique/rewrite loops. Record network, 5xx or truncation retries w
 
 1. Apply explicit production constraints. Record only assets the user supplied or evidence shows
    are available. For a continuation, differ from every previous idea as *Continuations* says.
-2. In **one** generation pass, write the complete `idea_set.json`: distinct titles the Creator could publish, hooks, making direction, evidence basis, ranking, gates, and limitations. Remove near-duplicates and rank by Creator fit, evidence strength, differentiation, timeliness, and realistic production cost. A plain question or statement is sufficient for a title; keep teaching method detail in `making_direction`. Never invent loss amounts, customer outcomes, efficiency gains, market facts, policy facts, numbers, or URLs. Preserve artifact-level lineage in `upstream_sources`, context-level refs in `source_context_refs`, `must_avoid` as `must_differ`, and risk language. `required_assets` must be a subset of the request's declared `available_assets`; when the user supplied no assets, leave both `required_assets` and `assets_used` empty and put possible future props in `assumptions` or `production_missing`. Do not edit, patch, or replace the skill scripts, schemas, or validators; fix a rejected IdeaSet by revising only `idea_set.json` once.
+2. In **one** generation pass, write the complete `idea_set.json`: distinct titles the Creator could publish, hooks, making direction, evidence basis, ranking, gates, and limitations. Remove near-duplicates and rank by Creator fit, evidence strength, differentiation, timeliness, and realistic production cost. A plain question or statement is sufficient for a title; keep teaching method detail in `making_direction`. Never invent loss amounts, customer outcomes, efficiency gains, market facts, policy facts, numbers, or URLs. Preserve artifact-level lineage in `upstream_sources`, context-level refs in `source_context_refs`, `must_avoid` as `must_differ`, and risk language. `assets_used` must stay within declared `available_assets`. For shortlist intents only, unconfirmed future `required_assets` are allowed with `requires_user_confirmation`, explicit `assumptions` and a `production_missing` gate; never treat them as owned or used. Capacity plans require all resources to be available; exclusions still apply. Do not edit, patch, or replace the skill scripts, schemas, or validators; fix a rejected IdeaSet by revising only `idea_set.json` once.
 3. Put missing information into `gates.selection_missing` only when it prevents a valid choice.
    Put filming, editing, CTA, cadence, or other later details into `gates.production_missing`;
    these may coexist with `ready_for_selection`. If `production_missing` is nonempty, include
@@ -137,6 +139,8 @@ contract and ranking rules. In short:
 Set `report_language` on both IdeaRequest and IdeaSet to the language of the final report (BCP 47),
 separate from `language_targets`; read `references/report-language.md` whole before writing
 `idea_set.json`. Before asking for a topic, audience, goal or evidence, reuse the conversation up to
-the current turn. When no explicit topic or usable evidence exists, ask only for the topic/niche (or
+the current turn. Follow *Continuations* in `references/core-generation.md` to pass an earlier
+IdeaSet or exact visible chat through prep, while keeping the current request unchanged.
+When no explicit topic or usable evidence exists, ask only for the topic/niche (or
 an account/evidence source); a platform name and an idea count do not supply a niche. Clarification
 is not a completed idea-generation task.

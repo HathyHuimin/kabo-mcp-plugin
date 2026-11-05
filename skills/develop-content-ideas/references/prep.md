@@ -54,6 +54,11 @@ lineage validation still apply. Collection failure does not authorize brief fall
      paraphrase (“sourdough shaping techniques”, not “bread tutorials”). A handle, account/display
      name, URL, platform, format, or generic request for ideas is not a topic. Never derive it from
      another Skill's description, the environment, or model knowledge.
+   - An explicit request for reusable patterns or fill-in templates is itself a concrete creative
+     subject. Use the current request's exact template-topic phrase; keep the requested slots and
+     pair each pattern with its requested example. Label filled examples as illustrative, not as
+     the user's industry or verified results. Do not require an industry just to deliver a general
+     template; ask only when tailoring to an unspecified industry is part of the request.
    - For a follow-up such as “10 more in the same style”, read *Continuations* in
      `references/core-generation.md` whole before writing the intent.
    - `required_sources` lists evidence the user explicitly requires: `creator`, `account`,
@@ -70,7 +75,8 @@ lineage validation still apply. Collection failure does not authorize brief fall
    `account-idea-context.v1`, `trend-research-report.v3`, `competitor-research-report.v3`, and
    optional VideoAnalysis. Consume only the deterministic `idea_context.creator/trend/competitor/account`
    projection the upstream Skills write.
-4. Write `intent.json` without `upstream_sources`, `idea_context` or `continuation_context`, not
+4. Write `intent.json` without `upstream_sources`, `idea_context`, `continuation_context` or
+   `conversation_context`, not
    even empty: prep derives them from the flags and rejects an intent that carries them. Include
    `schema_version="idea-request.v3-candidate2"`, a run-local unique `request_id`, ISO-8601
    `created_at`, `task_intent`, counts, goal, audience, desired action, platforms, languages,
@@ -84,7 +90,9 @@ lineage validation still apply. Collection failure does not authorize brief fall
 
    Add the artifact flags this run has: `--creator-profile`, `--account-review`, `--trend-report`
    with `--trend-context`, `--competitor-report` with `--competitor-context`, `--video-analysis`,
-   or `--comment-context`. Account evidence reaches prep as `--account-review <copied
+   or `--comment-context`. A continuation also takes either `--previous-ideas` or
+   `--conversation-context`, as *Continuations* in `references/core-generation.md` defines.
+   Account evidence reaches prep as `--account-review <copied
    account_review.json>` alone: prep projects that review into `account_idea_context.json` in this
    run itself. Never write or edit an account context by hand; an `--account-context` that differs
    from the review's projection is rejected. Prep writes `request.json`, `decision.json`, and the
@@ -95,6 +103,9 @@ lineage validation still apply. Collection failure does not authorize brief fall
    entry once and rerun the same prep in the same run; never invent identifiers, switch the report
    language, drop required sources or reword the user's brief to pass. A second invalid input ends
    prep as `not_met`.
+   `invocation_error` (exit `1`) for an unreadable `--intent` file is separate: correct that path
+   or its permissions and repeat the same prep command in the same run. No authored input was
+   read, so this neither consumes nor resets the input budget. Other I/O failures remain terminal.
 5. Obey the decision exactly:
    - `blocked_missing_required_source`: write an empty IdeaSet, add every canonical `missing_required_source:<source>` reason, and set `interaction.next_actions` to include all of `blocked`, `refresh_evidence` and `provide_own_direction` (never `choose`). Then run core once to validate/render the empty block (this is not a creative generation success).
    - `needs_selection_context`: write an empty IdeaSet with

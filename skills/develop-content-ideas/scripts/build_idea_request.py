@@ -34,9 +34,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.dont_write_bytecode = True
 from project_account_context import project as project_account_review
 from project_comments import validate_projection
-from validate_ideas import REQUEST_SCHEMA, V3_SOURCE_VERSIONS, derive_source_mode, file_sha256, previous_ideas_context  # noqa: E402
+from validate_ideas import DERIVED_FIELDS, REQUEST_SCHEMA, V3_SOURCE_VERSIONS, bound_conversation_context, derive_source_mode, file_sha256, previous_ideas_context  # noqa: E402
 
-DERIVED_FIELDS = ("upstream_sources", "idea_context", "continuation_context")
 CREATOR_CONTEXT_FIELDS = ("schema_version", "profile_id", "accounts", "markets", "audience", "positioning",
                           "content_profile", "key_missing_info", "extensions")
 ID_FIELDS = {"creator_profile": "profile_id", "account_review_report": "report_id", "trend_report": "report_id",
@@ -100,7 +99,7 @@ def build(intent: dict[str, Any], output: Path, *, creator_profile: Path | None 
           trend_report: Path | None = None, trend_context: Path | None = None,
           competitor_report: Path | None = None, competitor_context: Path | None = None,
           video_analysis: Path | None = None, comment_context: Path | None = None,
-          previous_ideas: Path | None = None) -> dict[str, Any]:
+          previous_ideas: Path | None = None, conversation_context: Path | None = None) -> dict[str, Any]:
     """Construct provenance and context from source files, not model-authored copies."""
     retyped = [field for field in DERIVED_FIELDS if field in intent]
     if retyped:
@@ -108,6 +107,9 @@ def build(intent: dict[str, Any], output: Path, *, creator_profile: Path | None 
                          "pass the artifacts instead (--creator-profile, --account-review with --account-context, "
                          "--trend-report with --trend-context, --competitor-report with --competitor-context, "
                          "--video-analysis, --comment-context)")
+    if previous_ideas is not None and conversation_context is not None:
+        raise RequestInputError("choose either --previous-ideas or --conversation-context for this continuation",
+                                field="conversation_context")
     for report, context, name in ((trend_report, trend_context, "trend"), (competitor_report, competitor_context, "competitor")):
         if (report is None) != (context is None):
             raise RequestInputError(f"--{name}-report and --{name}-context go together: the report is the lineage, "
@@ -172,6 +174,22 @@ def build(intent: dict[str, Any], output: Path, *, creator_profile: Path | None 
             request["continuation_context"] = previous_ideas_context(retained_previous, base)
         except ValueError as error:
             raise RequestInputError(str(error), field="continuation_context") from error
+    if conversation_context is not None:
+        retained_conversation = base / "conversation_context.json"
+        if not conversation_context.is_file():
+            raise RequestInputError(f"{conversation_context} is not an available file", field="conversation_context",
+                next_action="Restore the exact earlier visible messages from this conversation, including the referenced text. Do not invent a previous IdeaSet or rewrite the current brief.")
+        if conversation_context.resolve() != retained_conversation.resolve():
+            try:
+                bound_conversation_context(conversation_context, base)
+            except ValueError as error:
+                raise RequestInputError(str(error), field="conversation_context") from error
+            base.mkdir(parents=True, exist_ok=True)
+            retained_conversation.write_bytes(conversation_context.read_bytes())
+        try:
+            request["conversation_context"] = bound_conversation_context(retained_conversation, base)
+        except ValueError as error:
+            raise RequestInputError(str(error), field="conversation_context") from error
     # 输入模式是已提供证据的事实，不能要求模型在投影生成前猜；复用 validator 的唯一判据。
     # 兼容旧 intent 中的 source_mode，但绝不让它提升证据完整度或绕过后续生成门。
     request["source_mode"] = derive_source_mode(request)
@@ -194,7 +212,8 @@ def main() -> int:
             "  report_language: required for new non-Chinese requests; use a BCP 47 tag.\n"
             "  open_shortlist/capacity_plan/brief_only: 3..10 ideas and 1 or 2 Hook lines.\n"
             "  One Hook line requires progressive_line=null; two require a distinct second line.\n"
-            "  required_assets and assets_used may contain only declared available_assets.\n\n"
+            "  assets_used may contain only declared available_assets.\n"
+            "  Undeclared required_assets need requires_user_confirmation, assumptions and production_missing; capacity_plan forbids them.\n\n"
             "Normal execution (including timing and the two-pass limit):\n"
             "  cd <run directory> && python3 <skill directory>/scripts/run_ideas_stages.py prep --intent intent.json --run-dir .\n"
             "  cd <run directory> && python3 <skill directory>/scripts/run_ideas_stages.py core --run-dir .\n"
@@ -204,7 +223,7 @@ def main() -> int:
     parser.add_argument("--intent", type=Path, required=True, help="the request fields you author, nothing derived")
     parser.add_argument("--output", type=Path, required=True)
     for name in ("creator-profile", "account-review", "account-context", "trend-report", "trend-context",
-                 "competitor-report", "competitor-context", "video-analysis", "comment-context", "previous-ideas"):
+                 "competitor-report", "competitor-context", "video-analysis", "comment-context", "previous-ideas", "conversation-context"):
         parser.add_argument(f"--{name}", type=Path)
     args = parser.parse_args()
     try:
@@ -213,7 +232,7 @@ def main() -> int:
                         trend_report=args.trend_report, trend_context=args.trend_context,
                         competitor_report=args.competitor_report, competitor_context=args.competitor_context,
                         video_analysis=args.video_analysis, comment_context=args.comment_context,
-                        previous_ideas=args.previous_ideas)
+                        previous_ideas=args.previous_ideas, conversation_context=args.conversation_context)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(request, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     except (OSError, ValueError, json.JSONDecodeError) as error:

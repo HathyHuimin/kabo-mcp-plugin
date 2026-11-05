@@ -11,8 +11,9 @@ Exit codes for `core`:
   3  generation budget exhausted or already delivered; not_met recorded
   1  hard failure (missing files, I/O, unexpected state)
 
-`prep` permits one correction of invalid inputs before generation; another
-invalid input exits 3. A successful prep or a started core cannot be reset.
+`prep` permits one correction of read authored inputs before generation; another
+invalid input exits 3. An unavailable --intent path is an invocation failure
+(exit 1) and does not consume or reset that input-validation budget. A successful prep or a started core cannot be reset.
 
 Standard library only.
 """
@@ -32,13 +33,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from build_idea_request import RequestInputError, build, load as load_json  # noqa: E402
 from render_idea_report import concise, full, validate_concise  # noqa: E402
-from validate_ideas import generation_decision, validate_authored_intent, validate_idea_set, validate_request  # noqa: E402
+from validate_ideas import bound_conversation_context, generation_decision, validate_authored_intent, validate_idea_set, validate_request  # noqa: E402
 
 STAGE_SCHEMA = "ideas-stage-timing.v1"
 MAX_GENERATION_ATTEMPTS = 2
 ARTIFACT_FLAGS = (
     "creator-profile", "account-review", "account-context", "trend-report", "trend-context",
-    "competitor-report", "competitor-context", "video-analysis", "comment-context", "previous-ideas",
+    "competitor-report", "competitor-context", "video-analysis", "comment-context", "previous-ideas", "conversation-context",
 )
 
 
@@ -46,7 +47,7 @@ def validation_issue(message):
     """Turn validator errors into bounded corrections while preserving source requirements."""
     if "direct_topic" in message:
         return RequestInputError(message, code="invalid_direct_topic", field="generation_basis.direct_topic",
-            next_action="Copy a literal substantive topic from user_brief.text. For a follow-up, keep direct_topic null and restore the previous IdeaSet with --previous-ideas plus a verbatim continuation_quote. Never rewrite the user's brief to make a topic pass.").issue
+            next_action="Copy a literal substantive topic from user_brief.text. For a follow-up, keep direct_topic null and bind the previous IdeaSet with --previous-ideas or exact earlier visible messages with --conversation-context, plus a verbatim continuation_quote. Never rewrite the user's brief to make a topic pass.").issue
     if "report_language" in message or "language variant" in message or "language extension" in message:
         return RequestInputError(message,
             code="invalid_report_language",
@@ -144,6 +145,11 @@ def missing_artifacts(args: argparse.Namespace) -> list[dict[str, Any]]:
     for name in ("intent", *ARTIFACT_FLAGS):
         path = getattr(args, name.replace("-", "_"))
         if path is not None and not path.is_file():
+            if name == "conversation-context":
+                rows.append(RequestInputError(
+                    f"{path} is not an available file", code="missing_conversation_context", field="conversation_context",
+                    next_action="Restore the exact earlier visible messages and referenced text from this conversation. Do not fabricate history or ask the user to repeat text that is already available.").issue)
+                continue
             if name == "previous-ideas":
                 # Keep the builder's specific error, including when another
                 # independently invalid field would otherwise prevent build.
@@ -155,6 +161,17 @@ def missing_artifacts(args: argparse.Namespace) -> list[dict[str, Any]]:
                 f"{path} is not an available file", code="missing_artifact", field=f"--{name}",
                 next_action="Restore the original input JSON from this conversation's saved result or file, then rerun prep in this run. Do not fabricate evidence or recreate an upstream artifact from memory.").issue)
     return rows
+
+
+def unavailable_intent(intent_path: Path, attempts: int, detail: str) -> int:
+    """报告尚未读取的调用输入，不消耗或重置业务校验预算。"""
+    issue = RequestInputError(
+        f"{intent_path} cannot be read: {detail}", code="unavailable_intent_path", field="--intent",
+        next_action="Correct the --intent path or file permissions and rerun prep in the same run directory. Do not change the user request, replace evidence or reset this run.").issue
+    print(json.dumps({"status": "invocation_error", "stage": "prep", "issues": [issue],
+                      "input_attempts": attempts, "correction_remaining": 2 - attempts,
+                      "next_action": issue["next_action"]}, ensure_ascii=False))
+    return 1
 
 
 def run_prep(args: argparse.Namespace) -> int:
@@ -186,24 +203,43 @@ def run_prep(args: argparse.Namespace) -> int:
         if any((run_dir / name).exists() for name in ("request.json", "decision.json", "idea_set.json", "RESULT.md", "IDEA_REPORT_FULL.md")):
             raise ValueError("existing generation artifacts without an open prep; refusing to overwrite them")
         state_checked = True
+        # 尚未读取业务输入：调用路径错误不算业务校验失败。保留计数和终态，直接返回。
+        if not intent_path.is_file():
+            return unavailable_intent(intent_path, attempts, "not an available file")
         attempts += 1
         issues = missing_artifacts(args)
         not_json = non_json_artifacts(args)
         if not_json:
             issues.extend(RequestInputError(f"{row['path']} is not JSON", code="not_json", field=row["flag"],
-                next_action="Use the original upstream JSON artifact, not its Markdown report. Do not hand-write a replacement.").issue
+                next_action=("Wrap the exact earlier visible messages in the conversation-source JSON contract; do not invent a native IdeaSet."
+                             if row["flag"] == "--conversation-context" else
+                             "Use the original upstream JSON artifact, not its Markdown report. Do not hand-write a replacement.")).issue
                 for row in not_json)
         files_available = not issues
-        intent = None
-        if intent_path.is_file():
+        # 即使独立上游文件缺失，也要合报可读聊天的引用错误，避免恢复文件后才耗尽修订预算。
+        if (args.conversation_context is not None and args.conversation_context.is_file()
+                and not any(row["flag"] == "--conversation-context" for row in not_json)):
             try:
-                intent = load_json(intent_path)
+                bound_conversation_context(args.conversation_context, run_dir)
+            except (OSError, ValueError) as error:
+                issues.append(RequestInputError(str(error), field="conversation_context").issue)
+        intent = None
+        try:
+            intent = load_json(intent_path)
+        except OSError as error:
+            return unavailable_intent(intent_path, attempts - 1, str(error))
+        except RequestInputError as error:
+            issues.append(error.issue)
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            issues.append(RequestInputError(str(error), code="invalid_json").issue)
+        else:
+            # schema 或后台读取错误不归入调用方输入文件的异常处理。
+            try:
                 issues.extend(validation_issue(error) for error in dict.fromkeys(
-                    validate_authored_intent(intent, has_previous_ideas=args.previous_ideas is not None)))
+                    validate_authored_intent(intent, has_previous_ideas=args.previous_ideas is not None,
+                                             has_conversation_context=args.conversation_context is not None)))
             except RequestInputError as error:
                 issues.append(error.issue)
-            except (json.JSONDecodeError, UnicodeDecodeError) as error:
-                issues.append(RequestInputError(str(error), code="invalid_json").issue)
         if files_available and intent is not None:
             try:
                 request = build(
@@ -213,6 +249,7 @@ def run_prep(args: argparse.Namespace) -> int:
                     trend_context=args.trend_context, competitor_report=args.competitor_report,
                     competitor_context=args.competitor_context, video_analysis=args.video_analysis,
                     comment_context=args.comment_context, previous_ideas=args.previous_ideas,
+                    conversation_context=args.conversation_context,
                 )
                 issues.extend(validation_issue(error) for error in dict.fromkeys(validate_request(request, request_path)))
             except RequestInputError as error:
@@ -374,9 +411,9 @@ def run_core(args: argparse.Namespace) -> int:
             errors = collect_validation_errors(idea_set, request, request_path)
             if errors:
                 raise ValueError("terminal IdeaSet failed validation: " + "; ".join(errors))
-            concise_text = concise(idea_set)
-            validate_concise(concise_text, idea_set)
-            full_text = full(idea_set)
+            concise_text = concise(idea_set, request)
+            validate_concise(concise_text, idea_set, request)
+            full_text = full(idea_set, request)
             concise_path.write_text(concise_text, encoding="utf-8")
             full_path.write_text(full_text, encoding="utf-8")
             finish_core(core, status="delivered_terminal", within_two_calls=True, rendered=True, validation_errors=[])
@@ -474,9 +511,9 @@ def run_core(args: argparse.Namespace) -> int:
             }, ensure_ascii=False, sort_keys=True))
             return 0
 
-        concise_text = concise(idea_set)
-        validate_concise(concise_text, idea_set)
-        full_text = full(idea_set)
+        concise_text = concise(idea_set, request)
+        validate_concise(concise_text, idea_set, request)
+        full_text = full(idea_set, request)
         concise_path.write_text(concise_text, encoding="utf-8")
         full_path.write_text(full_text, encoding="utf-8")
         if revision_path.exists():
