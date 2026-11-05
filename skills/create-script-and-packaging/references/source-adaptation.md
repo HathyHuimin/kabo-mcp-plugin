@@ -8,35 +8,11 @@ Do not add source research to an independent creative brief.
 
 ## Continue an episode without repeating it
 
-Resolve whether the user is continuing an available draft or an actual published episode.
-For a draft the user supplied or selected in the conversation, use the latest applicable
-text for that selection, not a superseded outline. Check established events, character states
-and the last completed action; start after that stopping point. Do not replay a completed part
-or silently undo a state such as an injury, disappearance or lost ability. Any change must happen
-in the new story before it is relied on. This is draft continuity, not proof of publication;
-do not ask the user to resupply text that is already available.
-
-For a continuation or expansion of supplied fiction, first save a short `continuity-notes.md`
-in the workspace: identify the selected version and requested scope, quote the stopping point,
-and list established events and each relevant character's current state with its source passage.
-Separate facts already narrated from a character's unverified claim. Use this note while writing;
-do not replace established past events with a new backstory to manufacture a twist. New events
-may change a state, but the change must appear before an action or spoken line depends on it.
-Before delivery, compare the complete draft to the note: remove repeated completed beats and
-repair contradictory actions, dialogue or backstory. Attribute imitations, memories and inner
-thoughts explicitly so they cannot read as impossible present actions. Keep the note as a work
-artifact; the user receives the requested creative text, not the continuity audit.
-
-For a published episode, reuse its actual script, a creator-provided summary or source
-observations already available in this conversation. For "my latest post", a listing can
-identify a candidate, but only the selected post's content establishes its story.
+Resolve which episode the user means before writing its sequel. Reuse its actual
+script or source observations already available in this conversation. For "my
+latest post", verify the current listing and then the selected post's content.
 An account review, title, thumbnail, genre or remembered character is not the
 episode. A previous assistant proposal is not proof of what the creator posted.
-If the actual content is absent, ask one concise question for the script, link or a summary
-with the ending, then stop this turn. Do not append a plan, example, hook or sample dialogue;
-even an illustrative example can smuggle in an unverified plot or another series' characters.
-Advice about "how to make part 2" has the same clarification-only boundary as a request to
-write it. A supplied link still needs content retrieval before it supports episode-specific writing.
 
 From that source, identify the established events, the ending/reveal and any
 unresolved question. Keep the source reference attached to those facts; source
@@ -47,9 +23,10 @@ hook, central beats and payoff against the original before delivery; changing
 wording, character labels or the final CTA does not make repeated events a sequel.
 Clearly distinguish new fictional proposals from events observed in the source.
 
-If no permitted path can recover the episode, ask for its script or a short
-description of the ending and unresolved point. Do not generate a supposed
-continuation from the topic alone. If the creator says "I already did that",
+For a published episode whose content is absent, ask for its script, link or a short
+description including the ending and unresolved point, then stop this turn. Do not append
+examples, hooks or a guessed continuation. An available selected draft does not need this
+clarification: use its actual text and stopping point. If the creator says "I already did that",
 recheck the source and identify the repeated beat before proposing a replacement;
 do not repeat an unchanged failed retrieval or offer another guessed episode.
 An independent new story is a different deliverable and needs the user's choice.
