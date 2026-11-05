@@ -70,7 +70,8 @@ lineage validation still apply. Collection failure does not authorize brief fall
    `account-idea-context.v1`, `trend-research-report.v3`, `competitor-research-report.v3`, and
    optional VideoAnalysis. Consume only the deterministic `idea_context.creator/trend/competitor/account`
    projection the upstream Skills write.
-4. Write `intent.json` without `upstream_sources`, `idea_context` or `continuation_context`, not
+4. Write `intent.json` without `upstream_sources`, `idea_context`, `continuation_context` or
+   `conversation_context`, not
    even empty: prep derives them from the flags and rejects an intent that carries them. Include
    `schema_version="idea-request.v3-candidate2"`, a run-local unique `request_id`, ISO-8601
    `created_at`, `task_intent`, counts, goal, audience, desired action, platforms, languages,
@@ -84,7 +85,9 @@ lineage validation still apply. Collection failure does not authorize brief fall
 
    Add the artifact flags this run has: `--creator-profile`, `--account-review`, `--trend-report`
    with `--trend-context`, `--competitor-report` with `--competitor-context`, `--video-analysis`,
-   or `--comment-context`. Account evidence reaches prep as `--account-review <copied
+   or `--comment-context`. A continuation also takes either `--previous-ideas` or
+   `--conversation-context`, as *Continuations* in `references/core-generation.md` defines.
+   Account evidence reaches prep as `--account-review <copied
    account_review.json>` alone: prep projects that review into `account_idea_context.json` in this
    run itself. Never write or edit an account context by hand; an `--account-context` that differs
    from the review's projection is rejected. Prep writes `request.json`, `decision.json`, and the

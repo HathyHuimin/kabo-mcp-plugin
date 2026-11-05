@@ -22,6 +22,7 @@ from project_comments import has_comment_text, validate_projection, validate_tar
 COMMON_ROOT = Path(__file__).resolve().parent.parent
 REQUEST_SCHEMA = COMMON_ROOT / "references/idea-request.schema.json"
 IDEA_SET_SCHEMA = COMMON_ROOT / "references/idea-set.schema.json"
+DERIVED_FIELDS = ("upstream_sources", "idea_context", "continuation_context", "conversation_context")
 SUPPORTED_SCHEMA_KEYWORDS = {
     "$schema", "$id", "$defs", "$ref", "title", "description",
     "type", "const", "enum", "oneOf", "allOf", "if", "then", "else",
@@ -64,6 +65,45 @@ def previous_ideas_context(path: Path, base: Path) -> dict[str, Any]:
         "ideas": [{key: idea[key] for key in ("idea_id", "working_title", "making_direction")}
                   for idea in previous["ideas"]],
     }
+
+
+def bound_conversation_context(path: Path, base: Path) -> dict[str, Any]:
+    """Bind visible conversation text without treating it as research evidence.
+
+    This verifies the supplied text and its reference, not its origin in a real
+    conversation or the semantic correctness of the chosen reference.
+    """
+    source = load(path)
+    schema = load(REQUEST_SCHEMA)
+    errors = validate_schema_value(source, schema["$defs"]["conversationSource"], schema, "conversation_context")
+    if errors:
+        raise ValueError("; ".join(errors))
+    messages = source["messages"]
+    reference = source["reference"]
+    index = reference["message_index"]
+    if any(not message["text"].strip() for message in messages):
+        raise ValueError("conversation_context messages must contain visible text")
+    if index >= len(messages):
+        raise ValueError(f"conversation_context reference.message_index={index} is outside messages; "
+                         f"indices are zero-based, valid range 0..{len(messages) - 1}")
+    quote = reference["quote"]
+    if not quote.strip() or quote not in messages[index]["text"]:
+        detail = (f"supplied zero-based message_index={index} selects role={messages[index]['role']}")
+        matches = [position for position, message in enumerate(messages)
+                   if quote.strip() and quote in message["text"]]
+        if len(matches) == 1:
+            match = matches[0]
+            detail += (f"; the exact quote occurs only at zero-based message_index={match} "
+                       f"(role={messages[match]['role']}). Confirm that this is the intended message "
+                       f"and explicitly correct message_index to {match}; no reference was changed")
+        elif matches:
+            detail += (f"; the exact quote occurs at multiple zero-based message indices {matches}. "
+                       "Select the intended original message explicitly; no reference was changed")
+        else:
+            detail += "; no message contains a nonblank exact quote. Read the original message and copy its text verbatim"
+        raise ValueError("conversation_context reference.quote must be copied verbatim from the referenced message; " + detail)
+    return {"path": os.path.relpath(path.resolve(), base.resolve()), "sha256": file_sha256(path), **source}
+
 
 
 def schema_type_matches(value: Any, expected: str) -> bool:
@@ -541,7 +581,7 @@ def generation_decision(request: dict[str, Any]) -> dict[str, Any]:
     )
     if missing and not fallback_used:
         status = "blocked_missing_required_source"
-    elif not available and not has_direct_topic and not request.get("continuation_context"):
+    elif not available and not has_direct_topic and not (request.get("continuation_context") or request.get("conversation_context")):
         status = "needs_selection_context"
     else:
         status = "ready_for_generation"
@@ -587,14 +627,31 @@ def derive_source_mode(request: dict[str, Any]) -> str:
     return "brief_only"
 
 
-def validate_authored_fields(request: dict[str, Any], errors: list[str]) -> None:
-    """Check structurally valid authored fields without reading any upstream files."""
-    try:
-        report_language(request)
-    except ValueError as exc:
-        errors.append(str(exc))
+def validate_authored_fields(request: dict[str, Any], errors: list[str], *,
+                             valid_fields: set[str] | None = None) -> None:
+    """Check semantic rule groups whose own inputs are structurally safe.
+
+    A malformed field must not hide independent corrections. The full request
+    validator calls this after its schema gate; preflight supplies the fields
+    that passed their individual schemas. No input is coerced or repaired.
+    """
+    def ready(*fields: str) -> bool:
+        return valid_fields is None or all(field in valid_fields for field in fields)
+
+    locale_fields = ("report_language",) if "report_language" in request else (
+        "report_language", "schema_version", "language_targets")
+    if ready(*locale_fields):
+        try:
+            # Only request locale inputs belong here; unrelated unknown fields
+            # must not be interpreted as an IdeaSet during partial validation.
+            report_language({key: request[key] for key in
+                             ("report_language", "schema_version", "language_targets") if key in request})
+        except ValueError as exc:
+            errors.append(str(exc))
 
     for field in ("goal", "audience", "desired_audience_action"):
+        if not ready(field):
+            continue
         item = request.get(field) or {}
         status = item.get("status")
         if status == "missing":
@@ -602,104 +659,113 @@ def validate_authored_fields(request: dict[str, Any], errors: list[str]) -> None
         elif status in {"hypothesis", "confirmed"}:
             require(has_text(item.get("value")), f"{field} value is required for {status}", errors)
 
-    brief = request.get("user_brief") or {}
-    has_brief = brief.get("status") == "provided" and has_text(brief.get("text"))
-    if brief.get("status") == "absent":
-        require(brief.get("text") is None, "absent user_brief must have null text", errors)
-    elif brief.get("status") == "provided":
-        require(has_brief, "provided user_brief must contain text", errors)
+    if ready("user_brief"):
+        brief = request.get("user_brief") or {}
+        has_brief = brief.get("status") == "provided" and has_text(brief.get("text"))
+        if brief.get("status") == "absent":
+            require(brief.get("text") is None, "absent user_brief must have null text", errors)
+        elif brief.get("status") == "provided":
+            require(has_brief, "provided user_brief must contain text", errors)
 
-    basis = request.get("generation_basis") or {}
-    direct_topic = basis.get("direct_topic")
-    has_direct_topic = has_text(direct_topic)
-    quote = basis.get("continuation_quote")
-    if quote is not None:
-        require(has_brief and has_text(quote) and quote in brief.get("text", ""),
-                "generation_basis.continuation_quote must be copied verbatim from user_brief.text", errors)
-    if direct_topic is not None:
-        require(has_direct_topic, "generation_basis.direct_topic must contain text or be null", errors)
-    if has_direct_topic:
-        topic = canonical_phrase(direct_topic)
-        semantic_brief = canonical_phrase(brief_text_without_identifiers(brief.get("text")))
-        require(has_brief, "generation_basis.direct_topic requires a provided user_brief", errors)
-        require(
-            "@" not in direct_topic and not re.search(r"(?:https?://|www\.)", direct_topic, re.IGNORECASE),
-            "generation_basis.direct_topic must not be an account handle or URL",
-            errors,
-        )
-        require(
-            has_substantive_topic(direct_topic),
-            "generation_basis.direct_topic must name a content topic, not only a platform, format, or generic idea request",
-            errors,
-        )
-        require(
-            bool(topic) and topic in semantic_brief,
-            "generation_basis.direct_topic must be a literal user-supplied phrase outside handles and URLs",
-            errors,
-        )
-    declared_required_sources = set(basis.get("required_sources") or [])
-    evidence_brief = brief_without_framed_topic(brief.get("text"), direct_topic)
-    # A video mentioned only as the location of comments is not a request to
-    # analyse its content. Remove only the local noun phrase; a separate request
-    # about this video's visuals/structure remains visible to source detection.
-    evidence_brief = re.sub(
-        r"(?:这条|这个|上述|上面)(?:的)?(?:视频|内容)(?:下面的|里的|中的|下的|的|下|里)?(?:评论区|评论|留言)"
-        r"|(?:this|that)\s+(?:video|post)(?:['’]s)?\s+comments?"
-        r"|comments?\s+(?:on|under|from|of)\s+(?:this|that)\s+(?:video|post)",
-        "comments", evidence_brief, flags=re.I,
-    )
-    detected_required_sources = detect_required_sources(evidence_brief)
-    undeclared_required_sources = detected_required_sources - declared_required_sources
-    require(
-        not undeclared_required_sources,
-        "generation_basis.required_sources omitted explicit user evidence requests: "
-        + ", ".join(name for name in GENERATION_SOURCE_ORDER if name in undeclared_required_sources),
-        errors,
-    )
-    if basis.get("allow_brief_fallback") is True:
-        require(
-            has_direct_topic,
-            "allow_brief_fallback=true requires an explicit generation_basis.direct_topic",
-            errors,
-        )
-        # A brief that refuses the fallback refuses it however the flag is argued for.
-        text = brief.get("text")
-        if brief_denies_fallback(text):
+    if ready("generation_basis", "user_brief"):
+        basis = request.get("generation_basis") or {}
+        direct_topic = basis.get("direct_topic")
+        has_direct_topic = has_text(direct_topic)
+        quote = basis.get("continuation_quote")
+        if quote is not None:
+            require(has_brief and has_text(quote) and quote in brief.get("text", ""),
+                    "generation_basis.continuation_quote must be copied verbatim from user_brief.text", errors)
+        if direct_topic is not None:
+            require(has_direct_topic, "generation_basis.direct_topic must contain text or be null", errors)
+        if has_direct_topic:
+            topic = canonical_phrase(direct_topic)
+            semantic_brief = canonical_phrase(brief_text_without_identifiers(brief.get("text")))
+            require(has_brief, "generation_basis.direct_topic requires a provided user_brief", errors)
             require(
-                False,
-                "allow_brief_fallback=true requires explicit fallback authorization in "
-                "user_brief.text, which refuses it",
+                "@" not in direct_topic and not re.search(r"(?:https?://|www\.)", direct_topic, re.IGNORECASE),
+                "generation_basis.direct_topic must not be an account handle or URL",
                 errors,
             )
-        else:
-            # Either the model quotes the span it read the permission in — which works in any
-            # language — or the brief is phrased one of the ways the older check recognises. The
-            # phrase list stays so existing requests, which carry no quote, keep validating
-            # unchanged; on its own it refused every language it was not written in.
-            quote = basis.get("brief_fallback_quote")
             require(
-                isinstance(quote, str) and bool(quote.strip()) and quoted_from_brief(quote, text),
-                "allow_brief_fallback=true requires explicit fallback authorization in "
-                "user_brief.text: quote the span that gave it in "
-                "generation_basis.brief_fallback_quote, word for word"
-                + (" (the quote given is not in the brief)" if quote else " (quote missing)"),
+                has_substantive_topic(direct_topic),
+                "generation_basis.direct_topic must name a content topic, not only a platform, format, or generic idea request",
                 errors,
             )
+            require(
+                bool(topic) and topic in semantic_brief,
+                "generation_basis.direct_topic must be a literal user-supplied phrase outside handles and URLs",
+                errors,
+            )
+        declared_required_sources = set(basis.get("required_sources") or [])
+        evidence_brief = brief_without_framed_topic(brief.get("text"), direct_topic)
+        # A video mentioned only as the location of comments is not a request to
+        # analyse its content. Remove only the local noun phrase; a separate request
+        # about this video's visuals/structure remains visible to source detection.
+        evidence_brief = re.sub(
+            r"(?:这条|这个|上述|上面)(?:的)?(?:视频|内容)(?:下面的|里的|中的|下的|的|下|里)?(?:评论区|评论|留言)"
+            r"|(?:this|that)\s+(?:video|post)(?:['’]s)?\s+comments?"
+            r"|comments?\s+(?:on|under|from|of)\s+(?:this|that)\s+(?:video|post)",
+            "comments", evidence_brief, flags=re.I,
+        )
+        detected_required_sources = detect_required_sources(evidence_brief)
+        undeclared_required_sources = detected_required_sources - declared_required_sources
+        require(
+            not undeclared_required_sources,
+            "generation_basis.required_sources omitted explicit user evidence requests: "
+            + ", ".join(name for name in GENERATION_SOURCE_ORDER if name in undeclared_required_sources),
+            errors,
+        )
+        if basis.get("allow_brief_fallback") is True:
+            require(
+                has_direct_topic,
+                "allow_brief_fallback=true requires an explicit generation_basis.direct_topic",
+                errors,
+            )
+            # A brief that refuses the fallback refuses it however the flag is argued for.
+            text = brief.get("text")
+            if brief_denies_fallback(text):
+                require(
+                    False,
+                    "allow_brief_fallback=true requires explicit fallback authorization in "
+                    "user_brief.text, which refuses it",
+                    errors,
+                )
+            else:
+                # Either the model quotes the span it read the permission in — which works in any
+                # language — or the brief is phrased one of the ways the older check recognises. The
+                # phrase list stays so existing requests, which carry no quote, keep validating
+                # unchanged; on its own it refused every language it was not written in.
+                quote = basis.get("brief_fallback_quote")
+                require(
+                    isinstance(quote, str) and bool(quote.strip()) and quoted_from_brief(quote, text),
+                    "allow_brief_fallback=true requires explicit fallback authorization in "
+                    "user_brief.text: quote the span that gave it in "
+                    "generation_basis.brief_fallback_quote, word for word"
+                    + (" (the quote given is not in the brief)" if quote else " (quote missing)"),
+                    errors,
+                )
 
-    intent = request.get("task_intent")
+    intent = request.get("task_intent") if ready("task_intent") else None
     idea_count = request.get("idea_count")
     hook_count = request.get("hook_option_count")
     if intent == "rework_content":
-        require(idea_count == 1, "rework_content requires idea_count=1", errors)
-        require(isinstance(hook_count, int) and 3 <= hook_count <= 5, "rework_content requires 3..5 Hook options", errors)
+        if ready("idea_count"):
+            require(idea_count == 1, "rework_content requires idea_count=1", errors)
+        if ready("hook_option_count"):
+            require(isinstance(hook_count, int) and 3 <= hook_count <= 5, "rework_content requires 3..5 Hook options", errors)
     elif intent in {"open_shortlist", "capacity_plan", "brief_only"}:
-        require(isinstance(idea_count, int) and 3 <= idea_count <= 10, f"{intent} requires idea_count=3..10", errors)
-        require(hook_count in {1, 2}, f"{intent} requires hook_option_count=1 or 2", errors)
+        if ready("idea_count"):
+            require(isinstance(idea_count, int) and 3 <= idea_count <= 10, f"{intent} requires idea_count=3..10", errors)
+        if ready("hook_option_count"):
+            require(hook_count in {1, 2}, f"{intent} requires hook_option_count=1 or 2", errors)
 
     if intent == "brief_only":
-        require(has_brief, "brief_only requires a provided brief", errors)
-        require(not (basis.get("required_sources") or []), "brief_only must not declare required external sources", errors)
-    if intent == "capacity_plan":
+        if ready("user_brief"):
+            require(has_brief, "brief_only requires a provided brief", errors)
+        if ready("generation_basis"):
+            require(not (request["generation_basis"].get("required_sources") or []),
+                    "brief_only must not declare required external sources", errors)
+    if intent == "capacity_plan" and ready("production_constraints"):
         constraints = request.get("production_constraints") or {}
         require(
             isinstance(constraints.get("total_time_minutes"), int)
@@ -709,43 +775,56 @@ def validate_authored_fields(request: dict[str, Any], errors: list[str]) -> None
         )
         require(bool(constraints.get("available_assets")), "capacity_plan requires declared available_assets", errors)
 
-    constraints = request.get("production_constraints") or {}
-    constraint_values = [
-        constraints.get("total_time_minutes"),
-        constraints.get("time_per_item"),
-        constraints.get("budget"),
-        *(constraints.get("available_assets") or []),
-        constraints.get("filming_mode"),
-        constraints.get("editing_capacity"),
-        constraints.get("publishing_cadence"),
-    ]
-    present = [value for value in constraint_values if value is not None and value != ""]
-    if constraints.get("status") == "absent":
-        require(not present, "absent production_constraints must not contain values or assets", errors)
-    elif constraints.get("status") in {"partial", "confirmed"}:
-        require(bool(present), f"{constraints.get('status')} production_constraints must contain at least one value", errors)
+    if ready("production_constraints"):
+        constraints = request.get("production_constraints") or {}
+        constraint_values = [
+            constraints.get("total_time_minutes"),
+            constraints.get("time_per_item"),
+            constraints.get("budget"),
+            *(constraints.get("available_assets") or []),
+            constraints.get("filming_mode"),
+            constraints.get("editing_capacity"),
+            constraints.get("publishing_cadence"),
+        ]
+        present = [value for value in constraint_values if value is not None and value != ""]
+        if constraints.get("status") == "absent":
+            require(not present, "absent production_constraints must not contain values or assets", errors)
+        elif constraints.get("status") in {"partial", "confirmed"}:
+            require(bool(present), f"{constraints.get('status')} production_constraints must contain at least one value", errors)
 
 
-def validate_authored_intent(intent: dict[str, Any], *, has_previous_ideas: bool = False) -> list[str]:
+def validate_authored_intent(intent: dict[str, Any], *, has_previous_ideas: bool = False,
+                             has_conversation_context: bool = False) -> list[str]:
     """Reuse request rules for input feedback before missing artifacts can mask errors.
 
-    Derived fields are neither invented nor validated here: build and full request
-    validation still own their provenance, source mode and evidence gates.
+    Reject authored derived fields without hiding independent input errors.
+    Build and full request validation still own their provenance and evidence gates.
     """
     schema = load(REQUEST_SCHEMA)
-    derived = {"upstream_sources", "idea_context", "continuation_context", "source_mode"}
+    # Legacy intents may still carry source_mode; build always recomputes it.
+    derived = {*DERIVED_FIELDS, "source_mode"}
     authored_schema = {**schema,
         "required": [key for key in schema["required"] if key not in derived],
         "properties": {key: value for key, value in schema["properties"].items() if key not in derived}}
     authored = {key: value for key, value in intent.items() if key not in derived}
     errors = [f"request schema {failure}" for failure in validate_schema_value(authored, authored_schema, schema, "$")]
-    if not errors:
-        validate_authored_fields(authored, errors)
+    valid_fields = {
+        field for field, field_schema in authored_schema["properties"].items()
+        if (field not in authored and field not in authored_schema["required"])
+        or (field in authored and not validate_schema_value(authored[field], field_schema, schema, f"$.{field}"))
+    }
+    validate_authored_fields(authored, errors, valid_fields=valid_fields)
+    require(not (has_previous_ideas and has_conversation_context),
+            "choose either --previous-ideas or --conversation-context for this continuation", errors)
+    if "generation_basis" in valid_fields:
         quote = (authored.get("generation_basis") or {}).get("continuation_quote")
-        if has_previous_ideas:
-            require(has_text(quote), "--previous-ideas requires generation_basis.continuation_quote", errors)
+        if has_previous_ideas or has_conversation_context:
+            flag = "--previous-ideas" if has_previous_ideas else "--conversation-context"
+            require(has_text(quote), f"{flag} requires generation_basis.continuation_quote", errors)
         elif quote is not None:
-            errors.append("generation_basis.continuation_quote requires --previous-ideas with the original IdeaSet JSON")
+            errors.append("generation_basis.continuation_quote requires --previous-ideas with the original IdeaSet JSON or --conversation-context with exact earlier visible messages")
+    errors.extend(f"request.{field}: is derived from source artifacts; leave it out of intent and supply the original source file instead"
+                  for field in DERIVED_FIELDS if field in intent)
     return errors
 
 
@@ -763,7 +842,10 @@ def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
     basis = request.get("generation_basis") or {}
     has_direct_topic = has_text(basis.get("direct_topic"))
     continuation = request.get("continuation_context")
+    conversation = request.get("conversation_context")
     quote = basis.get("continuation_quote")
+    require(not (continuation is not None and conversation is not None),
+            "choose either continuation_context or conversation_context for this continuation", errors)
     if continuation is not None:
         require(has_brief and has_text(quote) and quote in brief.get("text", ""),
                 "continuation_context requires a verbatim generation_basis.continuation_quote from user_brief.text", errors)
@@ -774,8 +856,16 @@ def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
             require(continuation == expected, "continuation_context differs from the original previous IdeaSet or its checksum", errors)
         except (OSError, ValueError) as exc:
             errors.append(f"continuation_context: {exc}")
-    elif quote is not None:
-        errors.append("generation_basis.continuation_quote requires --previous-ideas with the original IdeaSet JSON")
+    if conversation is not None:
+        require(has_brief and has_text(quote) and quote in brief.get("text", ""),
+                "conversation_context requires a verbatim generation_basis.continuation_quote from user_brief.text", errors)
+        try:
+            expected = bound_conversation_context(resolve(request_path.parent, conversation["path"]), request_path.parent)
+            require(conversation == expected, "conversation_context differs from the supplied messages, reference or checksum", errors)
+        except (OSError, ValueError) as exc:
+            errors.append(f"conversation_context: {exc}")
+    if continuation is None and conversation is None and quote is not None:
+        errors.append("generation_basis.continuation_quote requires --previous-ideas with the original IdeaSet JSON or --conversation-context with exact earlier visible messages")
     context = request.get("idea_context") or {}
     has_evidence = bool(request.get("upstream_sources") or context.get("creator") or context.get("trend") or context.get("competitor") or context.get("account"))
     require(has_evidence or has_brief, "at least one evidence source or user brief is required", errors)
@@ -786,8 +876,8 @@ def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
     if intent == "rework_content":
         require(any(source.get("source_type") == "video_analysis" for source in request.get("upstream_sources") or []), "rework_content requires at least one VideoAnalysis source", errors)
     if intent == "brief_only":
-        require(has_direct_topic or continuation is not None,
-                "brief_only requires an explicit generation_basis.direct_topic or bound continuation_context", errors)
+        require(has_direct_topic or continuation is not None or conversation is not None,
+                "brief_only requires an explicit generation_basis.direct_topic or bound continuation_context/conversation_context", errors)
         require(not has_evidence, "brief_only must not include upstream artifacts or idea context", errors)
 
     validate_upstream_sources(request, request_path, errors)
@@ -983,6 +1073,29 @@ def validate_gate_state(idea_set: dict[str, Any], errors: list[str]) -> None:
         )
 
 
+def presentation_inputs_are_safe(idea_set: Any) -> bool:
+    """Gate early presentation diagnostics on only their typed dependencies."""
+    schema = load(IDEA_SET_SCHEMA)
+    properties = schema["properties"]
+    candidate = schema["$defs"]["ideaCandidate"]["properties"]
+    feasibility = candidate["production_feasibility"]["properties"]
+    # Legacy locale detection reads explanatory prose as well. Keep that path
+    # behind the full schema gate; explicit locales need no legacy inference.
+    fields = ("report_language", "status", "task_intent", "source_mode")
+    guard = {"type": "object", "required": [*fields, "evidence_summary", "ideas"],
+             "properties": {field: properties[field] for field in fields}}
+    guard["properties"]["evidence_summary"] = {
+        "type": "object", "required": ["data_gaps"],
+        "properties": {"data_gaps": properties["evidence_summary"]["properties"]["data_gaps"]}}
+    guard["properties"]["ideas"] = {"type": "array", "items": {
+        "type": "object", "required": ["primary_evidence_ref", "production_feasibility"],
+        "properties": {"primary_evidence_ref": candidate["primary_evidence_ref"],
+                       "production_feasibility": {"type": "object", "required": ["effort", "estimated_minutes"],
+                           "properties": {field: feasibility[field] for field in ("effort", "estimated_minutes")}}}}}
+    return not validate_schema_value(idea_set, guard, schema, "$")
+
+
+
 def validate_idea_set(
     idea_set: dict[str, Any], request: dict[str, Any], request_path: Path
 ) -> list[str]:
@@ -990,15 +1103,13 @@ def validate_idea_set(
     errors = validate_request(request, request_path)
     validate_json_schema(idea_set, IDEA_SET_SCHEMA, "idea_set", errors)
     if errors:
-        # Report missing presentation translations together with schema errors:
-        # core allows two generation attempts, so a second round that only then
-        # learns about the translations runs out of attempts.
-        for project in (evidence_gaps, report_value_translations):
+        if presentation_inputs_are_safe(idea_set):
             try:
-                project(idea_set)
-            except (ValueError, TypeError, AttributeError) as exc:
+                # Both projections share one strict translation map. Run it
+                # once, without coercing fields or accepting partial output.
+                evidence_gaps(idea_set)
+            except ValueError as exc:
                 errors.append(str(exc))
-                break
         return errors
     decision = generation_decision(request)
 

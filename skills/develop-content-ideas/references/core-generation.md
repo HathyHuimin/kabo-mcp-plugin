@@ -54,17 +54,31 @@ Passing validation on step 3 means a single generation attempt is enough.
 ## Continuations
 
 For a follow-up such as “10 more in the same style”, preserve the current request verbatim in
-`user_brief` and leave `direct_topic=null` unless it also names a literal topic. Pass the earlier
-run's original `idea_set.json` (it stays in that run directory in the workspace) to prep with
-`--previous-ideas '<path>'`, and copy the current continuation request word for word into
-`generation_basis.continuation_quote`. Prep keeps the exact original as `previous_ideas.json` in
-this run and binds its IDs, file checksum and creative directions as `continuation_context`; never
-author that field or paste earlier assistant text into `user_brief`. History is unverified creative
-context, not account or trend evidence. Without the original file, ask for the missing topic or
-context; never recreate an earlier IdeaSet from memory or a Markdown summary.
+`user_brief` and leave `direct_topic=null` unless this turn also names a literal topic. Resolve the
+reference against the visible conversation: which list, version, topic or style does the user mean?
+Keep earlier constraints and corrections; if the target is ambiguous, ask only what is missing.
+Copy the current continuation phrase into `generation_basis.continuation_quote` verbatim and choose
+one source route:
 
-When generating, compare against every previous title and making direction in
-`continuation_context`, keep the requested style, and propose new premises or outcomes rather than
-renaming the same ideas. Apply the current request's exclusions and count. A repeated previous
-title is rejected; semantic novelty still needs this comparison. A brief-only continuation needs
-either a literal `direct_topic` or this bound continuation context.
+- **Earlier native IdeaSet:** pass its unchanged `idea_set.json` to prep with
+  `--previous-ideas '<path>'`. Prep retains `previous_ideas.json` and derives
+  `continuation_context` with its IDs, checksum and creative directions.
+- **Earlier visible chat without an IdeaSet:** write `conversation-source.json` containing only
+  `schema_version: "idea-conversation.v1"`, `messages` (the relevant earlier `user`/`assistant`
+  messages with exact `text`, in order), and `reference` (`message_index`, zero-based within this
+  array, plus `quote`, an exact nonblank span in that message). Include the context needed to retain
+  constraints, exclusions and corrections; a summary is not a substitute for the original text.
+  Pass `--conversation-context conversation-source.json`. Prep retains the original bytes and
+  derives `conversation_context`; never write that field into `intent.json`.
+
+Do not combine both routes, paste history into `user_brief`, invent a previous IdeaSet, or read host
+session files. Reuse context already visible to the Agent; only request missing source material
+when it is unavailable. Chat is unverified creative context, not account, trend, comment or video
+evidence, and never satisfies a missing research requirement. The program checks the literal
+quote, index and retained bytes; the Agent must judge whether the reference and style are correct.
+
+When generating, compare against the prior titles and making directions or supplied messages,
+preserve the requested mechanism and current exclusions, and propose new premises or outcomes
+rather than renaming old ideas. Repeated native IdeaSet titles are rejected; semantic novelty and
+style consistency still need the Agent's comparison. A brief-only continuation needs a literal
+`direct_topic` or one of these bound context routes.

@@ -65,7 +65,8 @@ handle each prep decision. Also read the fields and definitions for this task in
 
 1. Copy each upstream JSON artifact into the run unchanged (`cp`); a trend or competitor report
    counts only with its `*_idea_context.json` projection. Never write a projection by hand.
-2. Write `intent.json` (no `upstream_sources`, `idea_context` or `continuation_context`), then run
+2. Write `intent.json` (no `upstream_sources`, `idea_context`, `continuation_context` or
+   `conversation_context`), then run
    prep once with the artifact flags this run has:
 
    ```sh
@@ -139,6 +140,8 @@ contract and ranking rules. In short:
 Set `report_language` on both IdeaRequest and IdeaSet to the language of the final report (BCP 47),
 separate from `language_targets`; read `references/report-language.md` whole before writing
 `idea_set.json`. Before asking for a topic, audience, goal or evidence, reuse the conversation up to
-the current turn. When no explicit topic or usable evidence exists, ask only for the topic/niche (or
+the current turn. Follow *Continuations* in `references/core-generation.md` to pass an earlier
+IdeaSet or exact visible chat through prep, while keeping the current request unchanged.
+When no explicit topic or usable evidence exists, ask only for the topic/niche (or
 an account/evidence source); a platform name and an idea count do not supply a niche. Clarification
 is not a completed idea-generation task.
