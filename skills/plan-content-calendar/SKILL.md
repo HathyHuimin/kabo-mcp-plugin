@@ -37,6 +37,18 @@ The request may arrive in any language. Decide which of these it is before anyth
 | A four-week plan, an explicit date range, CSV/ICS export, or which selected item fits one exact slot | The artifact-backed pipeline below. Pick the mode in `references/request-modes.md`. |
 | New ideas, holiday research or content selection a calendar would need | That is another Skill's job; materialize the slots only after selection. Missing selections stay explicit unfilled slots. |
 
+For those conversation routes, read `references/advice-and-proposals.md` first, then answer now:
+
+- **Topics the creator supplied, to be given angles, formats and posting dates**: that request
+  authorizes a proposal. Deliver the complete proposed calendar in this reply, every supplied topic
+  kept, with a sensible default cadence labelled as an assumption. Title it an unvalidated draft, not a
+  native calendar, and name what would make it one (the selected items and the account). An unknown
+  platform, start date or timezone does not hold it back: give the plan in relative order (week 1 day
+  1, …) and ask only for the missing anchor; never invent an exact instant, and never reply with
+  questions alone.
+- **Advice**: answer the strategy now with stated assumptions, not a routing menu; missing account data
+  blocks only an account-specific diagnosis.
+
 A four-week horizon does not imply eight posts: keep the creator-selected content set, never expand or
 clone it to fill weeks, and report unused slots honestly.
 
