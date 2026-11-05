@@ -59,8 +59,9 @@ reference against the visible conversation: which list, version, topic or style 
 If history is paged, inspect its range/count metadata or latest available page before treating
 an unread tail as absent. Read the relevant exchange through the current request's boundary.
 Resolve a number against the nearest relevant list and later user corrections; for an unnumbered
-style reference, use the nearest concrete proposal and its clarifications. Carry forward its
-mechanism, completion goal, count and restrictions unless the user changes them. Ask only about
+style reference, use the nearest concrete proposal and its clarifications, not the older list of
+possible directions. Carry forward its mechanism, completion goal and restrictions unless the user
+changes them; use the current request's output count. Ask only about
 ambiguity that remains after this check, not context already supplied.
 Copy the current continuation phrase into `generation_basis.continuation_quote` verbatim and choose
 one source route:
@@ -86,8 +87,29 @@ unless current artifacts back them. If the referenced text is genuinely unavaila
 that context; never invent a topic or silently drop required research.
 
 When generating, read the bound `continuation_context` or `conversation_context` from
-`request.json` first. Compare against the actual previous directions, keep the referenced style,
-and propose new premises or outcomes rather than renaming the same ideas. Apply the current
-request's exclusions and count. Native IdeaSet title repeats are rejected mechanically; reference
-resolution, style and semantic novelty still need this comparison. A brief-only continuation needs
-either a literal `direct_topic` or one of these bound contexts.
+`request.json` first and apply the current request's exclusions and count.
+
+Before generating same-style variants, separate the selected example's **invariants** from its
+**variable slots**. Keep the subject/domain, content format, causal mechanism, completion goal,
+restrictions, and title/opening construction that make it the requested kind of idea. Express the
+mechanism as a relationship, not just a theme: what the starting condition allows, what must be
+earned or changed at each stage, and how that reaches the goal. Matching the tone or reusing a
+title pattern alone does not preserve that relationship. Later user corrections override an
+earlier attractive but unworkable version.
+
+Vary only slots the request leaves open, such as the starting resource, setting or unlock targets;
+do not replace the underlying challenge with an unrelated obstacle, timer or objective. A request
+for variants of one mechanism permits concrete substitutions within that mechanism. Do not force
+a different mechanism merely to make the batch seem more diverse. Each variant must still be a
+usable specific idea rather than an unfilled template or a paraphrase of the identical example.
+
+During the single generation pass, check every proposed item against those invariants: its title
+and hook preserve the promise and writing form, and its making direction explicitly explains how
+the same mechanism reaches the goal with the changed elements. Remove or correct an item that
+only matches the genre or tone before writing the complete IdeaSet. This is the Agent's semantic
+check within the existing generation budget, not a new script validator or extra revision loop.
+Programmatic validation cannot establish that the chosen referent or mechanism is right.
+
+Repeated native IdeaSet titles are rejected; semantic novelty and
+style consistency still need the Agent's comparison. A brief-only continuation needs a literal
+`direct_topic` or one of these bound context routes.

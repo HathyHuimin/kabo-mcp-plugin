@@ -88,7 +88,9 @@ invent extra critique/rewrite loops. Record network, 5xx or truncation retries w
 `--record-network-retry` as `references/core-generation.md` says; they use no attempt.
 
 1. Apply explicit production constraints. Record only assets the user supplied or evidence shows
-   are available. For a continuation, differ from every previous idea as *Continuations* says.
+   are available. For "same style" or a numbered reference, first lock the selected example and its
+   unchanged mechanism, format and promise; vary only the open elements and compare every item
+   before writing it. Follow *Continuations* for both source binding and this semantic check.
 2. In **one** generation pass, write the complete `idea_set.json`: distinct titles the Creator could publish, hooks, making direction, evidence basis, ranking, gates, and limitations. Remove near-duplicates and rank by Creator fit, evidence strength, differentiation, timeliness, and realistic production cost. A plain question or statement is sufficient for a title; keep teaching method detail in `making_direction`. Never invent loss amounts, customer outcomes, efficiency gains, market facts, policy facts, numbers, or URLs. Preserve artifact-level lineage in `upstream_sources`, context-level refs in `source_context_refs`, `must_avoid` as `must_differ`, and risk language. `assets_used` must stay within declared `available_assets`. For shortlist intents only, unconfirmed future `required_assets` are allowed with `requires_user_confirmation`, explicit `assumptions` and a `production_missing` gate; never treat them as owned or used. Capacity plans require all resources to be available; exclusions still apply. Do not edit, patch, or replace the skill scripts, schemas, or validators; fix a rejected IdeaSet by revising only `idea_set.json` once.
 3. Put missing information into `gates.selection_missing` only when it prevents a valid choice.
    Put filming, editing, CTA, cadence, or other later details into `gates.production_missing`;
