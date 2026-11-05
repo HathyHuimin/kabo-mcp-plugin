@@ -83,9 +83,12 @@ For a public review, `drive.py growth` replaces the two-step request below: run 
 
 A growth-only request or follow-up uses the standalone `estimate_growth.py` interface and its
 printed Markdown handoff. It can calculate `observed_pace` or `assumed_pace` from their dated
-inputs, including one dated baseline plus an explicit user-supplied follower/subscriber rate per day or
-week. The legacy rate binding does not support assumed rates for post views/likes or monthly
-rates; ask for dated observations instead of promising those unsupported calculations. A rate is a
+inputs, including one dated baseline plus an explicit user-supplied rate that passes the existing
+Chinese/English day/week quote binding. Do not promise arbitrary rate-language support: named
+English view/like rates and monthly-rate phrases are not recognized by that legacy reader.
+Other compatible forms still use their actual metric and scope; never relabel or rewrite the
+user's quote to make validation pass. Unsupported inputs need clarification or dated observations.
+A rate is a
 conditional assumption, not a measured trajectory or probability.
 
 Inside a complete public review, `drive.py growth` and the composed `ACCOUNT_REVIEW.md` currently
@@ -121,8 +124,8 @@ Direct calculation inputs use top-level `schema_version: growth-input.v1`, posit
 Choose one method:
 
 - `observed_pace`: for dated follower/subscriber or other cumulative stock observations. `scope.semantics` is `cumulative_stock`; `observations` contain `observed_at`, `value`, `source`, `scope`. The script uses first-to-last net change divided by actual elapsed days and exposes intermediate interval rates. Explain reversals or short/old windows before interpreting the unchanged-pace scenario; missing dates are not zero. Mock records are not real observations.
-- `assumed_pace`: currently for follower/subscriber rates per day or week; the legacy rate binding
-  does not accept post-view/like or monthly rate phrases. Same observation fields, at least one dated baseline, plus `assumption: {amount, period: "day" | "week", origin: "user", quote}`. Use only an assumption explicitly supplied by the user. A cadence or scenario name is not a rate. Negative net change is allowed; linear values crossing zero are flagged.
+- `assumed_pace`: uses the existing limited Chinese/English day/week quote binding, not arbitrary
+  rate-language interpretation. Same observation fields, at least one dated baseline, plus `assumption: {amount, period: "day" | "week", origin: "user", quote}`. Use only an assumption explicitly supplied by the user. A cadence or scenario name is not a rate. Negative net change is allowed; linear values crossing zero are flagged.
 - `content_scenario`: for views/likes/comments, with semantics `per_content_cumulative`. `samples` contain `content_id`, `published_at`, `observed_at`, `format`, `value`, `source`, `scope`. Supply `cohort: {format, age_min_days, age_max_days}` appropriate to the user's comparison; use the same account and keep the chosen age band visible. The script filters format and observation age, preserves missingness and multiplies the available sample median by a publication plan: `plan: {posts, origin: "user", quote, binding}` for an explicit total count; add `period: "day" | "week"` when `posts` is the user's count per period. Interpret the user's language into the source-bound contract below: the script derives the equivalent item count as `posts × horizon_days / period_days`. Keep a fractional equivalent count as a rate scenario, not a rounded calendar schedule. Or use `plan: {origin: "observed_cadence"}` with `--snapshot` to continue the captured pace. The latter derives `(captured same-format posts - 1) / elapsed publication days` from at least two dated posts; do not supply `_snapshot_cadence`. Report the actual observed ages returned by the script, not the broader selection band. This is a conditional total for new content at that observation age, not account-wide growth, a confidence interval or a guaranteed total by the plan's end. Do not use it for subscribers. A tiny or selective sample can be computed but needs that limitation in the interpretation.
 
 Example dated input:
