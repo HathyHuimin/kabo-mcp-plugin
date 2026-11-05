@@ -12,6 +12,11 @@ Turn validated upstream artifacts or an explicit topic into an IdeaSet of distin
 ideas. The schemas, builders, validators and renderers ship in this Skill's `references/` and
 `scripts/`.
 
+When the host supports one, run this Skill in a foreground sub-agent, because a run has several
+stages, and wait for its final result before replying; never run it in the background and tell the
+user the report will come later. Without a foreground sub-agent, follow the same steps in the main
+thread.
+
 **Check the requested deliverable first.** Continuing or completing an identified story, draft or
 published episode belongs to `create-script-and-packaging`, even when phrased as "how should I make
 part 2?"; it is not a request for a new batch of ideas. If the creator already supplied or confirmed
@@ -28,11 +33,6 @@ copy it exactly to the reply, once: never summarize, rewrite, reorder or retype 
 never append a second paraphrased report. `IDEA_REPORT_FULL.md` is audit-only and never delivered.
 A `needs_revision`, `not_met` or failed result is never presented as a validated report; when a
 missing upstream artifact blocked the request, name the Skill that produces it as the next step.
-
-When the host supports one, run this Skill in a foreground sub-agent, because a run has several
-stages, and wait for its final result before replying; never run it in the background and tell the
-user the report will come later. Without a foreground sub-agent, follow the same steps in the main
-thread.
 
 This Skill runs no research: it consumes validated research artifacts through `upstream_sources[]`
 and deterministic `idea_context`. `user_brief.text` preserves the user's request; it is not by
