@@ -90,8 +90,10 @@ When generating, read the bound `continuation_context` or `conversation_context`
 `request.json` first and apply the current request's exclusions and count.
 
 Before generating same-style variants, separate the selected example's **invariants** from its
-**variable slots**. Keep the subject/domain, content format, causal mechanism, completion goal,
-restrictions, and title/opening construction that make it the requested kind of idea. Express the
+**variable slots**. Keep the selected subject/domain unless the current request supplies a literal
+`direct_topic`; then use that current topic. Keep the format, causal mechanism, completion goal,
+restrictions and title/opening construction unless the current request explicitly changes them.
+These inherited defaults never override a new user instruction. Express the
 mechanism as a relationship, not just a theme: what the starting condition allows, what must be
 earned or changed at each stage, and how that reaches the goal. Matching the tone or reusing a
 title pattern alone does not preserve that relationship. Later user corrections override an
