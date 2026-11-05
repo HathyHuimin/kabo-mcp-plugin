@@ -1,7 +1,7 @@
 # Kabo plugin repository
 
-- Write commit messages, PR titles and PR descriptions in English. Code comments and the maintainer
-  guides in `docs/` stay in Chinese. Plugin metadata and user-facing content are in English.
+- Write commit messages, PR titles and PR descriptions in English. Code comments stay in Chinese.
+  Maintainer documentation in `docs/`, plugin metadata and user-facing content are in English.
 - The repository root is the plugin root. Maintain one `skills/` directory, one `kabo` entry and one
   build entry point. Codex, Claude Code and Cursor add only host metadata; do not copy business content
   or remove features for a particular host.

@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching public account history also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for account history only: data."
 metadata:
   version: "0.4.10"
-allowed-tools: get_research_data_job get_research_data_download collect_account_history
+allowed-tools: get_research_data_job get_research_data_download collect_account_history start_skill_run
 ---
 
 # Diagnose Reach Drop
@@ -67,6 +67,8 @@ ran, so fix what they name and rerun that step in the same run. Any other failed
 run, unless the driver's message says to rerun: preserve its files and report the failure. If the
 host cannot run these scripts or save complete tool results, say which step is not possible here
 before claiming anything.
+
+**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `diagnose-reach-drop` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Data calls
 

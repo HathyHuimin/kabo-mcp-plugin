@@ -3,7 +3,7 @@ name: research-instagram-trends
 description: "Find what is working on Instagram Reels: scan a niche or a supplied Reel for repeated mechanisms, the hottest posts, emerging creators and Reels in a topic that beat their own accounts' usual; list the last seven days' hottest Reels; read the daily Reels audio board of trending and rising sounds; suggest soundtrack for named scenes; or analyze a supplied public-content Snapshot. Use for more hot Reels like this one. Not for a known creator's profile, YouTube, private Insights or scripts."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read to read the Creator's saved account profile and workspace:write to save edits to it the user asks for."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_instagram_trend_candidates enrich_instagram_shortlist lookup_instagram_post instagram_get_transcript instagram_baseline_search_reels instagram_baseline_search_music creator_trends_get_instagram_audio_board list_connected_accounts get_creator_profile update_content_preferences
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_instagram_trend_candidates enrich_instagram_shortlist lookup_instagram_post instagram_get_transcript instagram_baseline_search_reels instagram_baseline_search_music creator_trends_get_instagram_audio_board list_connected_accounts get_creator_profile update_content_preferences start_skill_run
 ---
 
 # Research Instagram Trends
@@ -54,6 +54,8 @@ to `<skill directory>` (or gives a `command` to run as printed). A different sou
 new request in a new run. Every command here is complete: do not probe scripts with `--help` or read
 their source. Quote paths and use `grep` rather than `rg`. Write each JSON or TSV file with a
 single-quoted heredoc chained with the command that reads it, or with the host's file tool.
+
+**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `research-instagram-trends` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Data calls
 

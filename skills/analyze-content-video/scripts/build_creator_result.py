@@ -24,7 +24,7 @@ from typing import Any
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from creator_measurement_basis import canonical_note
+from creator_measurement_basis import canonical_note, note_language, note_matches
 
 SCHEMA_VERSION = "creator-task-result.v2-final"
 TASK = "analyze_content_video"
@@ -79,8 +79,9 @@ def view_contract(analysis: dict[str, Any]) -> dict[str, Any]:
         "document": {"decision": "one-word string", "creator_view": "object described below"},
         "creator_view": {
             "required": [key for key in VIEW_REQUIRED if key != "data_note"],
-            "derived_read_only": {"data_note": "The builder derives one English sampling line from evidence and card citations. Omit this field; it never records how many pixels were viewed."},
+            "derived_read_only": {"data_note": "The builder derives one sampling line from evidence and card citations, in Chinese when language starts with zh and in English otherwise. Omit this field; it never records how many pixels were viewed."},
             "strings": [key for key in VIEW_REQUIRED if key not in ("cards", "next_actions", "data_note")],
+            "language": "The creator's language as a BCP 47 tag such as zh-CN or en. A zh tag renders the report's own labels and data_note in Chinese; any other tag renders them in English.",
             "cards": {
                 "count": CARD_COUNT, "roles_in_order": list(CARD_ROLES),
                 "required": list(CARD_REQUIRED),
@@ -209,11 +210,22 @@ def build(view_document: dict[str, Any], analysis: dict[str, Any], evidence: dic
         available = sum(item.get("status") == "available" for item in images["items"])
         total = "unknown" if images["expected_count"] is None else images["expected_count"]
         view = dict(view)
-        view["data_note"] = (
-            f"Image post: {available}/{images['returned_count']} returned positions available; "
-            f"total count {total}; completeness {images['completeness']}; "
-            f"owner metrics {evidence['owner_metrics']['status']}."
-        )
+        owner = evidence['owner_metrics']['status']
+        if note_language(view) == "zh":
+            # 和英文行同一组事实、同一组数字；报告原样转述，所以中文报告里这一行也是中文。
+            completeness = {"unknown": "未知"}.get(images['completeness'], images['completeness'])
+            owner_zh = {"available": "可用", "partial": "部分可用", "unavailable": "不可用"}.get(owner, owner)
+            view["data_note"] = (
+                f"图文帖：返回 {images['returned_count']} 个位置，{available} 个可用；"
+                f"总数{'未知' if total == 'unknown' else f' {total}'}；完整度{completeness}；"
+                f"后台数据{owner_zh}。"
+            )
+        else:
+            view["data_note"] = (
+                f"Image post: {available}/{images['returned_count']} returned positions available; "
+                f"total count {total}; completeness {images['completeness']}; "
+                f"owner metrics {owner}."
+            )
     else:
         view = dict(view)
         try:
@@ -284,10 +296,10 @@ def main() -> int:
         evidence, analysis = load(args.evidence), load(args.analysis)
         if not record(evidence.get("images")).get("media_type") in ("image", "image_carousel"):
             try:
-                expected = canonical_note(evidence, analysis, document['creator_view'])
+                matches = note_matches(document['creator_view'].get('data_note'), evidence, analysis, document['creator_view'])
             except ValueError as error:
                 raise SystemExit(str(error)) from error
-            if document['creator_view'].get('data_note') != expected:
+            if not matches:
                 raise SystemExit("creator_view.data_note disagrees with the recorded measurement basis")
         args.output.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         print(json.dumps({"status": "ok", "output": str(args.output), "built": False,

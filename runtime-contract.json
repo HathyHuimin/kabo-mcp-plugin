@@ -23,6 +23,7 @@
   ],
   "requiredTools": [
     "analyze_content_video",
+    "claim_credit_task",
     "collect_account_history",
     "collect_instagram_trend_candidates",
     "collect_tiktok_video_candidates",
@@ -34,6 +35,8 @@
     "enrich_youtube_shortlist",
     "get_analysis_run",
     "get_creator_profile",
+    "get_credit_balances",
+    "get_credit_tasks",
     "get_kabo_info",
     "get_library_video",
     "get_remake_video",
@@ -52,6 +55,7 @@
     "render_remake_video",
     "save_script",
     "start_remake_video",
+    "start_skill_run",
     "update_content_preferences",
     "update_script"
   ],

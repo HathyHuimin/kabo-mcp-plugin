@@ -259,20 +259,30 @@ def add_sources(case: dict, question: dict, result: dict, source_id: str) -> Non
     required = {"id", "kind", "ask", "selection_reason", "total_metric", "population", "source_name",
                 "groups"}
     fields(question, required, {"intent", "window", "post_age_hours", "platform_status_check"})
-    require(("window" in question) != ("post_age_hours" in question),
-            "source brief needs exactly one window or post_age_hours")
-    source_window = (copied(question["window"]) if "window" in question else
-                     {"kind": "post_age", "hours": finite(question["post_age_hours"])})
     groups = question["groups"]
     require(isinstance(groups, list) and len(groups) == 2, "source brief requires two groups")
+    group_windows = [isinstance(group, dict) and "window" in group for group in groups]
+    require(not any(group_windows) or all(group_windows),
+            "source brief group windows must be given on both groups")
+    require(("window" in question) + ("post_age_hours" in question) + all(group_windows) == 1,
+            "source brief needs one common window or post_age_hours, or a calendar window on each group")
+    source_window = (copied(question["window"]) if "window" in question else
+                     {"kind": "post_age", "hours": finite(question["post_age_hours"])}
+                     if "post_age_hours" in question else None)
     case.setdefault("traffic_sources", [])
     for group_index, group in enumerate(groups, 1):
-        fields(group, {"label"}, {"totals", "counts", "shares", "share_tolerances", "content_ids", "post_age_hours"})
+        fields(group, {"label"}, {"totals", "counts", "shares", "share_tolerances", "content_ids",
+                                  "post_age_hours", "window"})
         size = group_size(group, ("totals", "counts", "shares"))
+        group_window = source_window
+        if source_window is None:
+            group_window = normalized_window(group["window"])
+            require(group_window.get("kind") == "calendar",
+                    "group windows must be calendar periods; use the common post_age_hours for post ages")
         if "post_age_hours" in group:
             age = group["post_age_hours"]
             ages = age if isinstance(age, list) else [age] * size
-            require(source_window.get("kind") == "post_age" and len(ages) == size,
+            require(source_window is not None and source_window.get("kind") == "post_age" and len(ages) == size,
                     "group post ages require the common post-age window and aligned measurements")
             require(all(finite(value) == source_window["hours"] for value in ages),
                     "group post age conflicts with the common source window")
@@ -290,7 +300,7 @@ def add_sources(case: dict, question: dict, result: dict, source_id: str) -> Non
                 "metric": text(question["total_metric"]),
                 "population": text(question["population"]),
                 "source": text(question["source_name"]),
-                "window": source_window,
+                "window": group_window,
             }
             for source_key, target_key in (("totals", "total"), ("counts", "count"),
                                            ("shares", "share"), ("share_tolerances", "share_tolerance")):

@@ -6342,6 +6342,476 @@
       },
       "annotations": {
         "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Call once as the first step of a bundled skill, with its name and the run directory's last path segment as run_id. Records the run once (same run_id is never recorded twice). credits_exhausted = stop and tell the user. Later tools in this run add no charge.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "run_id": {
+            "description": "8-128: A-Za-z0-9._:-",
+            "maxLength": 128,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "type": "string"
+          },
+          "skill_id": {
+            "enum": [
+              "analyze-content-video",
+              "review-creator-account",
+              "review-creator-account-deep",
+              "create-script-and-packaging",
+              "develop-content-ideas",
+              "research-instagram-trends",
+              "research-tiktok-trends",
+              "research-youtube-trends",
+              "analyze-creator-competitors",
+              "analyze-tiktok-competitors",
+              "diagnose-reach-drop",
+              "recommend-publish-timing",
+              "plan-platform-monetization",
+              "verify-platform-rule"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "run_id"
+        ],
+        "type": "object"
+      },
+      "name": "start_skill_run",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "recorded": {
+            "type": "boolean"
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "skill_id": {
+            "enum": [
+              "analyze-content-video",
+              "review-creator-account",
+              "review-creator-account-deep",
+              "create-script-and-packaging",
+              "develop-content-ideas",
+              "research-instagram-trends",
+              "research-tiktok-trends",
+              "research-youtube-trends",
+              "analyze-creator-competitors",
+              "analyze-tiktok-competitors",
+              "diagnose-reach-drop",
+              "recommend-publish-timing",
+              "plan-platform-monetization",
+              "verify-platform-rule"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "run_id",
+          "recorded"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "data"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Start a Kabo skill run"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "workspace:read"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Regular credits (today's allowance: used, remaining, reset time) and Video credits (separate balance; mode free = not charged, paid = blocked at 0). video_credits null = unreadable, not 0. Spends nothing.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_credit_balances",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "regular_credits": {
+            "additionalProperties": false,
+            "properties": {
+              "daily_total": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "remaining": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "resets_at": {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              "tier": {
+                "enum": [
+                  "free",
+                  "pro"
+                ],
+                "type": "string"
+              },
+              "used": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "tier",
+              "daily_total",
+              "used",
+              "remaining",
+              "resets_at"
+            ],
+            "type": "object"
+          },
+          "video_credits": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "balance": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "mode": {
+                    "enum": [
+                      "free",
+                      "paid"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "balance",
+                  "mode"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "regular_credits",
+          "video_credits"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "workspace:read"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Read credit balances"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "workspace:read"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Credit task wall. Daily tasks (analyze a video, make a script, generate a video) pay out by themselves when done; never ask the user to claim them. One-time tasks wait for claim_credit_task. Show official_pages urls as named links; opening one shows a continue page.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_credit_tasks",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "official_pages": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "platform": {
+                  "enum": [
+                    "instagram",
+                    "facebook"
+                  ],
+                  "type": "string"
+                },
+                "state": {
+                  "enum": [
+                    "open",
+                    "ready",
+                    "claimed"
+                  ],
+                  "type": "string"
+                },
+                "url": {
+                  "anyOf": [
+                    {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "platform",
+                "label",
+                "url",
+                "state"
+              ],
+              "type": "object"
+            },
+            "maxItems": 2,
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "cadence": {
+                  "enum": [
+                    "once",
+                    "daily"
+                  ],
+                  "type": "string"
+                },
+                "claimable": {
+                  "type": "boolean"
+                },
+                "done": {
+                  "type": "boolean"
+                },
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "reward": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "title": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "cadence",
+                "done",
+                "claimable",
+                "reward"
+              ],
+              "type": "object"
+            },
+            "maxItems": 20,
+            "type": "array"
+          }
+        },
+        "required": [
+          "tasks",
+          "official_pages"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "workspace:read"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Read credit tasks"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "workspace:write"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Claim one one-time task only after the user asks. Tasks: bind_instagram, bind_tiktok, bind_youtube, follow_instagram, follow_facebook. Call get_credit_tasks first. not_ready = account not connected or official page not opened via its link. Not for daily tasks.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "task": {
+            "enum": [
+              "bind_instagram",
+              "bind_tiktok",
+              "bind_youtube",
+              "follow_instagram",
+              "follow_facebook"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "type": "object"
+      },
+      "name": "claim_credit_task",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "granted": {
+            "type": "boolean"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "enum": [
+                  "connect_account",
+                  "open_official_page"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "enum": [
+              "granted",
+              "already_claimed",
+              "not_ready",
+              "unavailable"
+            ],
+            "type": "string"
+          },
+          "regular_credits_remaining": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reward": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "task": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "granted",
+          "task",
+          "outcome",
+          "hint",
+          "reward",
+          "regular_credits_remaining"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "workspace:write"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Claim a one-time credit task"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "data"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
         "idempotentHint": false,
         "openWorldHint": true,
         "readOnlyHint": false

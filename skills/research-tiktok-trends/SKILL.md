@@ -3,7 +3,7 @@ name: research-tiktok-trends
 description: "Research what is trending on TikTok: hot videos and repeatable mechanisms in a niche or like a given TikTok video, the daily trending sound board with today's fastest risers, sounds that fit named video scenes, rising search terms and content gaps, or viral videos from the last seven days. Use for what is hot, rising or worth copying on TikTok now. Not for private analytics, TikTok Shop research, an account-history audit or full scripts."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permissions: data; optional workspace:read to read the Creator's saved account profile and workspace:write to save edits to it the user asks for."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download creator_trends_get_tiktok_sound_board tiktok_discovery_search_videos tiktok_discovery_search_sounds tiktok_discovery_list_search_insights tiktok_discovery_get_search_insight_trend lookup_tiktok_video collect_tiktok_video_candidates collect_account_history list_connected_accounts get_creator_profile update_content_preferences
+allowed-tools: get_research_capabilities get_research_data_job get_research_data_download creator_trends_get_tiktok_sound_board tiktok_discovery_search_videos tiktok_discovery_search_sounds tiktok_discovery_list_search_insights tiktok_discovery_get_search_insight_trend lookup_tiktok_video collect_tiktok_video_candidates collect_account_history list_connected_accounts get_creator_profile update_content_preferences start_skill_run
 ---
 
 # Research TikTok Trends
@@ -52,6 +52,8 @@ request in a new run. Every command here is complete: do not probe scripts with 
 their source. Quote paths and use `grep` rather than `rg`. Write each artifact with a single-quoted
 heredoc chained with the command that reads it, or with the host's file tool. If the host cannot
 run these scripts, say which deliverable is unavailable before claiming any.
+
+**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `research-tiktok-trends` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Data calls
 

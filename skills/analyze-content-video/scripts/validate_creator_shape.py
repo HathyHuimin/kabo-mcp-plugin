@@ -39,7 +39,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from creator_measurement_basis import canonical_note
+from creator_measurement_basis import note_matches
 
 
 # Strengths, then what holds it back, then what to do — the benchmarked three-card shape, three
@@ -371,8 +371,7 @@ def check(result: dict, analysis: dict, evidence: dict) -> list[str]:
     video_note = images.get("media_type") not in ("image", "image_carousel")
     if video_note:
         try:
-            expected_note = canonical_note(evidence, analysis, view)
-            if view.get("data_note") != expected_note:
+            if not note_matches(view.get("data_note"), evidence, analysis, view):
                 errors.append("creator_view.data_note disagrees with the recorded measurement basis")
         except ValueError as error:
             errors.append(str(error))

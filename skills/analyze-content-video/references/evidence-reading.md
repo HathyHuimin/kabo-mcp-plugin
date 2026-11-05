@@ -5,8 +5,11 @@ the first data call of a run.
 
 ## Frame sampling
 
-The request asks for at most 60 frames: twice a second through the opening three seconds, then one a
-second, spread out evenly once a longer video would exceed the cap (`job-call` adds `max_frames`).
+The request asks for at most 60 frames with `"sampling": "duration_scaled"`: twice a second through
+the opening three seconds, then one a second, spread out evenly once a longer video would exceed the
+cap (`job-call` adds `max_frames`). That plan already samples the opening densely, so never pass
+`fps`: it applies only to `evenly_spaced`, is capped at 2, and a higher value is rejected as
+invalid input.
 `sampling_plan` records requested sampling, not verified decoded timestamps or viewing coverage; even `t_seconds` may be a nominal requested point. Without verified actual decode
 records, never state a planned interval as actual spacing in judgment or creator cards. Describe it
 only as a planned/requested sampling limitation. Judge the hook over `frames.sampling_plan.hook_window_s`
@@ -90,8 +93,9 @@ that used it lost title, tags, cover and publish date. `youtube_get_video` is th
 about its own video; it is not a deferred job and carries the same facts plus public counts. Call it
 with `{"parameters": {"video_id": "<resolved-video-id>"}, "delivery": "download"}`. The media tools
 `public_video_fetch_transcript`, `public_video_extract_keyframes` and
-`public_video_measure_media_signals` take `{"parameters": {"url": "<original-video-url>"}}`, built
-into full arguments (with `delivery` and `idempotency_key`, and `max_frames` for keyframes) by
+`public_video_measure_media_signals` take `{"parameters": {"url": "<original-video-url>"}}`
+(keyframes add `"sampling": "duration_scaled"` and no `fps`), built into full arguments (with
+`delivery` and `idempotency_key`, and `max_frames` for keyframes) by
 `static_host.py job-call` as `SKILL.md` says. Readiness alone does not
 supply parameter names; use each tool's input schema.
 
@@ -138,8 +142,8 @@ the next `job-call --attempt`; any other tool is simply called again), and treat
 Such a result is also what `static_host.py fetch` and `stage` refuse ("MCP error contains no terminal
 connector evidence"): record it with `--limitation` on the evidence-building command and carry on.
 The `public_video_*` tools are deferred: a healthy call answers with a job id, which you read with
-`get_research_data_job`. Pass `wait_s` (up to 30) so the server waits for you instead of a polling
-turn; it replaces a turn, not the job's own runtime, and a job can still come back unfinished.
+`get_research_data_job`. Pass `wait_s` (an integer from 1 to 30; 0 is rejected) so the server
+waits for you instead of a polling turn; it replaces a turn, not the job's own runtime, and a job can still come back unfinished.
 Poll again until it is terminal, a retry has failed, or the approved budget for this request is
 spent; never restart a queued job. On a real run two calls sat idle for 936 and 681 seconds after
 the same tools had already failed five times; that run spent 27 of its 48 minutes on a dependency

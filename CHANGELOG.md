@@ -2,6 +2,29 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 未发布
+
+- 每个按次计费的 Skill 在预留运行目录后调用一次 `start_skill_run`（Kabo 按 skill 记一次用量，同一运行不重复记）；额度用完时 Skill 停止并把账单链接交给用户，工具缺失时照常继续。`remake-viral-video` 只走视频额度，不声明。
+- 重新钉住目录契约（kabo `d214da530` 为基线，**合入 kabo 后须按合入提交重钉**）：新增 `start_skill_run`、`get_credit_balances`、`get_credit_tasks`、`claim_credit_task`，并带入已上线的 `collect_video_media`。**须在 Kabo 服务端部署这些工具之后再发布本插件。**
+
+## 1.0.13（2026-11-05；GitHub Release）
+
+- `remake-viral-video`：选口播模型按意思理解（同网页端 kas#320 / creator-remake-web 0.1.39）：确认话术不再要求「回编号 / 回 OK」，
+  改为「告诉我用哪个；想直接开始就用默认档；确认前不生成不扣费」；回复按意思（编号、名字或描述，任何语言）选中某档就用那档，
+  明确要开始但没选就用默认（第一档），看不出或答非所问就简短再问一次、不开工；仍不替用户选。
+- 离线检查（Codex，不调 Kabo，复用存档的写稿关口任务）：「the second one」「用 Wan」「用最便宜的那个吧」「go ahead」「哪个最自然」
+  各选中对应档（go ahead 用默认 Vivix），问天气时只简短再问一次、不写出片参数，6/6 通过；首条消息不要求回编号或 OK。
+
+## 1.0.12（2026-11-04；GitHub Release）
+
+- `remake-viral-video`：创作者只有照片时也能出片：`start-call --creator-photo`（1–4 个公开 JPEG/PNG 链接，与视频合计最多 4 个）
+  进 `creator.photo_urls`；只有照片时先向用户要一段本人说话的视频，实在没有才在 4 个预设音色里让用户选（`--voice-preset`）。
+  规则在 `references/creator-photos.md`，与网页端 0.1.35 一致。依赖 kabo#2011（`/mcp-pub` 服务端安全取图）与 runner V2-r72。
+- 生产回归（Codex，OAuth 连 `kabo.sh/mcp-pub`，测试账号，runner V2-r74 系）：照片 + 本人视频（job `dadcaedf`）与只有照片
+  （job `e76090ba`）均交付。只有照片时先问「有没有 10–30 秒本人说话的公开视频」，用户说没有后才按编号列出 4 个预设音色，
+  选 3 号后用 Male calm 出片，最终说明照实告诉用户「长相来自照片、声音是预设」，插件侧全部通过。
+  runner 侧：照片 + 视频同时给时，长相参考全部取自视频，交付说明也没写照片来源（已转 runner 跟进）。
+
 ## 1.0.11（2026-11-04；GitHub Release）
 
 - `remake-viral-video`：说明收窄到「要成片时才用」，同网页端 creator-remake-web 0.1.36（creator-skills #955）：借参考结构写稿、
@@ -23,7 +46,7 @@
 - Instagram 最近七天走 Search collector（实验 B）：最多两个意图、各一页，原帖详情预算 24；只有详情完整、播放量已知且原帖日期在精确时间窗内的候选参与排名。
 - TikTok、YouTube 的热度层在本地再次检查 30 天边界；报告说明排除数量与资料缺失，名额不足时如实保留空缺。
 - 完整保留已发布 1.0.8 的口播稿出片与交付说明；本次包也包含 main 已合入的十五项 Skills、后端聚合取数与媒体 operation 名兼容修复。
-- 实验样本、GSB 口径及局限见 [推荐实验汇总](docs/2026-11-03-recommendation-experiments.md)。本次重点验收三平台推荐改动；十五项 Skills 的全部跨宿主验收与 OpenAI 商店审核仍独立记录，不能以本次 GitHub Release 代替。
+- 本次重点验收三平台推荐改动；十五项 Skills 的全部跨宿主验收与 OpenAI 商店审核仍独立记录，不能以本次 GitHub Release 代替。
 
 ## 1.0.8（2026-11-02；GitHub Release）
 
@@ -130,8 +153,8 @@
   - 读画像带 `effective: true`，被拒时去掉重发一次。四个 Skill 的 `allowed-tools` 加 `update_content_preferences`、
     `compatibility` 加 `workspace:write`；写入规则在新增的 `references/profile-edits.md`（四份同文），按 kabo CONTRACT §16.6
     （kabo-sh/kabo#1869）的确认规则执行，409 先重读，`insufficient_scope` 请用户批准补权后重试一次。
-  - 新增有效画像夹具（TikTok 三份取自 kabo `effective-content-profile-v1` golden 的向量）与相应测试；README、
-    `docs/submission.md` 补说明。上线前要重新走目录审核并重新做插件验收。
+  - 新增有效画像夹具（TikTok 三份取自 kabo `effective-content-profile-v1` golden 的向量）与相应测试；README 与提交材料
+    补说明。上线前要重新走目录审核并重新做插件验收。
 - 三个 trends Skill（`research-tiktok-trends`、`research-instagram-trends`、`research-youtube-trends`）接收后台账号画像：
   手工移植 creator-skills #918（`feat/reco-trends-allocation`，`e6fd8cfe7`）的 S1–S3。用户问自己已绑定账号的趋势时，
   先 `list_connected_accounts`、再 `get_creator_profile`（`include: ["content_profile"]`），完整结果原样存成文件交给

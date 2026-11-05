@@ -3,7 +3,7 @@ name: review-creator-account-deep
 description: "Deep-review a named public Instagram, TikTok or YouTube account: walk the standard account-analysis steps and watch a bounded set of its videos (frames and transcript) to say which practices to keep or stop and what to change in the next shoot. Reuses a finished review-creator-account review, else fetches a one-page catalog itself. Use when the creator asks for a deep review that actually watches videos. Not for a catalog-only review, a single-video teardown, competitors or trends."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Viewing frames needs a host that can display images to the model. Kabo permission: data."
-allowed-tools: get_research_capabilities collect_account_history collect_video_media get_research_data_job get_research_data_download read_research_data_artifacts instagram_resolve_profile instagram_list_posts instagram_list_reels youtube_get_channel youtube_list_channel_uploads tiktok_list_account_posts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream
+allowed-tools: get_research_capabilities collect_account_history collect_video_media get_research_data_job get_research_data_download read_research_data_artifacts instagram_resolve_profile instagram_list_posts instagram_list_reels youtube_get_channel youtube_list_channel_uploads tiktok_list_account_posts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream start_skill_run
 ---
 
 # Deep account review
@@ -50,6 +50,8 @@ script or validator step ends the run unless its own message names a correction 
 again"); never reserve a second run, refetch completed data, write an envelope yourself or rewrite a
 judgment to get past a validator. If the host cannot run these scripts, save complete tool results
 or display images, say which step is not possible here before claiming anything.
+
+**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `review-creator-account-deep` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Data calls
 

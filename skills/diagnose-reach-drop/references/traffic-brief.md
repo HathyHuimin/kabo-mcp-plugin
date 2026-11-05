@@ -40,7 +40,10 @@ Calendar totals use `growth_basis:period_total`, `metric`, `population`, and gro
 ## Traffic sources
 
 `kind:traffic_sources`; fields: `total_metric`, `population`, `source_name`, two ordered `groups`.
-Use one common `window` or `post_age_hours`. Each group has `label` and aligned arrays of
+Use one common `post_age_hours` (or a `kind:post_age` `window`) when both groups are measured at the same post age. When each group is its own
+calendar period (this week versus last week), give each group its own calendar `window` instead,
+with equal durations, in time order and not overlapping; never restate calendar periods as a
+post age. Each group has `label` and aligned arrays of
 `totals`, `counts`, `shares`, `share_tolerances`, `content_ids` as available. Shares are fractions;
 preserve nulls and the original measurement population. Window is `kind:post_age` with `hours`,
 or `kind:calendar` with `start` and `end`.
