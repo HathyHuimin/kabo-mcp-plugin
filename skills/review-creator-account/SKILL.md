@@ -17,17 +17,16 @@ Deterministic analyzers produce the facts; a complete review makes exactly one s
 Do not call a separate profile model. The schemas, analyzers, composer and validators ship in this
 Skill's `references/` and `scripts/`.
 
-For forecasts, probabilities or a longer-horizon follow-up, first read
-[growth-estimation.md](references/growth-estimation.md). Keep the established account or post
-target and metric; earlier assistant projections are not observations or user assumptions.
-Use supported script inputs: dated stock observations, an explicit user rate, or a content
-scenario from dated samples and an explicit post count or observed cadence. The latter measures
-new content at the samples' observed ages, not a monthly deadline or an existing post's future.
-If the requested target has no supported calculation, correct earlier overstatements, ask for
-the minimum dated records, and stop its numeric forecast; do not substitute a different target.
-Additional snapshots can support conditional arithmetic, not calibrated odds. Never promise
-percentage predictions merely in exchange for more history. "Subjective" or "illustrative" labels do
-not justify invented weights, monthly curves or conversions.
+For a forecast or longer-horizon follow-up, read
+[growth-estimation.md](references/growth-estimation.md) and resolve its target **before arithmetic**.
+Keep the account or post and requested metric from the preceding question; do not substitute a
+new-content batch for an existing post or calendar-month outcome. Prior assistant estimates are
+not observations. Raw dated inputs must support a calculation in `estimate_growth.py`; a report
+summary's median and cadence cannot replace its missing source rows. If inputs are missing,
+correct earlier overstatements and ask for them; do not bypass the script with mental or ad-hoc
+arithmetic. Supported stock and content-scenario calculations remain available as the reference
+specifies. Additional snapshots enable conditional arithmetic, not calibrated odds; never promise
+percentage predictions merely in exchange for more history.
 
 **Delivery.** The final step prints `creator_report: <path>` and then `ACCOUNT_REVIEW.md`. Deliver
 that report once, immediately, in full and in the user's requested language (`output_language`):

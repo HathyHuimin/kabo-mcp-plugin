@@ -15,6 +15,20 @@ observed ages. It is not a monthly deadline series, and adding it repeatedly to 
 stock does not make it one. Keep this distinction even under a "conditional" label. Engagement
 combining likes and comments is not a like rate; never use it to compute future likes.
 
+## Require source rows, not reconstructed summaries
+
+A prior report's median, quartiles or posting pace is useful context, but does not provide the
+raw dated observations required by the calculation contracts below. If those rows or the saved
+snapshot are missing, request them. Do not reconstruct a fictional sample from aggregates, or
+replace `estimate_growth.py` with mental arithmetic or a short custom calculator to bypass its
+input requirements. A summary is not a validated calculation result either.
+
+Resolve the continuation's referent before selecting a calculation. If "the same" could mean an
+account, new posts or a named existing post, ask which one instead of filling all three with
+numbers. A content batch at historical observation ages answers a different question from a
+calendar-month trajectory; only offer that alternative with its changed measurement explicit,
+and do not produce its table until the user chooses that alternative.
+
 ## Before answering a forecast or extending one
 
 Resolve the account versus a particular post, the platform, metric definition (net additions,
