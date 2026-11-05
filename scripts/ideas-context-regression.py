@@ -444,6 +444,32 @@ class ConversationContract(unittest.TestCase):
         self.assertEqual((1, "invocation_error", 1), (code, result["status"], result["input_attempts"]))
         self.assertEqual(before, (self.root / "stage_timing.json").read_bytes())
 
+    def test_conditional_estimate_keeps_assumptions_without_required_assets(self):
+        """没有额外资源依赖时，条件估时的前提仍须在两种报告中可见。"""
+        self.prep()
+        output = self.output()
+        assumption = "Estimate assumes one uninterrupted recording session."
+        feasibility = output["ideas"][0]["production_feasibility"]
+        feasibility.update(status="requires_user_confirmation", required_assets=[],
+                           assets_used=[], assumptions=[assumption])
+        output["gates"]["production_missing"] = [assumption]
+        output["interaction"]["next_actions"].append("answer_production_question")
+        self.write("idea_set.json", output)
+        code, result = self.run_stage("core")
+        self.assertEqual((0, "ok"), (code, result["status"]), result)
+        from render_idea_report import concise, full, validate_concise
+        for report in (self.root / "RESULT.md", self.root / "IDEA_REPORT_FULL.md"):
+            self.assertIn(assumption, report.read_text())
+        for request in (None, self.request()):
+            for render in (concise, full):
+                report = render(output, request)
+                self.assertIn("20–30", report)
+                self.assertIn("Before production", report)
+                self.assertIn(assumption, report)
+        markdown = concise(output, self.request())
+        with self.assertRaises(ValueError):
+            validate_concise(markdown.replace(assumption, ""), output, self.request())
+
     def test_pending_resources_are_visible_without_becoming_available(self):
         """候选可声明未来资源，已拥有与产能约束保持严格。"""
         self.prep()
