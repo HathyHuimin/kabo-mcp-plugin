@@ -84,6 +84,15 @@ def answer_text(finding, answer, zh=False):
                 return (f"同窗口比较中，该来源占比{share_word}，估算的单条来源量也{count_word}；这是来源结构与表现信号，不能单独证明平台限制。"
                         if zh else
                         f"On the matched window, this source's share {share_word} and its estimated per-record source amount {count_word}. This is a source-mix and performance signal, not proof of platform enforcement.")
+            amount = (fact.get("count_change") or {}).get("difference")
+            if (fact.get("window_basis") or [None])[0] == "calendar" and type(amount) in (int, float) and math.isfinite(amount):
+                share_word = ("下降" if share < 0 else "上升" if share > 0 else "持平") if zh else (
+                    "fell" if share < 0 else "rose" if share > 0 else "was unchanged")
+                amount_word = ("下降" if amount < 0 else "上升" if amount > 0 else "持平") if zh else (
+                    "fell" if amount < 0 else "rose" if amount > 0 else "was unchanged")
+                return (f"两个日历周期相比，该来源占比{share_word}，来源量也{amount_word}；这是账号来源结构的变化，不能单独证明平台限制。"
+                        if zh else
+                        f"Between the two calendar periods, this source's share {share_word} and its amount {amount_word}. This is a change in the account's source mix, not proof of platform enforcement.")
             return ("现有同窗口数据可以判断该来源占比变化，但缺少匹配的总量，不能确定绝对来源量如何变化，也不能据此证明平台限制。"
                     if zh else
                     "The matched-window data establishes the source-share change, but without matching totals it cannot establish the absolute source-amount change or platform enforcement.")
