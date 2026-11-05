@@ -2,6 +2,24 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.13（2026-11-05；GitHub Release）
+
+- `remake-viral-video`：选口播模型按意思理解（同网页端 kas#320 / creator-remake-web 0.1.39）：确认话术不再要求「回编号 / 回 OK」，
+  改为「告诉我用哪个；想直接开始就用默认档；确认前不生成不扣费」；回复按意思（编号、名字或描述，任何语言）选中某档就用那档，
+  明确要开始但没选就用默认（第一档），看不出或答非所问就简短再问一次、不开工；仍不替用户选。
+- 离线检查（Codex，不调 Kabo，复用存档的写稿关口任务）：「the second one」「用 Wan」「用最便宜的那个吧」「go ahead」「哪个最自然」
+  各选中对应档（go ahead 用默认 Vivix），问天气时只简短再问一次、不写出片参数，6/6 通过；首条消息不要求回编号或 OK。
+
+## 1.0.12（2026-11-04；GitHub Release）
+
+- `remake-viral-video`：创作者只有照片时也能出片：`start-call --creator-photo`（1–4 个公开 JPEG/PNG 链接，与视频合计最多 4 个）
+  进 `creator.photo_urls`；只有照片时先向用户要一段本人说话的视频，实在没有才在 4 个预设音色里让用户选（`--voice-preset`）。
+  规则在 `references/creator-photos.md`，与网页端 0.1.35 一致。依赖 kabo#2011（`/mcp-pub` 服务端安全取图）与 runner V2-r72。
+- 生产回归（Codex，OAuth 连 `kabo.sh/mcp-pub`，测试账号，runner V2-r74 系）：照片 + 本人视频（job `dadcaedf`）与只有照片
+  （job `e76090ba`）均交付。只有照片时先问「有没有 10–30 秒本人说话的公开视频」，用户说没有后才按编号列出 4 个预设音色，
+  选 3 号后用 Male calm 出片，最终说明照实告诉用户「长相来自照片、声音是预设」，插件侧全部通过。
+  runner 侧：照片 + 视频同时给时，长相参考全部取自视频，交付说明也没写照片来源（已转 runner 跟进）。
+
 ## 1.0.11（2026-11-04；GitHub Release）
 
 - `remake-viral-video`：说明收窄到「要成片时才用」，同网页端 creator-remake-web 0.1.36（creator-skills #955）：借参考结构写稿、
