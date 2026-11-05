@@ -306,7 +306,9 @@ def check_claim(claim: object, index: int, registry: dict[str, dict], language: 
                           "reasoning they asked for")
     elif scope is not None:
         errors.append(f"{where} is {verdict!r}, so scope must be null - it exists to split a "
-                      "half-right claim, and on a settled one it can only editorialise")
+                      "half-right claim, and on a settled one it can only editorialise. If the scope says "
+                      "the read pages do not state the asserted requirement, the verdict is "
+                      "no_official_text, not confirmed or refuted")
 
     inference = claim.get("inference")
     if verdict in UNSOURCED_VERDICTS:

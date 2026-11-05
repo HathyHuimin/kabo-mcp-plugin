@@ -1,8 +1,8 @@
 ---
 name: plan-platform-monetization
-description: "Check a YouTube, Instagram or TikTok account against the platform's own monetization programs (ads, memberships, subscriptions, gifts, rewards, paid content, commerce): which programs exist, which bars are met, how far the rest are, and revenue scenarios from stated rates. Also answers which-niche-pays-more questions. Not for content reviews, sponsorship pricing or checking what a live policy page says today."
+description: "Which official ways YouTube, Instagram or TikTok pay creators (ads, memberships, subscriptions, gifts, rewards, paid content, commerce), asked about a named account, stated numbers or no account: which programs exist, which bars are met, how far the rest are (e.g. subscribers or watch hours still needed for YPP), and revenue scenarios from stated rates. Also which niches pay more. Not for content reviews, sponsorship pricing or quoting a live policy page."
 license: MIT
-compatibility: "Requires Python 3 and read and write access to a local workspace. Retrieving account facts also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for account facts only: data."
+compatibility: "Requires Python 3 and read and write access to a local workspace. Retrieving account facts also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for account facts only: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_get_channel youtube_list_channel_uploads instagram_resolve_profile tiktok_list_account_posts start_skill_run
 ---
 
@@ -67,12 +67,13 @@ first data call (or reuse a supplied readiness note).
   `wait_s` (up to 30) and `"delivery": "download"` until terminal.
 - **Save, fetch and place.** Never retype or paste returned data, and never copy connector payloads
   into authored JSON. A result holds a download link: never download it yourself with a shell
-  command or a browser. Save the result itself, link included, numbered in call order, as
-  `host-results/<NN>-<tool-name>.json`, fetch it at once (links expire in 10 minutes), and place it
-  as the next numbered Envelope:
+  command or a browser, and do not save the result: fetch it at once by its result id, the 22
+  characters between `research-export/v1/` and `.json` in its download url (ids expire in 10
+  minutes; only a result with no download url is saved whole, as `host-results/<NN>-<tool-name>.json`,
+  and fetched with `--input` in place of `--id`), then place it as the next numbered Envelope:
 
   ```sh
-  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --input 'host-results/<NN>-<tool-name>.json'
+  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/static_host.py' fetch --tool <tool-name> --id=<result id>
   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/persist_envelope.py' --dest snapshot/envelope-NN.json --connector <connector_id> --operation <operation> --handle '<verified handle>'
   ```
 
@@ -92,9 +93,9 @@ first data call (or reuse a supplied readiness note).
    ask which country THIS account is registered in - never where the creator lives.
 
    Where the country comes from differs by platform, and `region_source` records which:
-   - YouTube declares it on the account. It arrives as `data.channel.country` on the
-     `youtube_list_channel_uploads` response - not on `youtube_get_channel`, which omits it - so the
-     call you make anyway for the upload window also settles the region. Record `account_declared`.
+   - YouTube declares it on the account. The retrieval in step 2 already carries it, and the derive
+     step puts it into the request as `account_declared`; write `UNKNOWN` / `unknown` in the request
+     unless the creator named a different country for this account.
    - Instagram and TikTok report no country on any operation. Ask which country the account is
      registered in and record `user_stated`; if they do not say, `UNKNOWN`.
 
@@ -103,7 +104,8 @@ first data call (or reuse a supplied readiness note).
 
 2. Retrieve public account facts for that platform only, and place each successful response as an
    Envelope as described above (`snapshot/envelope-01.json`, `-02`, … in call order):
-   - YouTube: `youtube_get_channel` for the subscriber count, then `youtube_list_channel_uploads`
+   - YouTube: `youtube_get_channel` with `include: ["channel_profile"]` for the subscriber count and
+     the declared country, then `youtube_list_channel_uploads`
      with `max_results: 50`, following `cursor` until the 90-day window is covered or the chain ends.
    - Instagram: `instagram_resolve_profile` for the follower count.
    - TikTok: `tiktok_list_account_posts` with the normalized handle. Its response carries

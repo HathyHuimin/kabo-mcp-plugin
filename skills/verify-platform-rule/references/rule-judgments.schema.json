@@ -12,14 +12,15 @@
         "required": ["statement", "verdict"],
         "properties": {
           "statement": {"type": "string", "minLength": 1},
-          "verdict": {"enum": ["confirmed", "refuted", "partly_true", "no_official_text", "not_checked"]},
+          "verdict": {"enum": ["confirmed", "refuted", "partly_true", "no_official_text", "not_checked"],
+            "description": "refuted needs selected text stating something incompatible with the assertion; text that is silent on the asserted requirement is no_official_text."},
           "evidence": {
             "type": "array",
             "items": {
               "type": "object", "additionalProperties": false, "required": ["ref"],
               "properties": {
                 "ref": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:P[1-9][0-9]*(-P[1-9][0-9]*)?$"},
-                "gloss": {"type": ["string", "null"], "description": "Translation required when the source language differs from the delivery language."},
+                "gloss": {"type": ["string", "null"], "description": "Required when the source language differs from the delivery language: a sentence-by-sentence translation of the whole referenced range, with no summary or commentary."},
                 "effective_from": {"type": ["string", "null"]}
               }
             }

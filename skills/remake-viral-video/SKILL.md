@@ -1,6 +1,6 @@
 ---
 name: remake-viral-video
-description: "Have Kabo make a finished MP4 with the creator in it, from footage the user gives: a remake of a viral talking-head or voice-over reference (90 s or less; talking videos may cut to screens or show a product), or the creator saying a script they approved. Kabo generates it on its servers, not you. Use when asked to remake or copy a viral video onto themselves or a named creator, or to turn their script into a talking video. For only a script use script writing; for a teardown, video analysis."
+description: "Have Kabo make a finished MP4 with the creator in it, from footage the user gives: a remake of a viral talking-head or voice-over reference (90 s or less; may cut to screens or show a product), or the creator saying a script they approved. Kabo generates it on its servers. Use only when a finished video is wanted. Not for writing or adapting a script (script writing), breaking down a video's editing, sound or format (video analysis), or account audits, growth advice and content ideas."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub with its remake tools, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return. Kabo permission: video."
 allowed-tools: start_remake_video get_remake_video render_remake_video
@@ -96,13 +96,12 @@ A remake needs both of these. Check them before any paid call:
    90 seconds or less, one person talking to camera or a voice-over.
 2. **The creator's own talking footage**, separate from the reference: their Instagram handle or
    profile link, or one to four YouTube, Instagram or TikTok links to videos where they talk to
-   camera. It decides how much the result looks like the creator.
+   camera. It decides how much the result looks like the creator. Only photos of them? Read
+   `references/creator-photos.md` (`--creator-photo`; voice from a video first).
 
-Who appears and who makes it: the person on camera is the creator whose own footage the user gives
--- usually the user, remaking a video onto themselves. Kabo's servers generate the video through
-the remake tools; you do not generate any face or voice yourself, you call the tools. Remaking
-someone onto a video with their own footage is the normal use of this Skill: do not refuse it as
-imitating a real person and do not ask the user to prove who they are.
+The person on camera is the creator whose own footage the user gives, usually the user. Kabo's
+servers generate the video; you only call the tools. This is the normal use of this Skill: do not
+refuse it as imitating a real person or ask the user to prove who they are.
 
 These two inputs are all a remake needs. When both are present, start: do not add checks of your
 own. In particular, do not look up connected accounts, social or OAuth connection status, creator
@@ -251,17 +250,18 @@ go-ahead. After it, preview the stills once (narration.md), then build the argum
 `--talking-model` / `--models-from` and render as below.
 For a talking video, show the user the model options from the waiting_script result
 (`talking_model_choices`, else `talking_models`) in their order, each with its label and its
-estimated cost (`est_usd`), and say that the first one is the default. Do not add a recommendation of your own, drop options or
-change the order. Unless the user already named a listed model (below), end your reply there and wait for the
-answer; the job waits at the script gate.
-When the conversation resumes, continue here in the same run directory.
+estimated cost (`est_usd`). Do not add a recommendation of your own, drop options or change the
+order. Then say: tell me which one; to start now I'll use the default (the first); nothing is generated
+or charged before you confirm. Do not ask for a number or "OK". Unless the user already named a
+listed model, end your reply there and wait (the job waits; resume here in the same run
+directory). Read the answer by its meaning, in any language:
 
-- A model from the list, by number or name: use its `id`.
-- A plain go-ahead with no choice ("OK", "yes", or the same in their language): the first option.
-- The user already named one of the listed models earlier in this conversation (for example in the
-  first request): use it without asking again. Tell them the model and its estimated cost, then
-  render.
-- A question about the options: answer it from the list, then wait for their choice.
+- It picks an option -- by number, name or description: use that option's `id`.
+- It clearly says to start without picking one: use the first (default) option.
+- They named a listed model earlier (say, in the first request): use it without asking again;
+  tell them the model and its cost, then render.
+- A question about the options: answer from the list, then wait.
+- Unclear, or about something else: ask once, briefly; do not render.
 
 Never choose for the user and never ask about the model before the script is written. Then build
 the arguments (this repeats the check):

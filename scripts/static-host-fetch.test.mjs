@@ -63,7 +63,9 @@ for scenario in scenarios:
     source = os.path.join(run_dir, "result.json")
     with open(source, "w") as stream:
         json.dump(scenario["result"], stream)
-    code, out, err = run([scenario["command"], "--tool", scenario["tool"], "--input", source])
+    argv = ([scenario["command"], "--tool", scenario["tool"], "--id", scenario["id"]] if "id" in scenario else
+            [scenario["command"], "--tool", scenario["tool"], "--input", source])
+    code, out, err = run(argv)
     evidence = os.path.join(run_dir, "snapshot/.host-evidence")
     files = {name: base64.b64encode(open(os.path.join(evidence, name), "rb").read()).decode()
              for name in sorted(os.listdir(evidence))}
@@ -1133,4 +1135,58 @@ test("persist：媒体任务按请求名或托管变体名都能放置（宿主�
       assert.deepEqual(await run.read("snapshot/media.json"), staged);
     }
   }
+});
+
+// 按结果编号取（kabo ADR-0084「2026-11-04」）：交接时模型只交编号（或含编号的下载链接），脚本向 Kabo 取同一份
+// 字节、按响应头的长度与 sha256 校验后照 fetch 落盘。每个带 fetch 的 static_host 副本都走一遍。
+const RESULT_ID = "AbCdEfGhIjKlMnOpQrSt_-";
+const BY_ID = `https://kabo.sh/v1/research-downloads/${RESULT_ID}`;
+const byId = (body = envelopeBytes, { digest = sha256(body), length = body.length, code = 200 } = {}) =>
+  [code, body.toString("base64"), { "Content-Type": "application/json", "Content-Length": String(length), "X-Content-SHA256": digest }];
+
+for (const skill of fetchSkills) {
+  test(`${skill} fetch --id：按编号取、核对长度与 sha256 后落盘；链接形式也认；不符、过期、错工具一律不落盘`, async (t) => {
+    const tool = "get_research_data_job";
+    const report = await harness(t, skill, [
+      { name: "valid", command: "fetch", tool, id: RESULT_ID, result: {}, responses: { [BY_ID]: byId() } },
+      { name: "url", command: "fetch", tool, id: SIGNED.replace("0f3c", RESULT_ID), result: {}, responses: { [BY_ID]: byId() } },
+      { name: "digest", command: "fetch", tool, id: RESULT_ID, result: {}, responses: { [BY_ID]: byId(envelopeBytes, { digest: "0".repeat(64) }) } },
+      { name: "length", command: "fetch", tool, id: RESULT_ID, result: {}, responses: { [BY_ID]: byId(envelopeBytes, { length: envelopeBytes.length + 1 }) } },
+      { name: "expired", command: "fetch", tool, id: RESULT_ID, result: {}, responses: { [BY_ID]: [404, "", {}] } },
+      { name: "malformed", command: "fetch", tool, id: "short", result: {}, responses: {} },
+    ]);
+    // 读回任务结果只认本 Skill 声明的数据操作；不认的 Skill 至少要以 Job 字样拒收，不落盘。
+    const valid = report.valid;
+    if (valid.exit === 0) {
+      assert.deepEqual(valid.requests, ["GET"]);
+      assert.equal(JSON.parse(valid.stdout).staged, 1, valid.stdout);
+      assert.equal(report.url.exit, 0, report.url.stderr);
+    } else {
+      assert.match(valid.stderr, /Job returned an undeclared data operation; check that the id belongs/);
+    }
+    for (const name of ["digest", "length"]) {
+      assert.equal(report[name].exit, 1, name);
+      assert.match(report[name].stderr, /does not match its declared size and sha256; nothing was written/);
+      assert.deepEqual(Object.keys(report[name].files), [], name);
+    }
+    assert.match(report.expired.stderr, /no result under this id: it expired \(ids last 10 minutes\) or was mistyped/);
+    assert.deepEqual(Object.keys(report.expired.files), []);
+    assert.match(report.malformed.stderr, /A result id is the 22 letters/);
+    assert.deepEqual(report.malformed.requests, []);
+    for (const result of Object.values(report)) assert.equal(result.stderr.includes(RESULT_ID), false, result.stderr);
+  });
+}
+
+test("fetch --id：聚合工具（collect_*）按编号取，按本副本的 schema 校验；编号带 .json 也认", async (t) => {
+  const typed = Buffer.from(JSON.stringify({ schema_version: "youtube-trend-candidate-set.v1", items: [], coverage: {} }));
+  const other = Buffer.from(JSON.stringify({ schema_version: "youtube-trend-enrichment.v1", items: [] }));
+  const report = await harness(t, "research-youtube-trends", [
+    { name: "typed", command: "fetch", tool: "collect_youtube_trend_candidates", id: `${RESULT_ID}.json`, result: {}, responses: { [BY_ID]: byId(typed) } },
+    { name: "wrongSchema", command: "fetch", tool: "collect_youtube_trend_candidates", id: RESULT_ID, result: {}, responses: { [BY_ID]: byId(other) } },
+  ]);
+  assert.equal(report.typed.exit, 0, report.typed.stderr);
+  assert.equal(JSON.parse(report.typed.stdout).staged, 1);
+  assert.equal(report.wrongSchema.exit, 1);
+  assert.match(report.wrongSchema.stderr, /This id holds no collect_youtube_trend_candidates result/);
+  assert.deepEqual(Object.keys(report.wrongSchema.files), []);
 });

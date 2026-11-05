@@ -2,7 +2,7 @@
 name: develop-content-ideas
 description: "Turn a creator's account review, trend or competitor research, a video analysis, a video's YouTube or TikTok comments, or an explicit topic into distinct content ideas the creator can compare and choose from. Use when a creator asks what to make next, wants a first batch of topics for a new account, wants ideas that fit a time or equipment budget, wants follow-up ideas from a video's comments, or wants new hooks for a weak topic. Not for diagnosing an account or planning a posting calendar."
 license: MIT
-compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching a video's comments also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for comments only: data."
+compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching a video's comments also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for comments only: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_list_comments tiktok_discovery_list_comments tiktok_discovery_list_comment_replies start_skill_run
 ---
 

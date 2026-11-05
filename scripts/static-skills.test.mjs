@@ -156,6 +156,68 @@ print(json.dumps(out))
   assert.match(out[121], /^ERROR cannot derive data_note: sampling-plan frame count disagrees/);
 });
 
+// 报告原样转述：中文视图的报告自带标签（要改什么 / 这样说 / 下一步）和 data_note 都是中文；
+// 英文视图与未写语言时逐字保持原来的英文。2026-11-04 回归里中文报告夹着 "What to change"、"Say this" 和英文 data_note。
+test("ACV 中文视图渲染中文标签与中文 data_note，英文视图逐字不变", () => {
+  const probe = `
+import json, sys
+sys.path.insert(0, sys.argv[1])
+from creator_measurement_basis import canonical_note, note_matches
+from render_video_report import render
+from build_creator_result import build
+evidence = {"content_ref": {"platform": "youtube"}, "owner_metrics": {"status": "unavailable"},
+            "transcript": {"status": "available", "origin": "platform_captions",
+                           "cues": [{"start_s": i, "text": "line"} for i in range(108)]},
+            "frames": {"status": "available", "origin": "extracted_frames", "sampling_plan": {"frames": 14},
+                       "items": [{"frame_id": f"f{i}", "t_seconds": i} for i in range(14)]}}
+analysis = {"observations": [{"observation_id": "o1", "evidence_refs": ["f0", "f1"]}]}
+def view(language):
+    card = {"title": "T", "why_for_you": "a\\nb\\nc", "action": "do it", "evidence_refs": ["observations.o1"]}
+    hook = {"purpose": "p", "visual_direction": "close-up", "spoken_line": "line"}
+    return {"language": language, "headline": "H", "summary": "S",
+            "cards": [dict(card), dict(card), dict(card, hooks=[hook])], "next_actions": ["go"]}
+out = {}
+for language in ("zh-CN", "en", None):
+    v = view(language)
+    v["data_note"] = canonical_note(evidence, analysis, v)
+    out[str(language)] = {"note": v["data_note"], "report": render({"creator_view": v})}
+images = {"media_type": "image_carousel", "returned_count": 5, "expected_count": None, "completeness": "unknown",
+          "items": [{"status": "available"}] * 4 + [{"status": "unavailable"}]}
+request = {"source": {"acquisition": "public_url"}}
+for language in ("zh-CN", "en"):
+    built = build({"creator_view": view(language)}, analysis, {"images": images, "owner_metrics": {"status": "unavailable"}}, request)
+    out["image " + language] = built["creator_view"]["data_note"]
+zh, en = view("zh-CN"), view("en")
+english_line = canonical_note(evidence, analysis, en)
+out["replay"] = {"zh view, older English line": note_matches(english_line, evidence, analysis, zh),
+                 "zh view, Chinese line": note_matches(canonical_note(evidence, analysis, zh), evidence, analysis, zh),
+                 "en view, Chinese line": note_matches(canonical_note(evidence, analysis, zh), evidence, analysis, en),
+                 "zh view, edited line": note_matches(english_line.replace("14", "15"), evidence, analysis, zh)}
+print(json.dumps(out, ensure_ascii=False))
+`;
+  const scripts = path.join(import.meta.dirname, "..", "skills", "analyze-content-video", "scripts");
+  const out = JSON.parse(execFileSync("python3", ["-I", "-B", "-c", probe, scripts], { encoding: "utf8" }));
+  const english = "YouTube video; 14 extracted frames; 2 cited frame refs; platform captions (108 cues); owner metrics unavailable; viewing unverified.";
+  assert.equal(out.en.note, english);
+  assert.equal(out.None.note, english);
+  assert.equal(out["zh-CN"].note, "YouTube 视频；抽取 14 帧；报告引用 2 帧；平台字幕（108 条）；后台数据不可用；画面查看未核实。");
+  for (const label of ["**怎么复用**：", "**要改什么**：", "- **镜头**：close-up", "- **这样说**：line", "## 下一步"]) {
+    assert.ok(out["zh-CN"].report.includes(label), label);
+  }
+  assert.doesNotMatch(out["zh-CN"].report, /What to change|How to reuse it|Say this|Shot|## Next/);
+  for (const report of [out.en.report, out.None.report]) {
+    for (const label of ["**How to reuse it**: ", "**What to change**: ", "- **Shot**: close-up", "- **Say this**: line", "## Next"]) {
+      assert.ok(report.includes(label), label);
+    }
+  }
+  assert.equal(out.None.report, out.en.report);
+  assert.equal(out["image zh-CN"], "图文帖：返回 5 个位置，4 个可用；总数未知；完整度未知；后台数据不可用。");
+  assert.equal(out["image en"], "Image post: 4/5 returned positions available; total count unknown; completeness unknown; owner metrics unavailable.");
+  // 更早版本给 zh 视图写的是英文 data_note；回放仍要认，改过数字的行照样拦。
+  assert.deepEqual(out.replay, {"zh view, older English line": true, "zh view, Chinese line": true,
+                                "en view, Chinese line": false, "zh view, edited line": false});
+});
+
 // 证据原文自带量级词（转录 "27 B" / "27 billion"、caption "27B"）时，报告照写不能判成编造；
 // 证据只有不相关的裸数字 27、"5 billionaires" 或 ID 片段（UUID 的 "-5b2e"）时，报告的带量级数字仍要拦。2026-10-28 Claude Code 补测 P2 实测误报。
 test("ACV 数字核对接受证据里自带量级词的数字，裸数字仍不能支撑带量级的写法", () => {

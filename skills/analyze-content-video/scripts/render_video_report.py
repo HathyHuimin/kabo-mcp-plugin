@@ -129,16 +129,27 @@ def prose_timecodes(text: str, positions: set | None = None) -> str:
     return _PROSE_POINT.sub(_point, _PROSE_RANGE.sub(_range, text or ""))
 
 
-# The connective tissue this file adds around the model's own words. One set, in English.
+# The connective tissue this file adds around the model's own words, in Chinese and English.
 #
-# There used to be two, keyed on whether the report language started with "zh", which made every
-# other language read as English anyway while costing a table to maintain and a branch at each
-# use. The card titles, findings and actions arrive already written in the creator's language
-# because the analysis wrote them there; these labels are this renderer's own, and the main agent
-# restates them when it presents the report.
-STRINGS = {"why": "What it does now", "action": "What to change", "reuse": "How to reuse it",
+# The card titles, findings and actions arrive already written in the creator's language because
+# the analysis wrote them there; these labels are this renderer's own. The host relays the
+# finished report unchanged, so an English-only table left "What to change" and "Say this" inside
+# otherwise Chinese reports. A zh view gets the Chinese labels; every other language gets English,
+# and for a language other than zh or en the host localizes headings and labels as SKILL.md says.
+# `colon` follows the label: Chinese prose takes the full-width mark.
+STRINGS = {
+    "zh": {"why": "现在的效果", "action": "要改什么", "reuse": "怎么复用", "say": "这样说",
+           "at": "位置", "on_screen": "画面文字", "shot": "镜头", "next": "下一步",
+           "colon": "："},
+    "en": {"why": "What it does now", "action": "What to change", "reuse": "How to reuse it",
            "say": "Say this", "at": "Where", "on_screen": "On screen", "shot": "Shot",
-           "next": "Next"}
+           "next": "Next", "colon": ": "},
+}
+
+
+def lang_of(view: dict) -> str:
+    """`zh`, `zh-CN`, `zh-Hant` read as Chinese; anything else, or nothing, as English."""
+    return "zh" if str(view.get("language") or "").strip().lower().startswith("zh") else "en"
 
 
 def render_hook(hook: dict, words: dict) -> list[str]:
@@ -157,15 +168,15 @@ def render_hook(hook: dict, words: dict) -> list[str]:
         lines.append(f"- **{format_time_range(hook['time_range'])}**"
                      + (f" — {detail}" if detail else "") + purpose)
     elif hook.get("visual_direction"):
-        lines.append(f"- **{words['shot']}**: {hook['visual_direction']}")
+        lines.append(f"- **{words['shot']}**{words['colon']}{hook['visual_direction']}")
     if hook.get("spoken_line"):
-        lines.append(f"- **{words['say']}**: {hook['spoken_line']}")
+        lines.append(f"- **{words['say']}**{words['colon']}{hook['spoken_line']}")
     return lines
 
 
 def render(result: dict) -> str:
     view = result.get("creator_view") or {}
-    words = STRINGS
+    words = STRINGS[lang_of(view)]
     out: list[str] = []
 
     # The package markdown validator anchors the document to the structured headline, so this
@@ -205,7 +216,7 @@ def render(result: dict) -> str:
             # mechanism that already works. Labelling that "What to change" renders a positive
             # reading as a defect.
             action_label = words["reuse"] if card_index == 0 else words["action"]
-            out.append(f"**{action_label}**: {card['action'].strip()}")
+            out.append(f"**{action_label}**{words['colon']}{card['action'].strip()}")
         # No `source_url` branch. The schema allows the field and SKILL.md never described it, so
         # two of three isolated runs set it and the renderer printed a naked URL under the change
         # instruction. Labelling it was the wrong repair -- it made a meaningless link tidy instead

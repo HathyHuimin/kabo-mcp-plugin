@@ -135,14 +135,19 @@ skill 内容（`SKILL.md`、`references/`、脚本输出）一律用英文。本
   签名下载链接（只 GET、主机精确匹配、不跟随重定向）。
   - 后半句是服务端的设计决定：GCS 签名链接零新增 IAM、沿用生产已有的签名写法；
     改走 Kabo 域名链接需要新密钥与网关变更，换来的只是网络访问留在 Kabo 域名内。
-  - 目前唯一的网络访问是各 skill `scripts/static_host.py` 的 `fetch`：链接只从工具结果读（文件或 stdin，
-    不进 argv），协议与主机逐字匹配，3xx 按失败处理，按声明的 `bytes` 设读取上限并流式校验 sha256，
-    对不上就什么都不写；报错与输出不复述链接、签名或对象名。
+  - 网络访问只有两处，都在各 skill `scripts/static_host.py`：
+    - `fetch --input`：签名链接只从工具结果读（文件或 stdin，不进 argv），协议与主机逐字匹配，3xx 按失败处理，
+      按声明的 `bytes` 设读取上限并流式校验 sha256，对不上就什么都不写；报错与输出不复述链接、签名或对象名。
+    - `fetch --id` 与交接续跑的 `--id NN=<id>`：按结果编号 GET `https://kabo.sh/v1/research-downloads/<编号>`
+      （kabo ADR-0084「2026-11-04」）。主机逐字匹配、不跟随重定向，必须有 `Content-Length`（不超过上限）与
+      `X-Content-SHA256`，读到的字节数与 sha256 都对上才写，否则什么都不写。编号与签名链接是同一张 10 分钟
+      不记名票，允许出现在 argv 和打印的续跑命令里；交接只让模型交编号，不交签名链接（误贴整条链接时脚本
+      只取其中的编号，不用链接本身发请求）。
   - 链接过期（`expires_at` 已过，或 GCS 回 400/401/403）时 `fetch` 不重试下载，只打印下一步：同步数据
     结果用信封里的 `evidence_ref` 调 `get_research_data_download` 重签，新链接
     照样走上面这套校验，按新返回的 sha256 / bytes 核对；重签本身失败（`not_found` / `service_unavailable`）时
     才退回带 `"delivery": "download"` 再调一次原工具（会重跑）。重签不是第二处网络访问，仍是 Kabo 工具结果给出的签名链接。
-  - lint 只按「出现网络库」列审计项，不判断主机；PR review 逐项确认没有第二处网络访问。
+  - lint 只按「出现网络库」列审计项，不判断主机；PR review 逐项确认没有上面两处之外的网络访问。
 - **KS7.4**（审计）：可执行脚本放在 `scripts/` 下。
 
 ### KS8 数据读取（说明，不由脚本校验）
@@ -159,6 +164,15 @@ skill 内容（`SKILL.md`、`references/`、脚本输出）一律用英文。本
     字节不经模型、只经脚本，校验也在脚本里。
   - 这份结果只有链接与摘要、不含数据，模型原样写进文件（宿主导出或 heredoc）不算抄写证据：
     抄错一个字符会在主机或 sha256 校验上失败，不会落下错的数据。
+  - **结果编号（2026-11-04 起优先）**：连这份小结果也不让模型存。envelope 下载链接路径里
+    `research-export/v1/<编号>.json` 的 22 字符就是结果编号（kabo ADR-0084「2026-11-04」）；模型只把
+    编号交给脚本——驱动交接的续跑命令 `--id NN=<编号>`，或 `static_host.py fetch --tool <工具名>
+    --id <编号>`——脚本向 `https://kabo.sh/v1/research-downloads/<编号>` 取同一份字节，按响应头的
+    `Content-Length` 与 `X-Content-SHA256` 校验后照 `fetch` 落盘。原因：1.0.10 的 Codex 回归里，模型
+    存这份小结果仍是交接的头号故障（patch 写坏、签名链接抄漏、改写 `calls[].tool`、存错目录；程序从
+    返回值写文件 37/40 成功，模型手抄 3/10），而插件不注册生命周期钩子、只装 Skills 的安装也没有
+    钩子，宿主替模型落盘的路走不通。没有下载链接的结果（下载不可用、未带 delivery）仍按上面存文件。
+    产物（帧、转写）没有编号，仍按下面逐项下载。
   - **帧与图片同样走下载**：`read_research_data_artifacts` 读帧也带 `delivery: "download"`，
     `fetch` 把图片落成与 `stage` 相同的 `<id>-<i>.<jpg|png|webp>` + `.meta`，输出里逐项给出绝对 `path`，
     模型再用宿主自己的读文件 / 看图工具打开它才算看过。原因：Claude Code 2.1.308 把内联图片另存进

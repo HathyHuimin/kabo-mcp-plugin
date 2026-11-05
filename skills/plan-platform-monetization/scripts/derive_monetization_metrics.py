@@ -167,9 +167,17 @@ def derive(platform: str, envelopes: list[dict[str, Any]], as_of: date, units: d
         subscribers = None
         for envelope in channels:
             row = record((record(envelope.get("data")).get("rows") or [{}])[0])
-            subscribers = number(record(row.get("metrics")).get("subscribers"))
-            if subscribers is not None:
-                metrics.append(metric("youtube.subscribers", subscribers, units, retrieved_at(envelope)))
+            # get_channel carries the declared country under channel_profile when it was requested;
+            # the uploads response below, when there is one, says the same and is read last.
+            country = record(row.get("channel_profile")).get("country")
+            if region is None and isinstance(country, str) and len(country) == 2:
+                region = {"region": country.upper(), "region_source": "account_declared"}
+            # Subscribers and the country can sit in different responses: stop only once both are found.
+            if subscribers is None:
+                subscribers = number(record(row.get("metrics")).get("subscribers"))
+                if subscribers is not None:
+                    metrics.append(metric("youtube.subscribers", subscribers, units, retrieved_at(envelope)))
+            if subscribers is not None and region is not None:
                 break
         rows: list[dict[str, Any]] = []
         chain_ended = False
