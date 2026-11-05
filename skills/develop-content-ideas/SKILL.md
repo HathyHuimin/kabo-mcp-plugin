@@ -14,8 +14,10 @@ ideas. The schemas, builders, validators and renderers ship in this Skill's `ref
 
 **Check the requested deliverable first.** Continuing or completing an identified story, draft or
 published episode belongs to `create-script-and-packaging`, even when phrased as "how should I make
-part 2?"; it is not a request for a new batch of ideas. If that published episode's actual content
-is missing, ask for its script, link or summary with the ending and stop this turn. Account reviews,
+part 2?"; it is not a request for a new batch of ideas. If the creator already supplied or confirmed
+the exact source link, packaging owns recovery of its content; do not ask for that link again.
+If no usable published source content is available, ask only for the missing script, source link
+or summary with the ending and stop this turn. Account reviews,
 titles and another series' characters cannot replace it. Do not start ideation or add story examples
 to that clarification. An already supplied selected draft can be continued through packaging
 without asking for it again. Requests for multiple new variations remain here.

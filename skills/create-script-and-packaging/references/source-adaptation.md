@@ -23,8 +23,10 @@ hook, central beats and payoff against the original before delivery; changing
 wording, character labels or the final CTA does not make repeated events a sequel.
 Clearly distinguish new fictional proposals from events observed in the source.
 
-For a published episode whose content is absent, ask for its script, link or a short
-description including the ending and unresolved point, then stop this turn. Do not append
+For a published episode whose content is absent, first use the permitted recovery path below
+when the creator supplied or confirmed its exact link. Do not ask for that link again or infer
+the episode from an account post list. If the content remains unavailable, ask for only the
+missing script, source link or summary including the ending and unresolved point, then stop. Do not append
 examples, hooks or a guessed continuation. An available selected draft does not need this
 clarification: use its actual text and stopping point. If the creator says "I already did that",
 recheck the source and identify the repeated beat before proposing a replacement;
