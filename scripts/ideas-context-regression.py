@@ -317,6 +317,76 @@ class ConversationContract(unittest.TestCase):
                 self.assertTrue(any("schema" in error for error in errors), errors)
                 self.assertFalse(any("has no attribute" in error or "not iterable" in error for error in errors), errors)
 
+    def test_schema_and_hook_errors_are_corrected_in_one_revision(self):
+        """聊天引用错放进证据字段时，同轮也必须报出单 Hook 的多余递进句。"""
+        self.prep()
+        output = self.output()
+        output["evidence_summary"]["source_context_refs"] = ["conversation_context"]
+        for idea in output["ideas"]:
+            idea["source_context_refs"] = ["conversation_context"]
+            idea["hook_preview"]["progressive_line"] = "The next stage raises the stakes."
+        self.write("idea_set.json", output)
+        code, first = self.run_stage("core")
+        self.assertEqual((0, "needs_revision", 1),
+                         (code, first["status"], first["revision_remaining"]))
+        self.assertTrue(any("source_context_refs" in error for error in first["errors"]), first)
+        for idea in output["ideas"]:
+            self.assertIn(f"{idea['idea_id']}: one-Hook request must set progressive_line to null", first["errors"])
+            idea["source_context_refs"] = []
+            idea["hook_preview"]["progressive_line"] = None
+        output["evidence_summary"]["source_context_refs"] = []
+        self.write("idea_set.json", output)
+        code, revised = self.run_stage("core")
+        self.assertEqual((0, "ok", 2), (code, revised["status"], revised["generation_attempts"]))
+        self.assertTrue((self.root / "RESULT.md").stat().st_size)
+
+    def test_schema_error_does_not_hide_two_hook_requirements(self):
+        """两 Hook 的缺句和重复句在无关 schema 错误旁同样可见，不重复报错。"""
+        self.intent["hook_option_count"] = 2
+        self.prep()
+        for structural_error in (False, True):
+            output = self.output()
+            output["ideas"][0]["hook_preview"]["progressive_line"] = None
+            opening = output["ideas"][1]["hook_preview"]["opening_line"]
+            output["ideas"][1]["hook_preview"]["progressive_line"] = "  " + opening.upper() + "  "
+            output["ideas"][2]["hook_preview"]["progressive_line"] = "A separate consequence changes the next step."
+            if structural_error:
+                output["evidence_summary"]["source_context_refs"] = ["conversation_context"]
+            errors = validator.validate_idea_set(output, self.request(), self.root / "request.json")
+            self.assertEqual(1, errors.count("idea-001: two-Hook request requires progressive_line"), errors)
+            self.assertEqual(1, errors.count("idea-002: progressive_line must not repeat opening_line"), errors)
+            self.assertFalse(any("idea-003" in error and "progressive_line" in error for error in errors), errors)
+        output["evidence_summary"]["source_context_refs"] = []
+        for idea in output["ideas"]:
+            idea["hook_preview"]["progressive_line"] = "A separate consequence changes the next step."
+        self.assertEqual([], validator.validate_idea_set(output, self.request(), self.root / "request.json"))
+
+    def test_early_hook_diagnostics_tolerate_malformed_dependencies(self):
+        """畸形容器保留 schema 错误，不抛异常、不改变 rework 分支语义。"""
+        self.prep()
+        for broken in (None, [], [None], [{"idea_id": [], "hook_preview": []}],
+                       [{"idea_id": {}, "hook_preview": {"opening_line": [], "progressive_line": {}}}]):
+            output = self.output()
+            output["ideas"] = broken
+            errors = validator.validate_idea_set(output, self.request(), self.root / "request.json")
+            self.assertTrue(any("schema" in error for error in errors), errors)
+        for field, value in (("task_intent", []), ("hook_option_count", True),
+                             ("hook_option_count", "1")):
+            request = self.request()
+            request[field] = value
+            output = self.output()
+            output["ideas"][0]["hook_preview"]["progressive_line"] = "A second line."
+            errors = validator.validate_idea_set(output, request, self.root / "request.json")
+            self.assertTrue(any("schema" in error for error in errors), errors)
+            self.assertFalse(any("one-Hook request" in error for error in errors), errors)
+        request = self.request()
+        request["task_intent"] = "rework_content"
+        output = self.output()
+        output["ideas"][0]["unexpected"] = True
+        output["ideas"][0]["hook_preview"]["progressive_line"] = "A second line."
+        errors = validator.validate_idea_set(output, request, self.root / "request.json")
+        self.assertFalse(any("one-Hook request" in error for error in errors), errors)
+
     def test_legacy_chinese_schema_and_translation_errors_are_reported_together(self):
         """Keep translation diagnostics available for supported legacy Chinese reports."""
         self.intent["report_language"] = "zh"
@@ -493,6 +563,175 @@ class ConversationContract(unittest.TestCase):
         feasibility["assets_used"] = ["A consenting guest"]
         errors = validator.validate_idea_set(output, self.request(), self.root / "request.json")
         self.assertTrue(any("assets_used must be a subset" in error for error in errors), errors)
+
+
+class ConversationInputPreparation(unittest.TestCase):
+    def setUp(self):
+        """用既有请求原题和独立临时目录验证机械写入。"""
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        self.run_dir = self.root / "run"
+        self.export_path = self.root / "export.json"
+        self.brief_path = self.root / "brief.txt"
+        self.brief = FIXTURE["intent"]["user_brief"]["text"] + "\r\n"
+        self.brief_path.write_bytes(self.brief.encode("utf-8"))
+        self.quote = '“Élan” → 次の段階: "原文"'
+        self.messages = [
+            {"role": "user", "text": "  Preserve **all** details.\r\nNo summary.  "},
+            {"role": "assistant", "text": f"# Earlier proposal\r\n{self.quote}\n\\path\\ 🧩\n"},
+            {"role": "user", "text": "Keep the first example in view."},
+        ]
+        self.export(self.messages)
+
+    def export(self, data):
+        """写入宿主提供的用户可见导出，不从任何会话目录取数。"""
+        self.export_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    def helper(self, *extra, quote_flags=None, run_dir=None):
+        """通过真实 CLI 检查参数解析和输出边界。"""
+        result = subprocess.run([
+            sys.executable, "-B", str(SKILL / "scripts/prepare_conversation_inputs.py"),
+            "--messages", str(self.export_path), "--reference-index", "1",
+            *(quote_flags if quote_flags is not None else ["--reference-quote", self.quote]),
+            "--brief-file", str(self.brief_path), "--idea-count", "3",
+            "--platform", "instagram", "--language", "en",
+            "--continuation-quote", FIXTURE["intent"]["generation_basis"]["continuation_quote"],
+            "--run-dir", str(run_dir or self.run_dir), *map(str, extra),
+        ], capture_output=True, text=True)
+        return result, json.loads(result.stdout) if result.stdout else None
+
+    def assert_no_outputs(self):
+        """无效输入不留下可被误用的半份准备结果。"""
+        self.assertFalse((self.run_dir / "conversation-source.json").exists())
+        self.assertFalse((self.run_dir / "intent.json").exists())
+
+    def test_preserves_exact_messages_and_brief_through_real_prep(self):
+        """Unicode、引号、Markdown 和 CRLF 原样进入真实 prep，未知项不编造。"""
+        result, output = self.helper("--platform", "youtube")
+        self.assertEqual((0, "ok"), (result.returncode, output["status"]), result.stdout)
+        self.assertEqual({"status", "conversation_source", "intent", "message_count", "reference_index"},
+                         set(output))
+        self.assertEqual((3, 1), (output["message_count"], output["reference_index"]))
+        self.assertNotIn(self.quote, result.stdout)
+        self.assertEqual(self.run_dir / "intent.json", Path(output["intent"]))
+        source_path = Path(output["conversation_source"])
+        source = json.loads(source_path.read_text())
+        self.assertEqual(self.messages, source["messages"])
+        self.assertEqual({"message_index": 1, "quote": self.quote}, source["reference"])
+        intent = json.loads(Path(output["intent"]).read_text())
+        self.assertEqual(self.brief, intent["user_brief"]["text"])
+        self.assertEqual(("brief_only", 3, 1),
+                         (intent["task_intent"], intent["idea_count"], intent["hook_option_count"]))
+        self.assertEqual(["instagram", "youtube"], intent["platform_targets"])
+        for key in ("goal", "audience", "desired_audience_action"):
+            self.assertEqual({"status": "missing", "value": None}, intent[key])
+        self.assertEqual({"direct_topic": None, "required_sources": [], "allow_brief_fallback": False,
+                          "continuation_quote": FIXTURE["intent"]["generation_basis"]["continuation_quote"]},
+                         intent["generation_basis"])
+        self.assertEqual("absent", intent["production_constraints"]["status"])
+        self.assertEqual([], intent["production_constraints"]["available_assets"])
+        self.assertTrue(all(value is None for key, value in intent["production_constraints"].items()
+                            if key not in ("status", "available_assets")))
+        self.assertEqual([], validator.validate_authored_intent(intent, has_conversation_context=True))
+        prep = subprocess.run([
+            sys.executable, "-B", str(SKILL / "scripts/run_ideas_stages.py"), "prep",
+            "--run-dir", str(self.run_dir), "--intent", output["intent"],
+            "--conversation-context", str(source_path),
+        ], capture_output=True, text=True)
+        report = json.loads(prep.stdout)
+        self.assertEqual((0, "ok", "ready_for_generation"),
+                         (prep.returncode, report["status"], report["decision"]["status"]), report)
+        request = json.loads((self.run_dir / "request.json").read_text())
+        self.assertEqual(self.messages, request["conversation_context"]["messages"])
+        self.assertEqual(self.brief, request["user_brief"]["text"])
+        self.assertEqual("brief_only", request["source_mode"])
+
+    def test_accepts_content_export_and_exact_quote_file(self):
+        """导出的 content 仅改字段名，引用文件中的换行仍逐字匹配。"""
+        self.export({"messages": [dict(role=message["role"], content=message["text"], id=index)
+                                  for index, message in enumerate(self.messages)], "export_version": 1})
+        quote_path = self.root / "quote.txt"
+        quote_text = self.messages[1]["text"]
+        quote_path.write_bytes(quote_text.encode("utf-8"))
+        result, output = self.helper("--hook-count", "2", quote_flags=["--reference-quote-file", str(quote_path)])
+        self.assertEqual(0, result.returncode, result.stdout)
+        source = json.loads(Path(output["conversation_source"]).read_text())
+        self.assertEqual(self.messages, source["messages"])
+        self.assertEqual(quote_text, source["reference"]["quote"])
+        self.assertEqual(2, json.loads(Path(output["intent"]).read_text())["hook_option_count"])
+
+    def test_rejects_wrong_reference_and_current_quote(self):
+        """只校验调用方给出的索引和原文，不自动改绑或近似匹配。"""
+        for flags in (("--reference-index", "-1"), ("--reference-index", "99"),
+                      ("--reference-index", "0"), ("--reference-quote", "not in any message"),
+                      ("--reference-quote", " \n"), ("--continuation-quote", "not in current query")):
+            with self.subTest(flags=flags):
+                result, output = self.helper(*flags)
+                self.assertNotEqual(0, result.returncode)
+                self.assertEqual("invalid_input", output["status"])
+                self.assert_no_outputs()
+
+    def test_rejects_nontext_messages_without_dropping_or_reordering(self):
+        """附件数组、异常角色和冲突字段均拒绝，不静默删掉消息。"""
+        invalid = [[], {"messages": {}}, [{"role": "user", "content": [{"text": "nested"}]}],
+                   [{"role": "user", "text": 7}], [{"role": "user", "text": "  "}],
+                   [{"role": "system", "text": "visible?"}],
+                   [{"role": "assistant", "text": "original", "content": "other"}], ["text"]]
+        for data in invalid:
+            with self.subTest(data=data):
+                self.export(data)
+                result, output = self.helper("--reference-index", "0")
+                self.assertNotEqual(0, result.returncode)
+                self.assertEqual("invalid_input", output["status"])
+                self.assert_no_outputs()
+
+    def test_existing_output_and_dangling_symlink_are_never_overwritten(self):
+        """任一输出存在即停止，已有文件、软链接和另一份输入均不被改写。"""
+        for name in ("conversation-source.json", "intent.json"):
+            with self.subTest(name=name):
+                self.run_dir.mkdir(exist_ok=True)
+                path = self.run_dir / name
+                path.write_bytes(b"existing input\n")
+                result, output = self.helper()
+                self.assertEqual((1, "invalid_input"), (result.returncode, output["status"]))
+                self.assertEqual(b"existing input\n", path.read_bytes())
+                self.assertEqual([name], [entry.name for entry in self.run_dir.iterdir()])
+                path.unlink()
+        path = self.run_dir / "intent.json"
+        path.symlink_to(self.root / "does-not-exist")
+        result, output = self.helper()
+        self.assertEqual((1, "invalid_input"), (result.returncode, output["status"]))
+        self.assertTrue(path.is_symlink())
+        self.assertFalse((self.run_dir / "conversation-source.json").exists())
+
+    def test_successful_outputs_cannot_be_replaced_on_repeat(self):
+        """重复调用不能重置已生成且可能已补充约束的输入。"""
+        self.assertEqual(0, self.helper()[0].returncode)
+        before = {path.name: path.read_bytes() for path in self.run_dir.iterdir()}
+        result, output = self.helper()
+        self.assertEqual((1, "invalid_input"), (result.returncode, output["status"]))
+        self.assertEqual(before, {path.name: path.read_bytes() for path in self.run_dir.iterdir()})
+
+    def test_cli_rejects_ambiguous_quote_options_and_invalid_counts(self):
+        """参数错误不得创建文件，显式引用形式只能选一种。"""
+        quote_path = self.root / "quote.txt"
+        quote_path.write_text(self.quote)
+        for flags in (("--reference-quote-file", quote_path), ("--idea-count", "11"),
+                      ("--hook-count", "0"), ("--hook-count", "3")):
+            with self.subTest(flags=flags):
+                result, output = self.helper(*flags)
+                self.assertEqual(2, result.returncode)
+                self.assertIsNone(output)
+                self.assert_no_outputs()
+
+    def test_existing_validator_still_rejects_external_evidence_request(self):
+        """准备助手不放宽取数合同，也不能把外部证据要求偷换为纯聊天。"""
+        self.brief_path.write_text("Three more in that style, based on my account metrics.")
+        result, output = self.helper()
+        self.assertEqual((1, "invalid_input"), (result.returncode, output["status"]))
+        self.assertIn("required_sources omitted", " ".join(output["errors"]))
+        self.assert_no_outputs()
 
 
 if __name__ == "__main__":
