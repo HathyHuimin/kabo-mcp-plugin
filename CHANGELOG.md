@@ -41,7 +41,7 @@
 - Instagram 最近七天走 Search collector（实验 B）：最多两个意图、各一页，原帖详情预算 24；只有详情完整、播放量已知且原帖日期在精确时间窗内的候选参与排名。
 - TikTok、YouTube 的热度层在本地再次检查 30 天边界；报告说明排除数量与资料缺失，名额不足时如实保留空缺。
 - 完整保留已发布 1.0.8 的口播稿出片与交付说明；本次包也包含 main 已合入的十五项 Skills、后端聚合取数与媒体 operation 名兼容修复。
-- 实验样本、GSB 口径及局限见 [推荐实验汇总](docs/2026-11-03-recommendation-experiments.md)。本次重点验收三平台推荐改动；十五项 Skills 的全部跨宿主验收与 OpenAI 商店审核仍独立记录，不能以本次 GitHub Release 代替。
+- 本次重点验收三平台推荐改动；十五项 Skills 的全部跨宿主验收与 OpenAI 商店审核仍独立记录，不能以本次 GitHub Release 代替。
 
 ## 1.0.8（2026-11-02；GitHub Release）
 
@@ -148,8 +148,8 @@
   - 读画像带 `effective: true`，被拒时去掉重发一次。四个 Skill 的 `allowed-tools` 加 `update_content_preferences`、
     `compatibility` 加 `workspace:write`；写入规则在新增的 `references/profile-edits.md`（四份同文），按 kabo CONTRACT §16.6
     （kabo-sh/kabo#1869）的确认规则执行，409 先重读，`insufficient_scope` 请用户批准补权后重试一次。
-  - 新增有效画像夹具（TikTok 三份取自 kabo `effective-content-profile-v1` golden 的向量）与相应测试；README、
-    `docs/submission.md` 补说明。上线前要重新走目录审核并重新做插件验收。
+  - 新增有效画像夹具（TikTok 三份取自 kabo `effective-content-profile-v1` golden 的向量）与相应测试；README 与提交材料
+    补说明。上线前要重新走目录审核并重新做插件验收。
 - 三个 trends Skill（`research-tiktok-trends`、`research-instagram-trends`、`research-youtube-trends`）接收后台账号画像：
   手工移植 creator-skills #918（`feat/reco-trends-allocation`，`e6fd8cfe7`）的 S1–S3。用户问自己已绑定账号的趋势时，
   先 `list_connected_accounts`、再 `get_creator_profile`（`include: ["content_profile"]`），完整结果原样存成文件交给
