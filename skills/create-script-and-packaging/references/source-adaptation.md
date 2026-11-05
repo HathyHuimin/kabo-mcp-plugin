@@ -16,6 +16,17 @@ or silently undo a state such as an injury, disappearance or lost ability. Any c
 in the new story before it is relied on. This is draft continuity, not proof of publication;
 do not ask the user to resupply text that is already available.
 
+For a continuation or expansion of supplied fiction, first save a short `continuity-notes.md`
+in the workspace: identify the selected version and requested scope, quote the stopping point,
+and list established events and each relevant character's current state with its source passage.
+Separate facts already narrated from a character's unverified claim. Use this note while writing;
+do not replace established past events with a new backstory to manufacture a twist. New events
+may change a state, but the change must appear before an action or spoken line depends on it.
+Before delivery, compare the complete draft to the note: remove repeated completed beats and
+repair contradictory actions, dialogue or backstory. Attribute imitations, memories and inner
+thoughts explicitly so they cannot read as impossible present actions. Keep the note as a work
+artifact; the user receives the requested creative text, not the continuity audit.
+
 For a published episode, reuse its actual script, a creator-provided summary or source
 observations already available in this conversation. For "my latest post", a listing can
 identify a candidate, but only the selected post's content establishes its story.
