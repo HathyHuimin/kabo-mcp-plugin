@@ -1080,11 +1080,12 @@ def presentation_inputs_are_safe(idea_set: Any) -> bool:
     properties = schema["properties"]
     candidate = schema["$defs"]["ideaCandidate"]["properties"]
     feasibility = candidate["production_feasibility"]["properties"]
-    # Legacy locale detection reads explanatory prose as well. Keep that path
-    # behind the full schema gate; explicit locales need no legacy inference.
-    fields = ("report_language", "status", "task_intent", "source_mode")
+    # Locale validation also supports identifiable legacy Chinese prose. Guard
+    # its containers, without requiring an explicit locale before diagnostics.
+    fields = ("status", "task_intent", "source_mode")
     guard = {"type": "object", "required": [*fields, "evidence_summary", "ideas"],
              "properties": {field: properties[field] for field in fields}}
+    guard["properties"]["overview"] = {"type": "object"}
     guard["properties"]["evidence_summary"] = {
         "type": "object", "required": ["data_gaps"],
         "properties": {"data_gaps": properties["evidence_summary"]["properties"]["data_gaps"]}}
