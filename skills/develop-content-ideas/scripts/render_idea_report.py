@@ -43,9 +43,9 @@ def minute_text(feasibility: dict, tr=lambda value: value, display=lambda value:
 def pending_asset_lines(idea: dict, request: dict | None = None, tr=lambda value: value) -> list[str]:
     """展示未来所需资源，不改变已声明可用资源的含义。"""
     feasibility = idea.get("production_feasibility") or {}
-    if feasibility.get("status") != "requires_user_confirmation" or not feasibility.get("required_assets"):
+    if feasibility.get("status") != "requires_user_confirmation":
         return []
-    required = feasibility["required_assets"]
+    required = feasibility.get("required_assets") or []
     if request is None:
         # 独立调试没有资源可用性证据，只列依赖，不断言资源缺失或已经拥有。
         label = ""
