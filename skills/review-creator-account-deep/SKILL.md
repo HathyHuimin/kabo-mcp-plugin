@@ -33,14 +33,16 @@ never read credentials or ask for tokens in chat.
 
 ## Running commands
 
-`<skill directory>` is the folder holding this `SKILL.md`. Reserve exactly one run per request:
-without a finished standard review, step 1's `fetch_catalog.py --workspace` reserves it; with one,
+`<skill directory>` is the folder holding this `SKILL.md`. Reserve exactly one run per request.
+Without a finished standard review, do not run `static_host.py init`: step 1's
+`fetch_catalog.py --workspace` reserves the run and prints it as `run_directory`. Only when a finished
+standard review exists, reserve it with
 
 ```sh
 python3 '<skill directory>/scripts/static_host.py' init --workspace '<user-workspace>'
 ```
 
-prints the run directory. Every later command carries it, because hosts keep neither environment
+which prints the run directory. Every later command carries it, because hosts keep neither environment
 variables nor the working directory between commands:
 `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/…' …`.
 `<analysis>` is the catalog analysis step 1 settles on. Every command here is complete: do not probe
@@ -51,7 +53,7 @@ again"); never reserve a second run, refetch completed data, write an envelope y
 judgment to get past a validator. If the host cannot run these scripts, save complete tool results
 or display images, say which step is not possible here before claiming anything.
 
-**Declare the run.** Right after the run directory is reserved, call the Kabo tool `start_skill_run` once with `skill_id` `review-creator-account-deep` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
+**Declare the run.** Right after the run directory is reserved (from `init`, or the `run_directory` that `fetch_catalog.py --workspace` prints), call the Kabo tool `start_skill_run` once with `skill_id` `review-creator-account-deep` and `run_id` set to the last path segment of the run directory. It records the run once, so never call it again for the same run. If it fails with `credits_exhausted`, tell the user their credits are used up, give them the link in the error, and stop. If the tool is not available, continue without it.
 
 ## Data calls
 
