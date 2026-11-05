@@ -668,30 +668,30 @@ def validate_authored_fields(request: dict[str, Any], errors: list[str], *,
         elif brief.get("status") == "provided":
             require(has_brief, "provided user_brief must contain text", errors)
 
-    if ready("generation_basis", "user_brief"):
+    if ready("generation_basis"):
         basis = request.get("generation_basis") or {}
         direct_topic = basis.get("direct_topic")
         has_direct_topic = has_text(direct_topic)
+        if direct_topic is not None:
+            require(has_direct_topic, "generation_basis.direct_topic must contain text or be null", errors)
+        if has_direct_topic:
+            require("@" not in direct_topic and not re.search(r"(?:https?://|www\.)", direct_topic, re.IGNORECASE),
+                    "generation_basis.direct_topic must not be an account handle or URL", errors)
+            require(has_substantive_topic(direct_topic),
+                    "generation_basis.direct_topic must name a content topic, not only a platform, format, or generic idea request", errors)
+        if basis.get("allow_brief_fallback") is True:
+            require(has_direct_topic,
+                    "allow_brief_fallback=true requires an explicit generation_basis.direct_topic", errors)
+
+    if ready("generation_basis", "user_brief"):
         quote = basis.get("continuation_quote")
         if quote is not None:
             require(has_brief and has_text(quote) and quote in brief.get("text", ""),
                     "generation_basis.continuation_quote must be copied verbatim from user_brief.text", errors)
-        if direct_topic is not None:
-            require(has_direct_topic, "generation_basis.direct_topic must contain text or be null", errors)
         if has_direct_topic:
             topic = canonical_phrase(direct_topic)
             semantic_brief = canonical_phrase(brief_text_without_identifiers(brief.get("text")))
             require(has_brief, "generation_basis.direct_topic requires a provided user_brief", errors)
-            require(
-                "@" not in direct_topic and not re.search(r"(?:https?://|www\.)", direct_topic, re.IGNORECASE),
-                "generation_basis.direct_topic must not be an account handle or URL",
-                errors,
-            )
-            require(
-                has_substantive_topic(direct_topic),
-                "generation_basis.direct_topic must name a content topic, not only a platform, format, or generic idea request",
-                errors,
-            )
             require(
                 bool(topic) and topic in semantic_brief,
                 "generation_basis.direct_topic must be a literal user-supplied phrase outside handles and URLs",
@@ -717,11 +717,6 @@ def validate_authored_fields(request: dict[str, Any], errors: list[str], *,
             errors,
         )
         if basis.get("allow_brief_fallback") is True:
-            require(
-                has_direct_topic,
-                "allow_brief_fallback=true requires an explicit generation_basis.direct_topic",
-                errors,
-            )
             # A brief that refuses the fallback refuses it however the flag is argued for.
             text = brief.get("text")
             if brief_denies_fallback(text):
@@ -1079,23 +1074,19 @@ def validate_gate_state(idea_set: dict[str, Any], errors: list[str]) -> None:
 def presentation_inputs_are_safe(idea_set: Any) -> bool:
     """Gate early presentation diagnostics on only their typed dependencies."""
     schema = load(IDEA_SET_SCHEMA)
-    properties = schema["properties"]
-    candidate = schema["$defs"]["ideaCandidate"]["properties"]
-    feasibility = candidate["production_feasibility"]["properties"]
-    # Locale validation also supports identifiable legacy Chinese prose. Guard
-    # its containers, without requiring an explicit locale before diagnostics.
+    # 提前检查只保证容器形状与可哈希性；枚举和范围错误仍由完整 schema 拒绝。
     fields = ("status", "task_intent", "source_mode")
     guard = {"type": "object", "required": [*fields, "evidence_summary", "ideas"],
-             "properties": {field: properties[field] for field in fields}}
+             "properties": {field: {"type": "string"} for field in fields}}
     guard["properties"]["overview"] = {"type": "object"}
     guard["properties"]["evidence_summary"] = {
-        "type": "object", "required": ["data_gaps"],
-        "properties": {"data_gaps": properties["evidence_summary"]["properties"]["data_gaps"]}}
+        "type": "object", "properties": {"data_gaps": {
+            "type": ["array", "null"], "items": {"type": "string"}}}}
     guard["properties"]["ideas"] = {"type": "array", "items": {
-        "type": "object", "required": ["primary_evidence_ref", "production_feasibility"],
-        "properties": {"primary_evidence_ref": candidate["primary_evidence_ref"],
-                       "production_feasibility": {"type": "object", "required": ["effort", "estimated_minutes"],
-                           "properties": {field: feasibility[field] for field in ("effort", "estimated_minutes")}}}}}
+        "type": "object", "properties": {
+            "primary_evidence_ref": {"type": ["string", "null"]},
+            "production_feasibility": {"type": ["object", "null"],
+                "properties": {"effort": {"type": ["string", "null"]}}}}}}
     return not validate_schema_value(idea_set, guard, schema, "$")
 
 
@@ -1347,11 +1338,20 @@ def validate_idea_set(
         require(item_platforms <= target_platforms, f"{prefix}: platforms must be within request platform_targets", errors)
         require(not ({normalized(value) for value in (item.get("formats") or [])} & excluded_formats), f"{prefix}: format is excluded by request", errors)
         require(not ({normalized(value) for value in (feasibility.get("assets_used") or [])} & excluded_assets), f"{prefix}: asset is excluded by request", errors)
-        require(
-            required_assets <= available_assets,
-            f"{prefix}: required_assets must be a subset of request available_assets",
-            errors,
-        )
+        undeclared_requirements = required_assets - available_assets
+        if undeclared_requirements:
+            # 提案可以依赖尚未确认的未来资源，但不能冒充已拥有、已使用或可执行承诺。
+            # 渲染器逐项保留这些待确认条件。
+            require(intent in {"open_shortlist", "brief_only"},
+                    f"{prefix}: {intent} required_assets must be declared available_assets; only shortlist intents allow pending resources", errors)
+            require(feasibility.get("status") == "requires_user_confirmation",
+                    f"{prefix}: undeclared required_assets require requires_user_confirmation", errors)
+            require(bool(feasibility.get("assumptions")),
+                    f"{prefix}: undeclared required_assets require explicit production assumptions", errors)
+            require(bool((idea_set.get("gates") or {}).get("production_missing")),
+                    f"{prefix}: undeclared required_assets require a production_missing gate", errors)
+        require(not ({normalized(value) for value in required_assets} & excluded_assets),
+                f"{prefix}: required asset is excluded by request", errors)
         require(assets_used <= available_assets, f"{prefix}: assets_used must be a subset of request available_assets", errors)
 
         if request.get("source_mode") == "brief_only":

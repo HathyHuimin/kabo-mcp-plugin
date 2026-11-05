@@ -53,25 +53,31 @@ Passing validation on step 3 means a single generation attempt is enough.
 
 ## Continuations
 
-For a follow-up such as “more in the same style”, keep the current request verbatim in
-`user_brief` and leave `direct_topic=null` unless it also names a literal topic. Copy its referring
-words into `generation_basis.continuation_quote`. First resolve what the user refers to from the
-visible conversation: keep the specific earlier direction or list item, the style and the relevant
-user constraints; current corrections and exclusions take precedence. With several plausible
-referents, ask one focused question instead of choosing silently; do not ask the user to repeat
-context that is already available.
+For a follow-up such as “10 more in the same style”, preserve the current request verbatim in
+`user_brief` and leave `direct_topic=null` unless this turn also names a literal topic. Resolve the
+reference against the visible conversation: which list, version, topic or style does the user mean?
+If history is paged, inspect its range/count metadata or latest available page before treating
+an unread tail as absent. Read the relevant exchange through the current request's boundary.
+Resolve a number against the nearest relevant list and later user corrections; for an unnumbered
+style reference, use the nearest concrete proposal and its clarifications. Carry forward its
+mechanism, completion goal, count and restrictions unless the user changes them. Ask only about
+ambiguity that remains after this check, not context already supplied.
+Copy the current continuation phrase into `generation_basis.continuation_quote` verbatim and choose
+one source route:
 
-Use exactly one source route:
-- **A native earlier IdeaSet:** pass its original complete `idea_set.json` with
-  `--previous-ideas '<path>'`. Prep keeps its exact bytes as `previous_ideas.json` and derives
-  `continuation_context`. Never rebuild an IdeaSet from Markdown or memory.
-- **Ordinary conversation text only:** pass `--conversation-context '<path>'` instead, a JSON object
-  `{"schema_version": "idea-conversation.v1", "messages": [{"role": "user"|"assistant", "text": <exact
-  full message>}, …], "reference": {"message_index": <zero-based>, "quote": <exact referenced
-  passage>}}`. Copy the real message text unchanged, include the earlier user constraints needed to
-  read the passage and enough of the actual list to resolve an ordinal, and no private reasoning.
-  Prep keeps the exact bytes as `conversation_context.json` and derives `conversation_context`; its
-  checksum proves binding to that file, not that you chose the right passage, so check that first.
+- **Earlier native IdeaSet:** pass its unchanged `idea_set.json` to prep with
+  `--previous-ideas '<path>'`. Prep retains `previous_ideas.json` and derives
+  `continuation_context` with its IDs, checksum and creative directions.
+- **Earlier visible chat without an IdeaSet:** write `conversation-source.json` containing only
+  `schema_version: "idea-conversation.v1"`, `messages` (the relevant earlier `user`/`assistant`
+  messages with exact `text`, in order), and `reference` (`message_index`, zero-based within this
+  array, plus `quote`, an exact nonblank span in that message). Include the context needed to retain
+  constraints, exclusions and corrections; a summary is not a substitute for the original text.
+  Copy text mechanically from the available message fields or file ranges. Preserve message
+  boundaries; join streamed fragments only when they belong to the same message, in order and
+  without crossing a user turn. Check the selected quote and zero-based index before prep.
+  Pass `--conversation-context conversation-source.json`. Prep retains the original bytes and
+  derives `conversation_context`; never write that field into `intent.json`.
 
 Never author `continuation_context` or `conversation_context`, and never paste earlier text into
 `user_brief`. Both routes are unverified creative context, never account, trend or comment

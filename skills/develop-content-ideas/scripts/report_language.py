@@ -101,31 +101,40 @@ def presentation_translations(data):
     if not isinstance(translations, list):
         raise ValueError('evidence_gap_translations must be an array')
     mapped = {}
+    seen = set()
+    errors = []
     for item in translations:
         if not isinstance(item, dict) or set(item) != {'source_text', 'report_text'}:
-            raise ValueError('Each presentation translation requires source_text and report_text')
+            errors.append('Each presentation translation requires source_text and report_text')
+            continue
         source, report = item['source_text'], item['report_text']
-        if not isinstance(source, str) or source not in allowed or source in mapped:
-            reason = 'repeats an earlier entry' if isinstance(source, str) and source in mapped else 'is neither an evidence_summary.data_gaps string nor a rendered canonical value or required UI label'
-            raise ValueError(f'Presentation translation must name one unique original gap or rendered canonical value: source_text {source!r} {reason}; '
-                             f'remove it. Rendered canonical values: {sorted(values, key=repr)}; data_gaps strings are matched exactly')
+        if not isinstance(source, str) or source not in allowed or source in seen:
+            reason = 'repeats an earlier entry' if isinstance(source, str) and source in seen else 'is neither an evidence_summary.data_gaps string nor a rendered canonical value or required UI label'
+            errors.append(f'Presentation translation must name one unique original gap or rendered canonical value: source_text {source!r} {reason}; '
+                          f'remove it. Rendered canonical values: {sorted(values, key=repr)}; data_gaps strings are matched exactly')
+            continue
+        seen.add(source)
         if not isinstance(report, str) or not report.strip():
-            raise ValueError('Presentation translation must preserve a nonempty report_text')
+            errors.append('Presentation translation must preserve a nonempty report_text')
+            continue
         if source in labels:
             prefix = re.match(r'^[#>*` \-]+', source)
             suffix = re.search(r'[*` ]+$', source)
             if '\n' in report or '\r' in report or (prefix and not report.startswith(prefix[0])) or (suffix and not report.endswith(suffix[0])):
-                raise ValueError(f'UI label translation must preserve Markdown markers and boundary spacing: {source!r}')
+                errors.append(f'UI label translation must preserve Markdown markers and boundary spacing: {source!r}')
+                continue
         mapped[source] = report
     if 'report_language' in data:
         if any(value not in mapped for value in gaps):
             missing = [value for value in gaps if value not in mapped]
-            raise ValueError(f'Explicit report languages require evidence_gap_translations for every original gap; missing: {missing}')
+            errors.append(f'Explicit report languages require evidence_gap_translations for every original gap; missing: {missing}')
         if values - mapped.keys():
-            raise ValueError(f'Explicit report languages require evidence_gap_translations for every rendered canonical value; missing: {sorted(values - mapped.keys(), key=repr)}')
+            errors.append(f'Explicit report languages require evidence_gap_translations for every rendered canonical value; missing: {sorted(values - mapped.keys(), key=repr)}')
         if labels - mapped.keys():
-            raise ValueError(f'Missing UI label translations for report_language {data["report_language"]}; do not substitute another language. '
+            errors.append(f'Missing UI label translations for report_language {data["report_language"]}; do not substitute another language. '
                              f'Use report_language.py with --labels for the English source vocabulary; missing: {sorted(labels - mapped.keys())}')
+    if errors:
+        raise ValueError("; ".join(dict.fromkeys(errors)))
     return mapped
 
 

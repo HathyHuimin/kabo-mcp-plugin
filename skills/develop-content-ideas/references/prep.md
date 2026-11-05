@@ -54,7 +54,12 @@ lineage validation still apply. Collection failure does not authorize brief fall
      paraphrase (“sourdough shaping techniques”, not “bread tutorials”). A handle, account/display
      name, URL, platform, format, or generic request for ideas is not a topic. Never derive it from
      another Skill's description, the environment, or model knowledge.
-   - For a follow-up such as “more in the same style”, read *Continuations* in
+   - An explicit request for reusable patterns or fill-in templates is itself a concrete creative
+     subject. Use the current request's exact template-topic phrase; keep the requested slots and
+     pair each pattern with its requested example. Label filled examples as illustrative, not as
+     the user's industry or verified results. Do not require an industry just to deliver a general
+     template; ask only when tailoring to an unspecified industry is part of the request.
+   - For a follow-up such as “10 more in the same style”, read *Continuations* in
      `references/core-generation.md` whole before writing the intent.
    - `required_sources` lists evidence the user explicitly requires: `creator`, `account`,
      `trend`, `competitor`, `video`, or `comments`. A request about comments on a video requires
@@ -98,6 +103,9 @@ lineage validation still apply. Collection failure does not authorize brief fall
    entry once and rerun the same prep in the same run; never invent identifiers, switch the report
    language, drop required sources or reword the user's brief to pass. A second invalid input ends
    prep as `not_met`.
+   `invocation_error` (exit `1`) for an unreadable `--intent` file is separate: correct that path
+   or its permissions and repeat the same prep command in the same run. No authored input was
+   read, so this neither consumes nor resets the input budget. Other I/O failures remain terminal.
 5. Obey the decision exactly:
    - `blocked_missing_required_source`: write an empty IdeaSet, add every canonical `missing_required_source:<source>` reason, and set `interaction.next_actions` to include all of `blocked`, `refresh_evidence` and `provide_own_direction` (never `choose`). Then run core once to validate/render the empty block (this is not a creative generation success).
    - `needs_selection_context`: write an empty IdeaSet with
