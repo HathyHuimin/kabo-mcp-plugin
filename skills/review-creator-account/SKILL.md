@@ -12,6 +12,11 @@ Deterministic analyzers produce the facts; a complete review makes exactly one s
 Do not call a separate profile model. The schemas, analyzers, composer and validators ship in this
 Skill's `references/` and `scripts/`.
 
+For forecasts, probabilities or a longer-horizon follow-up, read
+[growth-estimation.md](references/growth-estimation.md) before answering. Recheck the target,
+measurement and evidence; earlier assistant projections are not observations. Conditional
+arithmetic cannot supply calibrated odds, even when the user asks for them.
+
 **Delivery.** The final step prints `creator_report: <path>` and then `ACCOUNT_REVIEW.md`. Deliver
 that report once, immediately, in full and in the user's requested language (`output_language`):
 if it already matches, relay it unchanged; otherwise translate only its fixed labels and the

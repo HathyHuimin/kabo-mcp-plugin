@@ -23,7 +23,9 @@ Every field is optional; a question left out keeps only the code-written parts.
   it, a metric of one of its records, the user's own request, or a retrieved title or caption quoted
   verbatim. A sentence typing any other number is left out.
 - `hypotheses`: explanations to investigate, not findings. Public counts do not show penalties,
-  private metrics or audience classification.
+  private metrics or audience classification. Apply the measurement and causal limits in
+  [post-publication review](post-publication-review.md); say what observation would support or
+  weaken each explanation, not just which creative change you prefer.
 - `need`: only what the next step cannot start without.
 - `next_steps`: one experiment or check per item. Compare like with like: the same format and the
   same time after publication. Durations and counts here are proposals, not account facts or

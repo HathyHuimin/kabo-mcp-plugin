@@ -2,6 +2,41 @@
 
 Use `<skill directory>/scripts/estimate_growth.py` for a growth estimate, including a follow-up to a complete review. It has no network dependencies. Read actual persisted evidence or a user export; never manufacture observations. JSON retains the evidence rows; a Markdown handoff is saved beside it and printed. `computed` means arithmetic succeeded, not that future performance is known.
 
+## Before answering a forecast or extending one
+
+Resolve the account versus a particular post, the platform, metric definition (net additions,
+cumulative stock, period total or new-content performance), baseline date and requested horizon.
+Use clear prior context; clarify only unresolved scope. Do not silently switch between a top
+post and the whole account when a follow-up asks for the same calculation over more months.
+
+Audit each input's source. A previous assistant's outcome range, multiplier, conversion rate or
+"most likely" number is not an observation or a user-supplied assumption, even if the user asks
+to extend it. Correct that earlier overstatement explicitly before reusing the genuine baseline.
+A single public snapshot cannot supply a post's growth trajectory, subscriber conversion or
+monthly account-wide totals. Keep missing subscriber history separate from available content data.
+
+This Skill computes conditional scenarios, not calibrated probabilities. Neither subjective
+labels nor a disclaimer make invented percentages reliable. When asked for odds without an
+appropriate validated predictive model, explain that no defensible percentage is available here;
+offer supported conditional calculations or ask for the minimum missing dated records instead.
+Do not label a scenario "most likely", assign scenario weights or create confidence intervals
+from a median, quartiles, a single snapshot or intuition. Calibration would require a defined
+outcome and horizon plus evaluation of predicted probabilities against held-out comparable
+outcomes; these calculations do not provide that evidence.
+
+For multi-month requests, keep every month on the same explicit measurement and assumptions.
+Show monthly values only when the supported calculation can produce them; never invent a decay,
+acceleration or breakout curve to fill a table. State the observed window alongside the requested
+horizon, explain which assumptions become less dependable farther out, and set a review point
+when new dated observations arrive. Do not multiply a new-content scenario into an account total
+or the future cumulative total of one existing post. If inputs are insufficient, identify the
+missing series and provide the collection/calculation plan rather than a numeric forecast.
+
+When the evidence and assumptions are sufficient, still answer the supported numeric part with
+the script: do not turn this boundary into a blanket refusal. Put the formula, changed assumption
+and uncertainty next to each conditional result. Controllable goals and experiments are plans,
+not promises about what the platform will distribute.
+
 For a public review, `drive.py growth` replaces the two-step request below: run it in the review's run directory, choose one listed choice, save it as `review_growth_input.json` with the user's number and wording filled in, and run it again before writing the synthesis. `--metric` and `--horizon-days` follow the user's question (views, 30 days by default). Only `content_scenario` belongs in that file. `drive.py report` binds it to `snapshot.json`, `account_analysis.json` and the retained `question.txt`, recomputes the estimate, and includes the number, formula, observation ages, deadline comparison and sensitivity meaning in the validated `ACCOUNT_REVIEW.md`. The normal creator-report handoff carries the complete answer; no separate model-written growth summary is needed. Outside a review run, dated stock or standalone calculations keep the direct interface below.
 
 ## Evidence → choice → answer
