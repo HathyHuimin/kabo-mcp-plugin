@@ -17,17 +17,16 @@ Deterministic analyzers produce the facts; a complete review makes exactly one s
 Do not call a separate profile model. The schemas, analyzers, composer and validators ship in this
 Skill's `references/` and `scripts/`.
 
-For forecasts, probabilities or a longer-horizon follow-up, read
-[growth-estimation.md](references/growth-estimation.md) before answering. Recheck the target,
-measurement and evidence; earlier assistant projections are not observations. Conditional
-arithmetic cannot supply calibrated odds, even when the user asks for them.
-Keep the established target of a continuation: a particular post is not the account. If its
-trajectory is missing, give the missing-data plan for that target; do not fill the answer with a
-different account-level forecast. Before any numeric forecast table, identify the supporting dated observations and assumptions for
-each metric, then use the calculation script. With no supported trajectory or explicit user rate,
-give a correction and the minimum data needed, not guessed monthly values. A request to extend
-an earlier estimate is not approval to treat that estimate as a user-supplied growth rate.
-Calling invented numbers "subjective", "illustrative" or "conditional" does not make them valid.
+For forecasts, probabilities or a longer-horizon follow-up, first read
+[growth-estimation.md](references/growth-estimation.md). Keep the established account or post
+target and metric; earlier assistant projections are not observations or user assumptions.
+Use supported script inputs: dated stock observations, an explicit user rate, or a content
+scenario from dated samples and an explicit post count or observed cadence. The latter measures
+new content at the samples' observed ages, not a monthly deadline or an existing post's future.
+If the requested target has no supported calculation, correct earlier overstatements, ask for
+the minimum dated records, and stop its numeric forecast; do not substitute a different target.
+Conditional arithmetic cannot supply calibrated odds. "Subjective" or "illustrative" labels do
+not justify invented weights, monthly curves or conversions.
 
 **Delivery.** The final step prints `creator_report: <path>` and then `ACCOUNT_REVIEW.md`. Deliver
 that report once, immediately, in full and in the user's requested language (`output_language`):
