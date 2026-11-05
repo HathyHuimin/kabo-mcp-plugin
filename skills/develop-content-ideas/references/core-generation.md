@@ -89,28 +89,38 @@ that context; never invent a topic or silently drop required research.
 When generating, read the bound `continuation_context` or `conversation_context` from
 `request.json` first and apply the current request's exclusions and count.
 
-Before generating same-style variants, separate the selected example's **invariants** from its
-**variable slots**. Keep the selected subject/domain unless the current request supplies a literal
-`direct_topic`; then use that current topic. Keep the format, causal mechanism, completion goal,
-restrictions and title/opening construction unless the current request explicitly changes them.
-These inherited defaults never override a new user instruction. Express the
-mechanism as a relationship, not just a theme: what the starting condition allows, what must be
-earned or changed at each stage, and how that reaches the goal. Matching the tone or reusing a
-title pattern alone does not preserve that relationship. Later user corrections override an
-earlier attractive but unworkable version.
+For same-style variants, build the batch by **substitution into the selected example**, not by
+brainstorming other ideas in its genre. First identify its invariant relationship and the slots
+that can change. Keep the selected subject/domain unless this turn names a literal `direct_topic`;
+keep the format, causal mechanism, completion goal, restrictions and title/opening construction
+unless the user changes them. Later corrections override earlier proposals. These defaults never
+override the current instruction.
 
-Vary only slots the request leaves open, such as the starting resource, setting or unlock targets;
-do not replace the underlying challenge with an unrelated obstacle, timer or objective. A request
-for variants of one mechanism permits concrete substitutions within that mechanism. Do not force
-a different mechanism merely to make the batch seem more diverse. Each variant must still be a
-usable specific idea rather than an unfilled template or a paraphrase of the identical example.
+In the existing `overview.portfolio_logic`, state the selected example and its relationship in
+plain language: the concrete starting input, how it produces progress, what controls each stage,
+and the end condition. Name the slots this batch changes. Preserve the **kind and number of inputs**
+as well as their causal roles. If one specific resource funds successive unlocks, another specific
+resource can replace it; a location, an activity, a collection of unrelated income sources or a
+new prohibition cannot replace that resource. Merely adding an unlock board to a different
+challenge does not preserve the mechanism. Do not broaden the slots to create variety.
 
-During the single generation pass, check every proposed item against those invariants: its title
-and hook preserve the promise and writing form, and its making direction explicitly explains how
-the same mechanism reaches the goal with the changed elements. Remove or correct an item that
-only matches the genre or tone before writing the complete IdeaSet. This is the Agent's semantic
-check within the existing generation budget, not a new script validator or extra revision loop.
-Programmatic validation cannot establish that the chosen referent or mechanism is right.
+For each item, instantiate those slots first, then write its title, hook and `making_direction`
+from that mapping. The making direction must name the actual starting input, its earning or
+transformation loop, the staged cost/condition and the unchanged goal. Put any necessary proposed
+rules in the idea itself; distinguish them from facts about how a platform or game works. Prices
+and production tuning may remain to be tested, but the input and its progression loop cannot be
+left as "choose a resource", "define a currency" or another task for the creator. A requested
+fill-in template is the exception: retain its blanks and supply the requested filled examples
+under the template rules.
+
+During this same generation pass, compare each completed item with the selected relationship,
+not with the broad genre or the batch introduction. A matching title or a claim that all items
+share the mechanism cannot compensate for a missing or changed link in an individual item.
+Replace such an item with a concrete substitution before writing the complete IdeaSet. Distinct
+substitutions count as useful variety; do not force different mechanisms to satisfy novelty.
+This is the Agent's semantic check within the existing generation budget, not a new script
+validator or extra revision loop. Programmatic validation cannot establish that the referent
+or mechanism is right.
 
 Repeated native IdeaSet titles are rejected; semantic novelty and
 style consistency still need the Agent's comparison. A brief-only continuation needs a literal

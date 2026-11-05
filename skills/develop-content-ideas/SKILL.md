@@ -1,6 +1,6 @@
 ---
 name: develop-content-ideas
-description: "Turn creator research, an explicit topic or earlier conversation into distinct content ideas to compare and choose. Use for more ideas or same-style variations of an earlier direction, first topics for a new account, ideas within a production budget, or ideas from video comments. Not for writing or completing part 2 of a specific post/story (create-script-and-packaging), diagnosing an account or planning a posting calendar."
+description: "Generate batches of distinct content ideas from creator research, a stated topic or prior conversation. Use for more ideas in the style of a selected earlier example, first topics for a new account, ideas within a production budget or ideas from video comments."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching a video's comments also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for comments only: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_list_comments tiktok_discovery_list_comments tiktok_discovery_list_comment_replies start_skill_run
@@ -98,9 +98,10 @@ invent extra critique/rewrite loops. Record network, 5xx or truncation retries w
 `--record-network-retry` as `references/core-generation.md` says; they use no attempt.
 
 1. Apply explicit production constraints. Record only assets the user supplied or evidence shows
-   are available. For "same style" or a numbered reference, first lock the selected example and its
-   unchanged mechanism, format and promise; vary only the open elements and compare every item
-   before writing it. Follow *Continuations* for both source binding and this semantic check.
+   are available. For "same style" or a numbered reference, lock the selected example's causal
+   relationship and substitute only its open slots, keeping their kind and number. State this in
+   `overview.portfolio_logic`; map every item's concrete input, progression and goal in
+   `making_direction`. Follow *Continuations* for source binding and the per-item semantic check.
 2. In **one** generation pass, write the complete `idea_set.json`: distinct titles the Creator could publish, hooks, making direction, evidence basis, ranking, gates, and limitations. Remove near-duplicates and rank by Creator fit, evidence strength, differentiation, timeliness, and realistic production cost. A plain question or statement is sufficient for a title; keep teaching method detail in `making_direction`. Never invent loss amounts, customer outcomes, efficiency gains, market facts, policy facts, numbers, or URLs. Preserve artifact-level lineage in `upstream_sources`, context-level refs in `source_context_refs`, `must_avoid` as `must_differ`, and risk language. `assets_used` must stay within declared `available_assets`. For shortlist intents only, unconfirmed future `required_assets` are allowed with `requires_user_confirmation`, explicit `assumptions` and a `production_missing` gate; never treat them as owned or used. Capacity plans require all resources to be available; exclusions still apply. Do not edit, patch, or replace the skill scripts, schemas, or validators; fix a rejected IdeaSet by revising only `idea_set.json` once.
 3. Put missing information into `gates.selection_missing` only when it prevents a valid choice.
    Put filming, editing, CTA, cadence, or other later details into `gates.production_missing`;
