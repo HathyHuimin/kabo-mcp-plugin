@@ -4,6 +4,17 @@ Apply this gate to initial diagnoses and follow-ups, including results after ear
 Reuse facts already supplied; ask together only for the missing facts needed for this decision.
 An earlier assistant's platform assumption or causal claim is not verified evidence.
 
+## Choose the response branch first
+
+Check whether the actual platform, analytics definition, elapsed time since publication, and a
+same-age comparison are established by the user's records. If any is missing, this turn is a
+clarification: repeat the supplied values without rating them, ask one bundled question for the
+missing context, and stop. Do not append a leading diagnosis, an edit prescription, or a claim
+about what "most likely" happened. Putting questions after a diagnosis does not satisfy this gate.
+Earlier assistant language, including the platform it assumed, does not fill missing evidence.
+Once the context is aligned, use the hypothesis and testing branch below. This is not a permanent
+refusal: supplied definitions and a valid comparison should unlock useful analysis.
+
 ## Align the observation
 
 - Identify the actual platform, content format and post. A host default or earlier mention of

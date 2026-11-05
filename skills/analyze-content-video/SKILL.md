@@ -8,16 +8,21 @@ allowed-tools: get_research_capabilities get_research_data_job get_research_data
 
 # Analyze Content Video
 
+When the host supports one, run this Skill in a foreground sub-agent, because a full diagnosis takes
+many steps, and wait for its final result before replying; never run it in the background and tell
+the user the report will come later. Without a foreground sub-agent, follow the same steps in the
+main thread.
+
 One post, one editing decision. Videos use timestamps; still-image posts use their original slide
 positions. The schemas, deterministic computation, renderers and validators ship in this Skill's
 `references/` and `scripts/`.
 
-**Reported performance is not a causal diagnosis.** For watch/skip metrics or a follow-up saying
-earlier advice failed, first read [post-publication review](references/post-publication-review.md).
-Align platform, metric denominator, post age and comparison before interpreting the numbers.
-When these are missing, ask for the missing context and give only conditional checks; do not
-declare the opening at fault or pretend a media diagnosis is complete. This clarification does
-not require the full diagnosis pipeline below.
+**Performance follow-up: clarify before diagnosing.** Read
+[post-publication review](references/post-publication-review.md) first for reported watch/skip
+metrics or results after earlier advice. If platform, metric definition, post age or comparable
+baseline is unresolved, answer with the raw observations and one bundled clarification, then
+stop this turn. Do not rate the metrics, rank causes or prescribe edits yet; earlier assistant
+claims are not measurement evidence. Continue the diagnosis only after resolving that gate.
 
 **Delivery.** A diagnosis ends with `finish_diagnosis.py`, which prints the validated
 `report/VIDEO_DIAGNOSIS.md`. Relay it once, complete. A Chinese or English report already comes
@@ -30,11 +35,6 @@ second paraphrased report or narrate artifact writing, validation, file paths, c
 or providers. If the run fails, say the requested report could not be completed; never present
 unvalidated output as a report, and never answer from fetched data or your own knowledge instead of
 the report the final step prints.
-
-When the host supports one, run this Skill in a foreground sub-agent, because a full diagnosis takes
-many steps, and wait for its final result before replying; never run it in the background and tell
-the user the report will come later. Without a foreground sub-agent, follow the same steps in the
-main thread.
 
 Before acknowledging a correction, check the actual earlier reply or report; do not adopt quoted
 advice as something you said. Attribute a fact the creator revises to them once, instead of claiming

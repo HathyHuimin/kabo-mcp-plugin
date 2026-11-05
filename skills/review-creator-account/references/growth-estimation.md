@@ -2,6 +2,19 @@
 
 Use `<skill directory>/scripts/estimate_growth.py` for a growth estimate, including a follow-up to a complete review. It has no network dependencies. Read actual persisted evidence or a user export; never manufacture observations. JSON retains the evidence rows; a Markdown handoff is saved beside it and printed. `computed` means arithmetic succeeded, not that future performance is known.
 
+## Decide whether the requested forecast is identifiable
+
+First resolve the target from the immediately preceding request and reply. For an existing post,
+a single lifetime view/like observation does not define its next-month or next-year trajectory.
+If that is all the evidence, correct earlier invented odds, ask for dated observations of that
+post, and stop the numeric forecast. Do not substitute a channel-content scenario to fill the
+requested monthly table. If the user switches targets, assess the new target separately.
+
+A historical per-post median times a posting cadence estimates a batch at the sampled posts'
+observed ages. It is not a monthly deadline series, and adding it repeatedly to today's account
+stock does not make it one. Keep this distinction even under a "conditional" label. Engagement
+combining likes and comments is not a like rate; never use it to compute future likes.
+
 ## Before answering a forecast or extending one
 
 Resolve the account versus a particular post, the platform, metric definition (net additions,
