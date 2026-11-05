@@ -36,8 +36,9 @@ a creative proposal nor permission to edit proves that it was posted. A sequel t
 an actual published episode needs that episode's content, ending and unresolved
 point under [source-adaptation.md](source-adaptation.md), before supplying any
 episode-specific recap or new events. The same check applies to practical advice
-that would fill in those events; with a missing source, keep general craft advice
-free of invented story details and resolve the gap first. For an existing script's
+that would fill in those events; with a missing published source, ask for its script, link or
+summary with the ending and stop this turn. Do not append craft examples or suggested plot.
+For an existing script's
 cover/opening alternatives, retain [partial-script-edits.md](partial-script-edits.md)
 and its exact-message, version and authorized-scope checks. Those structural checks
 do not establish that the agent chose the correct referent.

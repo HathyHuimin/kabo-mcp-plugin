@@ -21,12 +21,11 @@ observations already available in this conversation. For "my latest post", a lis
 identify a candidate, but only the selected post's content establishes its story.
 An account review, title, thumbnail, genre or remembered character is not the
 episode. A previous assistant proposal is not proof of what the creator posted.
-If the actual content is absent, the first response asks for the script, link or a summary
-with the ending. At most add a generic structure for advancing a sequel, without specific
-characters, plot events or sample dialogue. Do not infer the missing story from another
-series in the same account, even as an illustrative example. Advice about "how to make part 2"
-has the same boundary as a request to write it. A supplied link still needs content retrieval
-before it supports episode-specific writing.
+If the actual content is absent, ask one concise question for the script, link or a summary
+with the ending, then stop this turn. Do not append a plan, example, hook or sample dialogue;
+even an illustrative example can smuggle in an unverified plot or another series' characters.
+Advice about "how to make part 2" has the same clarification-only boundary as a request to
+write it. A supplied link still needs content retrieval before it supports episode-specific writing.
 
 From that source, identify the established events, the ending/reveal and any
 unresolved question. Keep the source reference attached to those facts; source
