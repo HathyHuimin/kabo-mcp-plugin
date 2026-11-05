@@ -1092,6 +1092,36 @@ def presentation_inputs_are_safe(idea_set: Any) -> bool:
     return not validate_schema_value(idea_set, guard, schema, "$")
 
 
+def shortlist_hook_errors(idea_set: Any, request: Any) -> list[str]:
+    """只读取类型安全的 Hook 依赖，让无关 schema 错误不遮住可确认的问题。"""
+    errors: list[str] = []
+    if not isinstance(idea_set, dict) or not isinstance(request, dict):
+        return errors
+    intent = request.get("task_intent")
+    count = request.get("hook_option_count")
+    if (not isinstance(intent, str) or intent not in {"open_shortlist", "capacity_plan", "brief_only"}
+            or type(count) is not int or count not in (1, 2)):
+        return errors
+    ideas = idea_set.get("ideas")
+    if not isinstance(ideas, list):
+        return errors
+    for item in ideas:
+        if not isinstance(item, dict) or not isinstance(item.get("hook_preview"), dict):
+            continue
+        prefix = item.get("idea_id") if has_text(item.get("idea_id")) else "<unknown>"
+        preview = item["hook_preview"]
+        progressive = preview.get("progressive_line")
+        if count == 1:
+            require(progressive is None, f"{prefix}: one-Hook request must set progressive_line to null", errors)
+        else:
+            require(has_text(progressive), f"{prefix}: two-Hook request requires progressive_line", errors)
+            opening = preview.get("opening_line")
+            if isinstance(progressive, str) and isinstance(opening, str):
+                require(normalized(progressive) != normalized(opening),
+                        f"{prefix}: progressive_line must not repeat opening_line", errors)
+    return errors
+
+
 
 def validate_idea_set(
     idea_set: dict[str, Any], request: dict[str, Any], request_path: Path
@@ -1100,6 +1130,7 @@ def validate_idea_set(
     errors = validate_request(request, request_path)
     validate_json_schema(idea_set, IDEA_SET_SCHEMA, "idea_set", errors)
     if errors:
+        errors.extend(shortlist_hook_errors(idea_set, request))
         if presentation_inputs_are_safe(idea_set):
             try:
                 # Both projections share one strict translation map. Run it
@@ -1108,6 +1139,7 @@ def validate_idea_set(
             except ValueError as exc:
                 errors.append(str(exc))
         return errors
+    errors.extend(shortlist_hook_errors(idea_set, request))
     decision = generation_decision(request)
 
     require(idea_set.get("request_id") == request.get("request_id"), "idea_set request_id mismatch", errors)
@@ -1312,16 +1344,6 @@ def validate_idea_set(
                 )
         else:
             require(not hook_options, f"{prefix}: hook_options are reserved for rework_content", errors)
-            progressive = hook_preview.get("progressive_line")
-            if hook_count == 2:
-                require(has_text(progressive), f"{prefix}: two-Hook request requires progressive_line", errors)
-                require(
-                    normalized(progressive) != normalized(hook_preview.get("opening_line")),
-                    f"{prefix}: progressive_line must not repeat opening_line",
-                    errors,
-                )
-            elif hook_count == 1:
-                require(progressive is None, f"{prefix}: one-Hook request must set progressive_line to null", errors)
 
         feasibility = item.get("production_feasibility") or {}
         estimate = feasibility.get("estimated_minutes")
