@@ -7,6 +7,17 @@ CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'references/report-l
 LEGACY_LANGUAGES = {'zh', 'en', 'fr', 'ar'}
 
 
+def canonical_display_vocabulary():
+    """从既有 schema 读取展示枚举；额外合法映射不会成为新证据或输出内容。"""
+    schema = json.loads((Path(__file__).resolve().parents[1] / 'references/idea-set.schema.json').read_text(encoding='utf-8'))
+    fields = [schema['properties'][name] for name in ('status', 'task_intent', 'source_mode')]
+    fields.append(schema['$defs']['ideaCandidate']['properties']['production_feasibility']['properties']['effort'])
+    return {value for field in fields for value in field['enum']}
+
+
+CANONICAL_DISPLAY_VOCABULARY = canonical_display_vocabulary()
+
+
 def report_language(data):
     """Validate a locale tag; new languages use authored UI labels, not new catalogs."""
     value = data.get('report_language')
@@ -96,7 +107,8 @@ def presentation_translations(data):
     gaps = (data.get('evidence_summary') or {}).get('data_gaps') or []
     values = rendered_report_values(data)
     labels = ui_label_sources(data)
-    allowed = set(gaps) | values | labels
+    # 备用枚举翻译不影响来源和展示；只对当前实际使用的值要求映射。
+    allowed = set(gaps) | values | labels | CANONICAL_DISPLAY_VOCABULARY
     translations = data.get('evidence_gap_translations', [])
     if not isinstance(translations, list):
         raise ValueError('evidence_gap_translations must be an array')
@@ -109,7 +121,7 @@ def presentation_translations(data):
             continue
         source, report = item['source_text'], item['report_text']
         if not isinstance(source, str) or source not in allowed or source in seen:
-            reason = 'repeats an earlier entry' if isinstance(source, str) and source in seen else 'is neither an evidence_summary.data_gaps string nor a rendered canonical value or required UI label'
+            reason = 'repeats an earlier entry' if isinstance(source, str) and source in seen else 'is neither an evidence_summary.data_gaps string nor a schema-defined display value, rendered evidence reference or required UI label'
             errors.append(f'Presentation translation must name one unique original gap or rendered canonical value: source_text {source!r} {reason}; '
                           f'remove it. Rendered canonical values: {sorted(values, key=repr)}; data_gaps strings are matched exactly')
             continue

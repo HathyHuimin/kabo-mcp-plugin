@@ -786,7 +786,9 @@ def validate_authored_fields(request: dict[str, Any], errors: list[str], *,
         if constraints.get("status") == "absent":
             require(not present, "absent production_constraints must not contain values or assets", errors)
         elif constraints.get("status") in {"partial", "confirmed"}:
-            require(bool(present), f"{constraints.get('status')} production_constraints must contain at least one value", errors)
+            require(bool(present), f"{constraints.get('status')} production_constraints must contain at least one value; "
+                    "when none was supplied, set status=absent and preserve null fields and empty assets. "
+                    "Do not invent a constraint or ask the user for one just to repair this field", errors)
 
 
 def validate_authored_intent(intent: dict[str, Any], *, has_previous_ideas: bool = False,
