@@ -12,6 +12,13 @@ One post, one editing decision. Videos use timestamps; still-image posts use the
 positions. The schemas, deterministic computation, renderers and validators ship in this Skill's
 `references/` and `scripts/`.
 
+**Reported performance is not a causal diagnosis.** For watch/skip metrics or a follow-up saying
+earlier advice failed, first read [post-publication review](references/post-publication-review.md).
+Align platform, metric denominator, post age and comparison before interpreting the numbers.
+When these are missing, ask for the missing context and give only conditional checks; do not
+declare the opening at fault or pretend a media diagnosis is complete. This clarification does
+not require the full diagnosis pipeline below.
+
 **Delivery.** A diagnosis ends with `finish_diagnosis.py`, which prints the validated
 `report/VIDEO_DIAGNOSIS.md`. Relay it once, complete. A Chinese or English report already comes
 out in the creator's language: relay it unchanged, with at most one short sentence of your own
