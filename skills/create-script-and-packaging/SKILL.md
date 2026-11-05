@@ -1,6 +1,6 @@
 ---
 name: create-script-and-packaging
-description: "Write, continue or complete scripts and stories, including a short follow-up asking to finish an earlier part. Continue available drafts from their stopping point; ask for missing published source content before inventing a sequel. Also write hooks, captions, cover text and platform packaging, or adapt a specified video into written clips or carousel copy. Not for choosing ideas, trend research, publish timing, new artwork, CTR predictions or publishing."
+description: "Write, continue or complete scripts and stories, including short follow-ups asking to finish an earlier part or plan a sequel to a previous post. Write hooks, captions, cover text and platform packaging, or adapt a specified video into written clips or carousel copy."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Optional saved-script access requires the Kabo MCP at https://kabo.sh/mcp-pub. Source-video facts and channel samples come from the creator or existing evidence. Optional image operations need host image download, resize and preview. Kabo permissions, saved scripts only: workspace:read to read, workspace:write to save or replace on request."
 allowed-tools: list_scripts get_script save_script update_script
@@ -30,9 +30,24 @@ Do not append a structure,
 hook, sample line or plot suggestion. A title, account review or earlier creative suggestion is
 not the post; other series in the account do not supply its characters or events. This boundary
 also applies to "how should I do part 2?" and overrides the generic creative-draft fallback.
-If the user instead selects a draft already in the conversation, use that draft without asking
-for it again: check the latest applicable text, character states and stopping point, then continue
-from there. Read `references/source-adaptation.md` for both routes.
+If the user selects an available draft, use the continuation workflow below without asking for it again.
+
+## Continue an available draft
+
+Read `references/source-adaptation.md` before writing the continuation, including for a short
+"finish this part" follow-up. Complete its source, draft and review steps before delivering:
+
+1. Save the selected source and its stopping action, established past events, current character
+   states and unavailable objects in the source files described there.
+2. Write only what happens next. Keep established events true; build new developments on their
+   consequences. A conflicting new account is a disputed claim, not a replacement fact, until
+   the story reconciles it with what the source already established.
+3. Run the overlap check and compare the actual finished draft with every source constraint.
+   Correct contradictions in the draft, then deliver that checked text.
+
+This is the continuation route even when native package inputs are unconfirmed; the independent
+topic-draft fallback does not bypass it. Full rewrites follow the same continuity review, with
+the overlap exception described in the reference.
 
 **Native package delivery.** The Creator-facing result is `SCRIPT_PACKAGE.md`, written by the
 renderer after both validators pass. Deliver it once, exactly as rendered: never summarize, rewrite or retype it, and
