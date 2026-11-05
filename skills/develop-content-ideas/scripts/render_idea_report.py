@@ -40,7 +40,7 @@ def minute_text(feasibility: dict, tr=lambda value: value, display=lambda value:
     return (str(lower) + tr(' 分钟')) if lower == upper else (str(lower) + '–' + str(upper) + tr(' 分钟'))
 
 
-def pending_asset_lines(idea: dict, request: dict | None = None) -> list[str]:
+def pending_asset_lines(idea: dict, request: dict | None = None, tr=lambda value: value) -> list[str]:
     """展示未来所需资源，不改变已声明可用资源的含义。"""
     feasibility = idea.get("production_feasibility") or {}
     if feasibility.get("status") != "requires_user_confirmation" or not feasibility.get("required_assets"):
@@ -48,15 +48,16 @@ def pending_asset_lines(idea: dict, request: dict | None = None) -> list[str]:
     required = feasibility["required_assets"]
     if request is None:
         # 独立调试没有资源可用性证据，只列依赖，不断言资源缺失或已经拥有。
-        label = "Required assets: "
+        label = ""
         pending = required
     else:
         available = set((request.get("production_constraints") or {}).get("available_assets") or [])
-        label = "Pending confirmation: "
+        label = tr("待确认") + ": "
         pending = [asset for asset in required if asset not in available]
-    lines = (["- **Before production:** " + label + "; ".join(normalized_whitespace(asset) for asset in pending)]
+    prefix = tr("- **制作前：** ")
+    lines = ([prefix + label + tr("；").join(normalized_whitespace(asset) for asset in pending)]
              if pending else [])
-    lines.extend("- **Before production:** " + normalized_whitespace(value)
+    lines.extend(prefix + normalized_whitespace(value)
                  for value in feasibility.get("assumptions") or [])
     return lines
 
@@ -227,7 +228,7 @@ def validate_concise(markdown: str, data: dict, request: dict | None = None) -> 
                      f"idea {idea['idea_id']} production effort")
         require_line(section, tr('- **依据：** ') + evidence_text(idea, tr, display),
                      f"idea {idea['idea_id']} primary evidence presentation")
-        for pending_line in pending_asset_lines(idea, request):
+        for pending_line in pending_asset_lines(idea, request, tr):
             require_line(section, pending_line, f"idea {idea['idea_id']} pending production assets")
         boundaries = tr("；").join(
             normalized_whitespace(item)
@@ -389,8 +390,8 @@ def concise(data: dict, request: dict | None = None) -> str:
                 "",
             ]
         )
-        lines.extend(pending_asset_lines(idea, request))
-        if pending_asset_lines(idea, request):
+        lines.extend(pending_asset_lines(idea, request, tr))
+        if pending_asset_lines(idea, request, tr):
             lines.append("")
     selection_questions = data["gates"]["selection_missing"]
     production_questions = data["gates"]["production_missing"]
@@ -444,7 +445,7 @@ def full(data: dict, request: dict | None = None) -> str:
                 f"{tr('- Shoot：')}{shoot_text(idea)}",
                 f"{tr('- Time：')}{minute_text(idea['production_feasibility'], tr, display)}",
                 f"{tr('- Assets：')}{', '.join(idea['production_feasibility']['assets_used']) or tr('无')}",
-                *pending_asset_lines(idea, request),
+                *pending_asset_lines(idea, request, tr),
                 f"{tr('- Primary evidence：')}{evidence_text(idea, tr, display)}",
                 "",
                 tr('### Evidence lineage'),

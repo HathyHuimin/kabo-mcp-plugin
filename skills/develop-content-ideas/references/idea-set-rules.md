@@ -9,8 +9,11 @@ Choose `capacity_plan` only when a positive total-time budget and nonempty `avai
 explicitly supplied or evidenced. A time budget alone does not establish available equipment or
 props. For a brief-only topic shortlist with unknown assets, use `task_intent="brief_only"`; with
 upstream evidence use `open_shortlist`. Preserve all stated time/cost limits under
-`production_constraints` (status `partial`), keep `available_assets=[]`, and treat feasibility as
-conditional. If the user specifically requires a confirmed capacity plan, ask for the missing
+`production_constraints` (status `partial` when some constraints are supplied), keep
+`available_assets=[]`, and treat feasibility as conditional. When no production constraints are
+supplied, use `status="absent"`, null scalar fields and empty assets; a feasible topic or template
+request does not require inventing a time limit or asking the creator to supply one for the schema.
+If the user specifically requires a confirmed capacity plan, ask for the missing
 assets rather than silently downgrading that deliverable.
 
 ## Rules
@@ -22,6 +25,10 @@ assets rather than silently downgrading that deliverable.
   posting-frequency decisions before choosing topics. Do not replace this plan with an
   unprioritized list or invent an algorithmic cadence. The concise renderer carries this field.
 - `open_shortlist`: generate the requested number of distinct ideas.
+- For reusable sentence patterns, keep the fill-in slots in `working_title` and include each
+  requested fully filled example in that candidate's `making_direction`, clearly labelled as an
+  illustration. This field reaches the Creator-facing report; an example only in audit fields or
+  an instruction telling the user to supply their own example does not fulfill the request.
 - `capacity_plan`: requires declared available assets and a positive total-time budget. Record an
   estimated-minute range and assets used for every idea; the sum of maximum minutes must fit the
   declared total budget. Preserve explicit time limits for other intents too: provide conditional

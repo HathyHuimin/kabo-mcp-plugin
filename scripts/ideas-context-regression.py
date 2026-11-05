@@ -14,6 +14,7 @@ SKILL = ROOT / "skills/develop-content-ideas"
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(SKILL / "scripts"))
 import validate_ideas as validator
+import report_language as presentation
 
 FIXTURE = json.loads((ROOT / "scripts/fixtures/ideas-continuation.json").read_text())
 
@@ -383,11 +384,40 @@ class ConversationContract(unittest.TestCase):
         self.prep()
         output = self.output()
         output["evidence_gap_translations"] = [
-            {"source_text": value, "report_text": value} for value in ("unknown", "choose", "answer_production_question")]
+            {"source_text": value, "report_text": value} for value in ("made-up-state", "choose", "answer_production_question")]
         errors = "\n".join(validator.validate_idea_set(output, self.request(), self.root / "request.json"))
-        for value in ("unknown", "choose", "answer_production_question"):
+        for value in ("made-up-state", "choose", "answer_production_question"):
             self.assertIn("source_text " + repr(value), errors)
         self.assertIn("every rendered canonical value", errors)
+
+    def test_unused_schema_display_translations_do_not_block_or_change_the_report(self):
+        """合法备用枚举翻译可以保留，但不能渲染成来源、缺口或当前状态。"""
+        from render_idea_report import concise
+        self.prep()
+        output = self.output()
+        before = concise(output, self.request())
+        missing = presentation.CANONICAL_DISPLAY_VOCABULARY - {
+            item["source_text"] for item in output["evidence_gap_translations"]}
+        output["evidence_gap_translations"].extend(
+            {"source_text": value, "report_text": "备用翻译"} for value in sorted(missing))
+        self.assertEqual([], validator.validate_idea_set(output, self.request(), self.root / "request.json"))
+        self.assertEqual(before, concise(output, self.request()))
+        self.assertNotIn("unknown", presentation.report_value_translations(output))
+        output["evidence_gap_translations"].append({"source_text": "https://invented.example/evidence", "report_text": "虚构证据"})
+        self.assertTrue(validator.validate_idea_set(output, self.request(), self.root / "request.json"))
+
+    def test_absent_production_constraints_need_no_invented_user_input(self):
+        """空制作条件可在同一轮改为 absent，不必虚构限制或向用户索取。"""
+        constraints = self.intent["production_constraints"]
+        for field in constraints:
+            constraints[field] = [] if field == "available_assets" else None
+        constraints["status"] = "partial"
+        code, result = self.prep()
+        self.assertEqual((0, "needs_correction"), (code, result["status"]))
+        self.assertTrue(any("set status=absent" in row["message"] for row in result["issues"]))
+        constraints["status"] = "absent"
+        code, result = self.prep()
+        self.assertEqual((0, "ready_for_generation"), (code, result["decision"]["status"]))
 
     def test_missing_schema_fields_do_not_hide_missing_translations(self):
         """缺失必填字段不能遮住独立展示映射错误。"""
@@ -426,7 +456,14 @@ class ConversationContract(unittest.TestCase):
         self.write("idea_set.json", output)
         code, result = self.run_stage("core")
         self.assertEqual((0, "ok"), (code, result["status"]), result)
-        self.assertIn("Pending confirmation: A consenting guest", (self.root / "RESULT.md").read_text())
+        self.assertIn("To confirm: A consenting guest", (self.root / "RESULT.md").read_text())
+        from render_idea_report import concise, full
+        output["report_language"] = "fr"
+        for report in (concise(output, self.request()), full(output, self.request())):
+            self.assertIn("Avant la réalisation", report)
+            self.assertIn("À confirmer: A consenting guest", report)
+            self.assertNotIn("Before production", report)
+        output["report_language"] = self.request()["report_language"]
         feasibility["assets_used"] = ["A consenting guest"]
         errors = validator.validate_idea_set(output, self.request(), self.root / "request.json")
         self.assertTrue(any("assets_used must be a subset" in error for error in errors), errors)
