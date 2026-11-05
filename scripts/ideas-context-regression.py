@@ -20,6 +20,7 @@ FIXTURE = json.loads((ROOT / "scripts/fixtures/ideas-continuation.json").read_te
 
 class ConversationContract(unittest.TestCase):
     def setUp(self):
+        """Prepare one isolated follow-up and the exact earlier visible messages."""
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)
@@ -35,17 +36,20 @@ class ConversationContract(unittest.TestCase):
         self.source_path = self.root / "visible-messages.json"
 
     def write(self, name, data):
+        """Persist a fixture with stable UTF-8 text and return its run-local path."""
         path = self.root / name
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
         return path
 
     def run_stage(self, stage, *flags):
+        """Exercise the real prep or core CLI and parse its structured result."""
         result = subprocess.run([sys.executable, "-B", str(SKILL / "scripts/run_ideas_stages.py"),
             stage, "--run-dir", str(self.root), *map(str, flags)], capture_output=True, text=True)
         self.assertTrue(result.stdout, result.stderr)
         return result.returncode, json.loads(result.stdout)
 
     def prep(self, with_source=True, *flags):
+        """Supply the authored intent and optional original conversation artifact."""
         intent = self.write("intent.json", self.intent)
         source_flags = []
         if with_source:
@@ -54,9 +58,11 @@ class ConversationContract(unittest.TestCase):
         return self.run_stage("prep", "--intent", intent, *source_flags, *flags)
 
     def request(self):
+        """Read the request that the builder actually retained for core."""
         return json.loads((self.root / "request.json").read_text())
 
     def output(self):
+        """Build three structurally valid proposals without grading creative quality."""
         output = copy.deepcopy(FIXTURE["idea_set"])
         output["ideas"] = []
         for rank in range(1, 4):
@@ -67,6 +73,7 @@ class ConversationContract(unittest.TestCase):
         return output
 
     def test_exact_chat_and_current_request_are_separate_through_core(self):
+        """Keep the current query and historical bytes separate through report delivery."""
         code, prep = self.prep()
         self.assertEqual((0, "ok", "ready_for_generation"),
                          (code, prep["status"], prep["decision"]["status"]))
@@ -87,11 +94,13 @@ class ConversationContract(unittest.TestCase):
         self.assertTrue((self.root / "RESULT.md").stat().st_size)
 
     def test_missing_chat_needs_context_and_not_a_repeated_user_request(self):
+        """Preserve the missing-context decision without inventing a source."""
         del self.intent["generation_basis"]["continuation_quote"]
         code, prep = self.prep(False)
         self.assertEqual((0, "needs_selection_context"), (code, prep["decision"]["status"]))
 
     def test_chat_cannot_replace_required_research(self):
+        """Keep account research requirements blocking despite available chat context."""
         self.intent["generation_basis"]["required_sources"] = ["account"]
         code, prep = self.prep()
         self.assertEqual((0, "blocked_missing_required_source"), (code, prep["decision"]["status"]))
@@ -100,6 +109,7 @@ class ConversationContract(unittest.TestCase):
         self.assertFalse(prep["decision"]["brief_fallback_used"])
 
     def test_chat_cannot_be_cited_as_research(self):
+        """Reject a chat reference presented as verified research evidence."""
         self.prep()
         request = self.request()
         self.assertEqual("brief_only", request["source_mode"])
@@ -110,6 +120,7 @@ class ConversationContract(unittest.TestCase):
         self.assertTrue(any("evidence_refs" in error for error in errors), errors)
 
     def test_wrong_index_reports_exact_match_without_silently_rebinding(self):
+        """Suggest the exact source index but require an explicit caller correction."""
         self.source["reference"]["message_index"] = 0
         code, prep = self.prep()
         self.assertEqual((0, "needs_correction"), (code, prep["status"]))
@@ -121,6 +132,7 @@ class ConversationContract(unittest.TestCase):
         self.assertEqual("ok", self.prep()[1]["status"])
 
     def test_empty_forged_or_out_of_range_reference_is_rejected(self):
+        """Reject malformed text, reference indices and forged binding metadata."""
         mutations = [
             lambda s: s.update(messages=[]),
             lambda s: s["messages"][0].update(role="system"),
@@ -141,6 +153,7 @@ class ConversationContract(unittest.TestCase):
                     validator.bound_conversation_context(path, self.root)
 
     def test_source_bytes_cannot_change_after_prep(self):
+        """Stop core when the retained conversation bytes no longer match their digest."""
         self.prep()
         self.write("idea_set.json", self.output())
         source = self.root / self.request()["conversation_context"]["path"]
@@ -151,6 +164,7 @@ class ConversationContract(unittest.TestCase):
         self.assertFalse((self.root / "RESULT.md").exists())
 
     def test_one_correction_only_and_no_reset_after_exhaustion(self):
+        """Keep an exhausted preparation budget final after a source is corrected."""
         self.source["reference"]["quote"] = "not in source"
         self.assertEqual("needs_correction", self.prep()[1]["status"])
         code, prep = self.prep()
@@ -161,16 +175,19 @@ class ConversationContract(unittest.TestCase):
         self.assertEqual(before, (self.root / "stage_timing.json").read_bytes())
 
     def test_no_history_topic_is_smuggled_into_current_direct_topic(self):
+        """Reject historical topics represented as literal words in the current query."""
         self.intent["generation_basis"]["direct_topic"] = "ordinary survival world"
         code, prep = self.prep()
         self.assertEqual((0, "needs_correction"), (code, prep["status"]))
         self.assertTrue(any(issue["code"] == "invalid_direct_topic" for issue in prep["issues"]))
 
     def test_current_continuation_quote_must_be_literal(self):
+        """Reject a continuation trigger that the current user request never contains."""
         self.intent["generation_basis"]["continuation_quote"] = "not in current request"
         self.assertEqual("needs_correction", self.prep()[1]["status"])
 
     def test_current_explicit_topic_still_works_without_history(self):
+        """Preserve the direct-topic route for a self-contained current request."""
         self.intent["user_brief"]["text"] = "Give me three workflow ideas."
         self.intent["generation_basis"].pop("continuation_quote")
         self.intent["generation_basis"]["direct_topic"] = "workflow"
@@ -179,6 +196,7 @@ class ConversationContract(unittest.TestCase):
         self.assertNotIn("conversation_context", self.request())
 
     def test_existing_native_ideas_route_remains_supported(self):
+        """Retain compatibility with an original native IdeaSet as creative history."""
         previous = self.output()
         previous["request_id"] = "earlier-request"
         path = self.write("earlier-ideas.json", previous)
@@ -188,18 +206,21 @@ class ConversationContract(unittest.TestCase):
         self.assertNotIn("conversation_context", self.request())
 
     def test_missing_chat_file_can_be_restored_in_one_correction(self):
+        """Allow the caller to restore the missing source within the existing budget."""
         code, prep = self.prep(False, "--conversation-context", self.source_path)
         self.assertEqual((0, "needs_correction"), (code, prep["status"]))
         self.assertTrue(any(issue["code"] == "missing_conversation_context" for issue in prep["issues"]))
         self.assertEqual("ok", self.prep()[1]["status"])
 
     def test_both_source_routes_are_rejected(self):
+        """Reject simultaneous native IdeaSet and plain-chat continuation sources."""
         previous = self.write("previous.json", {})
         code, prep = self.prep(True, "--previous-ideas", previous)
         self.assertEqual((0, "needs_correction"), (code, prep["status"]))
         self.assertTrue(any("choose either" in issue["message"] for issue in prep["issues"]))
 
     def test_missing_file_and_independent_reference_error_are_reported_together(self):
+        """Report unavailable upstream evidence and an invalid chat quote in one response."""
         self.source["reference"]["quote"] = "not in source"
         code, prep = self.prep(True, "--account-review", self.root / "missing-account.json")
         self.assertEqual((0, "needs_correction"), (code, prep["status"]))
@@ -207,6 +228,7 @@ class ConversationContract(unittest.TestCase):
         self.assertTrue(any("reference.quote" in issue["message"] for issue in prep["issues"]))
 
     def test_schema_errors_do_not_hide_current_topic_and_derived_field_errors(self):
+        """Keep independent topic and source-provenance errors visible beside schema errors."""
         self.intent["idea_count"] = "three"
         self.intent["generation_basis"]["direct_topic"] = "ordinary survival world"
         self.intent["conversation_context"] = self.source
@@ -217,6 +239,7 @@ class ConversationContract(unittest.TestCase):
             self.assertIn(expected, messages)
 
     def test_schema_and_missing_presentation_translation_are_reported_together(self):
+        """Report missing display translations in the same pass as schema failures."""
         self.prep()
         output = self.output()
         output["ideas"][0]["unexpected"] = True
@@ -226,6 +249,7 @@ class ConversationContract(unittest.TestCase):
         self.assertTrue(any("Explicit report languages require evidence_gap_translations" in error for error in errors), errors)
 
     def test_core_reports_both_errors_then_uses_only_one_revision(self):
+        """Deliver after one revision fixes the schema and translation failures together."""
         self.prep()
         output = self.output()
         output["ideas"][0]["unexpected"] = True
@@ -242,6 +266,7 @@ class ConversationContract(unittest.TestCase):
         self.assertEqual((0, "ok", 2), (code, revised["status"], revised["generation_attempts"]))
 
     def test_unsafe_schema_shapes_do_not_become_presentation_exceptions(self):
+        """Return structural diagnostics without incidental type or attribute exceptions."""
         self.prep()
         for broken in (None, [], [None], [{"production_feasibility": "wrong type"}]):
             with self.subTest(ideas=broken):
