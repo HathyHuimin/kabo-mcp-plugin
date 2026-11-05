@@ -47,7 +47,11 @@ async function prepare(payload) {
     if (out.includes("needs_correction")) return { out, assessment: null };
     const assessment = JSON.parse(await readFile(path.join(dir, "reach_drop_assessment.json"), "utf8"));
     const evidence = await readFile(path.join(dir, "TRAFFIC_EVIDENCE.md"), "utf8");
-    return { out, assessment, evidence };
+    const verdicts = spawnSync("python3", ["-B", "-c",
+      "import json,sys; sys.path.insert(0, sys.argv[1]); from compose_traffic import verdict; "
+      + "a = json.load(open(sys.argv[2])); print('\\n'.join(verdict(q, z) for q in a['questions'] for z in (True, False)))",
+      path.dirname(workflow), path.join(dir, "reach_drop_assessment.json")], { env, encoding: "utf8" });
+    return { out, assessment, evidence, verdict: verdicts.stdout + verdicts.stderr };
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -64,6 +68,13 @@ test("two calendar weeks keep their own windows and compare", async () => {
   assert.match(evidence, /60\.00%/);
   assert.match(evidence, /30\.00%/);
   assert.doesNotMatch(evidence, /Post-publication observation age/);
+});
+
+test("two calendar weeks get a period verdict, not 'missing matching totals'", async () => {
+  const { out, verdict } = await prepare(brief());
+  assert.match(verdict, /两个日历周期相比，该来源占比下降，来源量也下降/, out + verdict);
+  assert.match(verdict, /Between the two calendar periods, this source's share fell and its amount fell/);
+  assert.doesNotMatch(verdict, /缺少匹配的总量|without matching totals/);
 });
 
 for (const [name, edit, limit] of [
