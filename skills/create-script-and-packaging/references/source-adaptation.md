@@ -73,10 +73,11 @@ hook, central beats and payoff against the original before delivery; changing
 wording, character labels or the final CTA does not make repeated events a sequel.
 Clearly distinguish new fictional proposals from events observed in the source.
 
-For a published episode whose content is absent, first use the permitted recovery path below
+For a published episode whose content is absent, follow the evidence boundary below
 when the creator supplied or confirmed its exact link. Do not ask for that link again or infer
-the episode from an account post list. If the content remains unavailable, ask for only the
-missing script, source link or summary including the ending and unresolved point, then stop. Do not append
+the episode from an account post list. When clarification is needed, ask only for the missing
+script or a summary including the ending and unresolved point; offer a source link as an
+alternative only when none was supplied, then stop. Do not append
 examples, hooks or a guessed continuation. Do not insert guessed characters, events or a series
 into the clarification itself; ask neutrally about the actual previous post. An available selected draft does not need this
 clarification: use its actual text and stopping point. If the creator says "I already did that",
@@ -92,27 +93,31 @@ it does not authorize inventing its contents or a native SelectedIdea.
 
 Reuse evidence already retrieved for this source in the conversation or the
 workspace. For "latest", the channel's current upload listing and dates must be
-checked before selecting the video (a `review-creator-account` run lists them);
+available before selecting the video (an existing account-review artifact can supply them);
 a remembered URL or matching title is insufficient.
 
-This Skill fetches no video evidence and runs no other Skill. If source content
-is missing, name `analyze-content-video` for that URL as the next step, keep the
-original creative request with packaging, and say what scope to ask it for: a
+This Skill fetches no video evidence and runs no other Skill. If source content is
+missing for a supplied URL and no terminal retrieval failure is already recorded,
+suggest `analyze-content-video` for that URL as the next step, preserve the original
+creative request, and end this turn. State the needed scope in that suggestion: a
 source-facts question (what this video actually says or demonstrates, its
 ordered actions, named methods or tools, evidence anchors and unresolved gaps),
 with timed anchors when the deliverable needs cut points. Its transcript export
 or timestamped evidence answers that; the source URL identifies the evidence
 target, not an instruction to explain why the video went viral. Reading this
-skill does not itself enable a video tool.
+skill does not itself enable a video tool. Do not invoke another Skill, wait for
+its job, reuse a job id or orchestrate a return to packaging within this turn.
+If analysis is already pending, state that the evidence is pending and end the
+turn without recommending a duplicate run.
 
 The creative request and its secondary originality question are not part of
 that scope: the video Skill is not asked to choose a new angle or write the
-carousel. Once its output exists in the conversation or workspace, consume the
-source facts and limitations within that output's own evidence-validation
+carousel. When packaging starts with an existing analysis artifact in the
+conversation or workspace, consume its source facts and limitations within its evidence-validation
 limits. If it also contains a diagnosis, craft teardown or creative proposal,
-those recommendations do not redefine the main task. Resume packaging with the
-original request once evidence is sufficient, rather than relaying that report
-as the final adaptation. Do not claim a retrieval failed if no retrieval was
+those recommendations do not redefine the main task. Complete the original creative
+request from sufficient existing evidence rather than relaying that report as the
+final adaptation. Do not claim a retrieval failed if no retrieval was
 attempted. Bind a video-analysis result through `video_analysis_sources` by its
 `analysis/video_analysis.json` (`video-analysis.v1`, `artifact_id` = its
 `analysis_id`), never by its report Markdown or a summary written here.
@@ -125,14 +130,12 @@ observations as reported rather than directly seen. Paraphrase and attribute
 `observations[].on_screen_text`; never present it as a verbatim source quote,
 even if an upstream narrative suggests quoting it. An exact quotation needs
 independently verifiable source text or a directly inspected source frame.
-Do not invent speech from silent frames. When an analysis of this source is
-already pending, wait for its output rather than suggesting another paid run.
-Reuse its job id only while the host still accepts it; if the host rejects that
-id as not belonging to this turn, the analysis has to run again in this turn —
-do not ask the creator to describe a video that a permitted path can still read.
-Respect terminal errors recorded in that output. When no permitted path can
-recover material facts needed for the adaptation, identify that specific gap
-and ask for the minimum missing source material, preserving usable work.
+Do not invent speech from silent frames. Respect terminal errors recorded in
+existing evidence. If retrieval of a supplied URL failed or the available result
+still lacks necessary facts, identify the gap and ask only for the missing script
+or a summary covering the ending and unresolved point; do not request that URL
+again. If no URL was supplied, a source link is also a valid alternative. Preserve
+the original deliverable and usable work, and end this clarification turn.
 
 ## Return to the requested format
 

@@ -19,11 +19,11 @@ audience, goal or CTA uses the creative-draft route; a native package uses a fro
 and the contracts below.
 
 **Before any sequel, resolve its source.** Reuse available content. If the creator already supplied
-or confirmed the exact source link, use the permitted recovery path in `references/source-adaptation.md`
-before asking for missing content; do not ask for that link again. A post list alone does not
-confirm which episode is meant. If the published content remains unavailable, this turn is a
-clarification only: ask for the missing script, source link or summary including the ending,
-then end the response and wait. Keep the question neutral: do not supply character names,
+or confirmed the exact source link, follow the evidence boundary in `references/source-adaptation.md`;
+do not ask for that link again. A post list alone does not confirm which episode is meant.
+When missing published content requires clarification, ask only for its script or a summary
+including the ending and unresolved point; offer a source link as an alternative only when
+none was supplied. Then end the response and wait. Keep the question neutral: do not supply character names,
 plot facts or a candidate series from account metadata or earlier unrelated suggestions.
 Those identities are part of the missing source, not assumptions to build into the question.
 Do not append a structure,
