@@ -189,7 +189,7 @@
       "additionalProperties": false,
       "required": ["candidate_skill", "source_artifact_refs", "decision_rationales", "refused_fallbacks"],
       "properties": {
-        "candidate_skill": {"const": "plan-content-calendar@0.1.24"},
+        "candidate_skill": {"const": "plan-content-calendar@0.1.25"},
         "source_artifact_refs": {
           "type": "array",
           "uniqueItems": true,
