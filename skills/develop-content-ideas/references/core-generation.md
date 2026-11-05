@@ -80,18 +80,27 @@ one source route:
   Pass `--conversation-context conversation-source.json`. Prep retains the original bytes and
   derives `conversation_context`; never write that field into `intent.json`.
 
-Never author `continuation_context` or `conversation_context`, and never paste earlier text into
-`user_brief`. Both routes are unverified creative context, never account, trend or comment
-evidence, approval, or proof that an idea was published; earlier factual claims stay unverified
-unless current artifacts back them. If the referenced text is genuinely unavailable, ask only for
-that context; never invent a topic or silently drop required research.
-
-When generating, read the bound `continuation_context` or `conversation_context` from
-`request.json` first and apply the current request's exclusions and count.
+Do not combine both routes, paste history into `user_brief`, invent a previous IdeaSet, or read host
+session files. Reuse context already visible to the Agent; only request missing source material
+when it is unavailable. Chat is unverified creative context, not account, trend, comment or video
+evidence, and never satisfies a missing research requirement. The program checks the literal
+quote, index and retained bytes; the Agent must judge whether the reference and style are correct.
+The conversation reference is already bound by `conversation_context`. Do not copy it into an
+IdeaSet's `source_context_refs` or invent IDs for it. Those arrays reference only the validated
+research contexts in the request's `idea_context`; without those contexts, keep both the top-level
+and each idea's `source_context_refs` empty. Chat binding and research lineage are different fields.
+Earlier claims are not approval or proof that an idea was published; factual claims remain
+unverified unless current artifacts support them. Never author the derived context fields.
+Before generating, read the bound context from `request.json`, preserving current exclusions and
+count; do not invent a topic or silently drop required research.
 
 For same-style variants, build the batch by **substitution into the selected example**, not by
-brainstorming other ideas in its genre. First identify its invariant relationship and the slots
-that can change. Keep the selected subject/domain unless this turn names a literal `direct_topic`;
+brainstorming other ideas in its genre. Derive a shared title, opening and making-direction
+scaffold from the selected example, leaving only the changeable slots open. Choose all requested
+concrete slot values before expanding any item, then use the same scaffold for each. A shared
+sentence pattern and mechanism are the requested similarity, not duplicates to remove. Rank
+`differentiation` only by the slot substitutions and their consequences within that mechanism.
+Keep the selected subject/domain unless this turn names a literal `direct_topic`;
 keep the format, causal mechanism, completion goal, restrictions and title/opening construction
 unless the user changes them. Later corrections override earlier proposals. These defaults never
 override the current instruction.
