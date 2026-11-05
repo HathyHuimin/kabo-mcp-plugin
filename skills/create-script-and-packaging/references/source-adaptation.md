@@ -17,6 +17,10 @@ Do not require proof of publication or ask for the same draft again.
    its final action, already completed beats, current character states and the condition of props
    that the continuation uses. A superseded outline
    does not override the latest selected text.
+   Before drafting, write `source-state.md` from that text: the stopping action and every established
+   loss or constraint on a character, object or resource, with its short source quote. Include
+   unavailable abilities and broken, lost or consumed objects even if the planned continuation
+   does not use them. Keep them unavailable unless the new text explicitly establishes a transition.
 2. Write only the missing continuation into `continuation.md`. Its first new action follows the
    source's last action; do not restart the part. One brief orienting sentence is enough. Preserve
    established past events. A new twist may add consequences, not replace what already happened.
@@ -31,8 +35,9 @@ Do not require proof of publication or ask for the same draft again.
    substantial copied passages, not plot, character or prop errors; step 4 remains required.
 4. Review the returned source and actual finished text before replying. Save a short
    `continuity-review.md`: the source's last action versus the continuation's first new action;
-   then each carried-forward character or prop's established state versus the actual passage
-   using it. Quote the relevant short passages, rather than only declaring that a check passed.
+   then every entry in `source-state.md` versus its actual use or absence in the finished text,
+   including the ending and cliffhanger. Do not drop a constraint from review because it was
+   absent from the outline. Quote the relevant short passages, rather than only declaring that a check passed.
    A damaged or lost object cannot silently work again; a character cannot silently regain an
    ability. Depict any repair, replacement, recovery or other transition before relying on it.
    Explicitly attribute recordings, imitations, gestures and inner thoughts so they cannot read as
@@ -67,7 +72,8 @@ For a published episode whose content is absent, first use the permitted recover
 when the creator supplied or confirmed its exact link. Do not ask for that link again or infer
 the episode from an account post list. If the content remains unavailable, ask for only the
 missing script, source link or summary including the ending and unresolved point, then stop. Do not append
-examples, hooks or a guessed continuation. An available selected draft does not need this
+examples, hooks or a guessed continuation. Do not insert guessed characters, events or a series
+into the clarification itself; ask neutrally about the actual previous post. An available selected draft does not need this
 clarification: use its actual text and stopping point. If the creator says "I already did that",
 recheck the source and identify the repeated beat before proposing a replacement;
 do not repeat an unchanged failed retrieval or offer another guessed episode.
