@@ -2,6 +2,13 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.13（2026-11-05；GitHub Release）
+
+- `remake-viral-video`：选口播模型按意思理解（同网页端 kas#320 / creator-remake-web 0.1.39）：确认话术不再要求「回编号 / 回 OK」，
+  改为「告诉我用哪个；想直接开始就用默认档；确认前不生成不扣费」；回复按意思（编号、名字或描述，任何语言）选中某档就用那档，
+  明确要开始但没选就用默认（第一档），看不出或答非所问就简短再问一次、不开工；仍不替用户选。
+- 生产回归：待补。
+
 ## 1.0.12（2026-11-04；GitHub Release）
 
 - `remake-viral-video`：创作者只有照片时也能出片：`start-call --creator-photo`（1–4 个公开 JPEG/PNG 链接，与视频合计最多 4 个）
