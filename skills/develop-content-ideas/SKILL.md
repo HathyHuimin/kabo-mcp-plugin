@@ -1,6 +1,6 @@
 ---
 name: develop-content-ideas
-description: "Turn a creator's account review, trend or competitor research, a video analysis, a video's YouTube or TikTok comments, an explicit topic, or earlier conversation into distinct content ideas the creator can compare and choose from. Use when a creator asks what to make next, wants more ideas or variations in the style of an earlier direction (including one with titles or hooks), wants a first batch of topics for a new account, wants ideas that fit a time or equipment budget, wants follow-up ideas from a video's comments, or wants new hooks for a weak topic. Not for diagnosing an account or planning a posting calendar."
+description: "Turn creator research, an explicit topic or earlier conversation into distinct content ideas to compare and choose. Use for more ideas or same-style variations of an earlier direction, first topics for a new account, ideas within a production budget, or ideas from video comments. Not for writing or completing part 2 of a specific post/story (create-script-and-packaging), diagnosing an account or planning a posting calendar."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching a video's comments also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for comments only: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_list_comments tiktok_discovery_list_comments tiktok_discovery_list_comment_replies
@@ -11,6 +11,14 @@ allowed-tools: get_research_capabilities get_research_data_job get_research_data
 Turn validated upstream artifacts or an explicit topic into an IdeaSet of distinct, selectable
 ideas. The schemas, builders, validators and renderers ship in this Skill's `references/` and
 `scripts/`.
+
+**Check the requested deliverable first.** Continuing or completing an identified story, draft or
+published episode belongs to `create-script-and-packaging`, even when phrased as "how should I make
+part 2?"; it is not a request for a new batch of ideas. If that published episode's actual content
+is missing, ask for its script, link or summary with the ending and stop this turn. Account reviews,
+titles and another series' characters cannot replace it. Do not start ideation or add story examples
+to that clarification. An already supplied selected draft can be continued through packaging
+without asking for it again. Requests for multiple new variations remain here.
 
 **Delivery.** The deliverable is `RESULT.md` at the run root, and only after core reports
 `status="ok"` and the final check passes. Read it completely (every chunk when the host pages) and
