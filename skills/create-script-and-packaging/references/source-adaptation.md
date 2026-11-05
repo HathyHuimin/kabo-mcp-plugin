@@ -12,7 +12,7 @@ First distinguish continuing a published episode from completing a draft the
 user supplied or selected. An available selected draft is sufficient for a
 fictional continuation; do not ask for publication evidence or another copy.
 Use the latest applicable selected text, not a conflicting earlier outline or
-superseded ending. For "complete this part", continue after its last written
+superseded ending. When the user asks to complete an existing part, continue after its last written
 beat rather than restarting the part, unless the user requested a full rewrite.
 
 Before writing, identify the source's stopping point, current character states
