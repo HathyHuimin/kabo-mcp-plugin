@@ -33,7 +33,8 @@ For both conversational proposals and artifact-backed calendars, reuse context a
 before asking for missing inputs. A request for fully filled topics needs a known content direction,
 supplied topics or usable account context; if all are absent, ask for the direction instead of
 inventing a niche. Generic advice and explicitly requested blank templates need no such clarification.
-Resolve an ambiguous planning interval before assigning dates or converting it into weeks. Preserve
+Resolve an ambiguous planning interval before assigning dates or converting it into weeks. Keep
+month-based clarification in calendar-month units, not an assumed fixed day count. Preserve
 explicit dates and durations; while an anchor is missing, offer only a relative draft. Apply the
 input boundaries in `references/advice-and-proposals.md`, including region-dependent holidays.
 
