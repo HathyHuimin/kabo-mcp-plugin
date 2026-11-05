@@ -326,7 +326,7 @@ upstream export. The web agent's Skills are maintained separately.
 `skills.lock.json` records the original source, not a byte-for-byte comparison; update it and
 `runtime-contract.json` when adding or removing a Skill.
 
-Follow the [Kabo Skills specification](docs/skills-spec.md) (Chinese). Run `npm run skills:lint` for
+Follow the [Kabo Skills specification](docs/skills-spec.md). Run `npm run skills:lint` for
 details. Enforcement remains disabled (`skills-spec.json` has an empty `enforced` list), and
 `npm run verify` prints the summary. The MCP artifacts in `contracts/directory-mcp/` record the
 provider commit and file hashes. New tools require an explicit update to those artifacts.
@@ -350,8 +350,6 @@ video evidence, OAuth, incorrect audience/scope, account isolation, deletion, fi
 negative review cases, and a reviewer account. Without complete production evidence,
 `submissionReady=false`.
 
-Maintainer guides are in Chinese: [production acceptance](docs/acceptance.md) and
-[submission materials](docs/submission.md).
 Deployment, marketplace upload and Publish are separate actions.
 
 [Privacy](https://kabo.sh/privacy) · [Terms](https://kabo.sh/terms)
