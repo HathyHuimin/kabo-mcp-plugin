@@ -64,3 +64,40 @@ print("7 Unicode continuation checks passed")
 `], { encoding: "utf8" });
   assert.match(output, /7 Unicode continuation checks passed/);
 });
+
+test("组合附标不丢失，短匹配不触发后续区域搜索", () => {
+  const output = execFileSync("python3", ["-B", "-c", `
+import importlib.util
+from pathlib import Path
+spec = importlib.util.spec_from_file_location("overlap", Path("skills/create-script-and-packaging/scripts/check_continuation_overlap.py"))
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+assert m.check_overlap("काला " * 80, "किला " * 80)["status"] == "no_large_literal_replay"
+assert m.check_overlap("काला " * 80, "काला " * 80)["status"] == "repeated_source"
+assert m.check_overlap("กิ" * 80, "กี" * 80)["status"] == "no_large_literal_replay"
+assert m.check_overlap("กิ" * 80, "กิ" * 80)["status"] == "repeated_source"
+assert m.passage_units("عَلَم عِلْم") == ["عَلَم", "عِلْم"]
+original_matcher = m.difflib.SequenceMatcher
+calls = []
+class LimitedSearch(original_matcher):
+    def find_longest_match(self, *args, **kwargs):
+        calls.append(args)
+        assert len(calls) == 1, "Explored more regions despite longest match below minimum"
+        return super().find_longest_match(*args, **kwargs)
+m.difflib.SequenceMatcher = LimitedSearch
+assert m.check_overlap("a b " * 4000, "b c " * 4000)["status"] == "no_large_literal_replay"
+assert len(calls) == 1
+m.difflib.SequenceMatcher = original_matcher
+assert m.check_overlap("山" * 8000, "山" * 8000)["copied_passage_units"] == 8000
+left = " ".join(f"left{n}" for n in range(35))
+right = " ".join(f"right{n}" for n in range(35))
+source = left + " old middle " + right
+new = left + " changed middle " + right
+expected = sum(b.size for b in original_matcher(None, m.passage_units(source), m.passage_units(new), autojunk=False).get_matching_blocks() if b.size >= 12)
+result = m.check_overlap(source, new)
+assert result["status"] == "repeated_source"
+assert result["copied_passage_units"] == expected
+print("9 mark and bounded-search checks passed")
+`], { encoding: "utf8", timeout: 15000 });
+  assert.match(output, /9 mark and bounded-search checks passed/);
+});
