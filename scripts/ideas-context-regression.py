@@ -355,6 +355,70 @@ class ConversationContract(unittest.TestCase):
                 self.assertTrue(any("overview" in error and "schema" in error for error in errors), errors)
                 self.assertFalse(any("has no attribute" in error or "not iterable" in error for error in errors), errors)
 
+    def test_invalid_brief_does_not_hide_independent_fallback_error(self):
+        """简报格式错误不能遮住与简报无关的生成依据错误。"""
+        self.intent["user_brief"] = []
+        self.intent["generation_basis"]["allow_brief_fallback"] = True
+        code, prep = self.prep()
+        self.assertEqual((0, "needs_correction"), (code, prep["status"]))
+        messages = "\n".join(issue["message"] for issue in prep["issues"])
+        self.assertIn("user_brief", messages)
+        self.assertIn("requires an explicit generation_basis.direct_topic", messages)
+
+    def test_scalar_schema_errors_do_not_hide_missing_translations(self):
+        """非法枚举仍可安全检查展示依赖，完整 schema 继续严格拒绝。"""
+        self.prep()
+        for field, value in (("status", "ready"), ("task_intent", "shortlist"),
+                             ("source_mode", "unknown")):
+            with self.subTest(field=field):
+                output = self.output()
+                output[field] = value
+                output["evidence_gap_translations"] = []
+                errors = "\n".join(validator.validate_idea_set(output, self.request(), self.root / "request.json"))
+                self.assertIn("schema", errors)
+                self.assertIn("every rendered canonical value", errors)
+
+    def test_multiple_bad_translations_and_missing_values_report_together(self):
+        """一次汇总全部映射错误，不用第二轮才揭示下一项。"""
+        self.prep()
+        output = self.output()
+        output["evidence_gap_translations"] = [
+            {"source_text": value, "report_text": value} for value in ("unknown", "choose", "answer_production_question")]
+        errors = "\n".join(validator.validate_idea_set(output, self.request(), self.root / "request.json"))
+        for value in ("unknown", "choose", "answer_production_question"):
+            self.assertIn("source_text " + repr(value), errors)
+        self.assertIn("every rendered canonical value", errors)
+
+    def test_missing_intent_path_preserves_existing_input_budget(self):
+        """调用路径错误既不消耗也不重置已有修订预算。"""
+        missing = self.root / "missing-intent.json"
+        code, result = self.run_stage("prep", "--intent", missing)
+        self.assertEqual((1, "invocation_error", 0), (code, result["status"], result["input_attempts"]))
+        self.assertFalse((self.root / "stage_timing.json").exists())
+        self.source["reference"]["quote"] = "not in source"
+        self.assertEqual("needs_correction", self.prep()[1]["status"])
+        before = (self.root / "stage_timing.json").read_bytes()
+        code, result = self.run_stage("prep", "--intent", missing)
+        self.assertEqual((1, "invocation_error", 1), (code, result["status"], result["input_attempts"]))
+        self.assertEqual(before, (self.root / "stage_timing.json").read_bytes())
+
+    def test_pending_resources_are_visible_without_becoming_available(self):
+        """候选可声明未来资源，已拥有与产能约束保持严格。"""
+        self.prep()
+        output = self.output()
+        feasibility = output["ideas"][0]["production_feasibility"]
+        feasibility.update(status="requires_user_confirmation", required_assets=["A consenting guest"],
+                           assumptions=["Confirm a guest before recording."])
+        output["gates"]["production_missing"] = ["Confirm a guest before recording."]
+        output["interaction"]["next_actions"].append("answer_production_question")
+        self.write("idea_set.json", output)
+        code, result = self.run_stage("core")
+        self.assertEqual((0, "ok"), (code, result["status"]), result)
+        self.assertIn("Pending confirmation: A consenting guest", (self.root / "RESULT.md").read_text())
+        feasibility["assets_used"] = ["A consenting guest"]
+        errors = validator.validate_idea_set(output, self.request(), self.root / "request.json")
+        self.assertTrue(any("assets_used must be a subset" in error for error in errors), errors)
+
 
 if __name__ == "__main__":
     unittest.main()

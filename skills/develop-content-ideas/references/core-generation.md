@@ -56,7 +56,12 @@ Passing validation on step 3 means a single generation attempt is enough.
 For a follow-up such as “10 more in the same style”, preserve the current request verbatim in
 `user_brief` and leave `direct_topic=null` unless this turn also names a literal topic. Resolve the
 reference against the visible conversation: which list, version, topic or style does the user mean?
-Keep earlier constraints and corrections; if the target is ambiguous, ask only what is missing.
+If history is paged, inspect its range/count metadata or latest available page before treating
+an unread tail as absent. Read the relevant exchange through the current request's boundary.
+Resolve a number against the nearest relevant list and later user corrections; for an unnumbered
+style reference, use the nearest concrete proposal and its clarifications. Carry forward its
+mechanism, completion goal, count and restrictions unless the user changes them. Ask only about
+ambiguity that remains after this check, not context already supplied.
 Copy the current continuation phrase into `generation_basis.continuation_quote` verbatim and choose
 one source route:
 
@@ -68,6 +73,9 @@ one source route:
   messages with exact `text`, in order), and `reference` (`message_index`, zero-based within this
   array, plus `quote`, an exact nonblank span in that message). Include the context needed to retain
   constraints, exclusions and corrections; a summary is not a substitute for the original text.
+  Copy text mechanically from the available message fields or file ranges. Preserve message
+  boundaries; join streamed fragments only when they belong to the same message, in order and
+  without crossing a user turn. Check the selected quote and zero-based index before prep.
   Pass `--conversation-context conversation-source.json`. Prep retains the original bytes and
   derives `conversation_context`; never write that field into `intent.json`.
 
