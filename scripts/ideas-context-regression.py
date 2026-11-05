@@ -389,6 +389,18 @@ class ConversationContract(unittest.TestCase):
             self.assertIn("source_text " + repr(value), errors)
         self.assertIn("every rendered canonical value", errors)
 
+    def test_missing_schema_fields_do_not_hide_missing_translations(self):
+        """缺失必填字段不能遮住独立展示映射错误。"""
+        self.prep()
+        for field in ("status", "task_intent", "source_mode", "evidence_summary", "ideas"):
+            with self.subTest(field=field):
+                output = self.output()
+                del output[field]
+                output["evidence_gap_translations"] = []
+                errors = "\n".join(validator.validate_idea_set(output, self.request(), self.root / "request.json"))
+                self.assertIn("schema", errors)
+                self.assertIn("every rendered canonical value", errors)
+
     def test_missing_intent_path_preserves_existing_input_budget(self):
         """调用路径错误既不消耗也不重置已有修订预算。"""
         missing = self.root / "missing-intent.json"
