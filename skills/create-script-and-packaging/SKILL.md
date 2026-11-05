@@ -13,17 +13,25 @@ originality boundaries and Creator constraints. Route first: a concrete topic wi
 audience, goal or CTA uses the creative-draft route; a native package uses a frozen `SelectedIdea`
 and the contracts below.
 
+When the host supports one, run this Skill in a foreground sub-agent, because a full package takes
+several steps, and wait for its final result before replying; never run it in the background and
+tell the user the report will come later. Without a foreground sub-agent, follow the same steps in
+the main thread.
+
+**Published-source continuity.** Before giving episode-specific sequel advice, establish the actual
+prior events and ending. Account analysis, titles and earlier assistant guesses cannot establish
+them. If they are missing, first state which source is identified and what content is still needed,
+then recover it or ask for the minimum missing passage under `references/source-adaptation.md`.
+Do not write a concrete recap, hook or next plot beat and only then disclose the missing source.
+General craft advice may remain source-neutral. This does not block an independent original brief
+or continuation of an editable draft the user actually supplied or selected.
+
 **Native package delivery.** The Creator-facing result is `SCRIPT_PACKAGE.md`, written by the
 renderer after both validators pass. Deliver it once, exactly as rendered: never summarize, rewrite or retype it, and
 never append a second paraphrased report. Explanations around it are in the creator's language;
 creative text stays in its original language. An invalid or partial package keeps its actual
 status, evidence gaps and source limitations, and is never presented as a validated package. A
 topic draft or a partial edit is delivered as its reference says.
-
-When the host supports one, run this Skill in a foreground sub-agent, because a full package takes
-several steps, and wait for its final result before replying; never run it in the background and
-tell the user the report will come later. Without a foreground sub-agent, follow the same steps in
-the main thread.
 
 ## Running commands
 
