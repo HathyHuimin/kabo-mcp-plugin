@@ -14,11 +14,11 @@ audience, goal or CTA uses the creative-draft route; a native package uses a fro
 and the contracts below.
 
 **Before any sequel, resolve its source.** If the user means a published post but its actual
-content is absent, first ask for its script, link or a summary including the ending. Until that
-content is available, offer at most a plot-free structure: no invented scenes, dialogue or
-characters, including examples borrowed from another series in the account history. A title,
-account review or earlier creative suggestion is not the post. This boundary also applies to
-"how should I do part 2?" and overrides the generic creative-draft fallback.
+content is absent, this turn is a clarification only: ask one concise question for its script,
+link or a summary including the ending, then end the response and wait. Do not append a structure,
+hook, sample line or plot suggestion. A title, account review or earlier creative suggestion is
+not the post; other series in the account do not supply its characters or events. This boundary
+also applies to "how should I do part 2?" and overrides the generic creative-draft fallback.
 If the user instead selects a draft already in the conversation, use that draft without asking
 for it again: check the latest applicable text, character states and stopping point, then continue
 from there. Read `references/source-adaptation.md` for both routes.
