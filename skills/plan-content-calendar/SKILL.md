@@ -4,7 +4,7 @@ description: "Build a reviewable four-week or date-range content calendar (up to
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Uses no Kabo data tools: every input is an artifact the creator or another Skill already produced in this workspace."
 metadata:
-  version: "0.1.24"
+  version: "0.1.25"
 ---
 
 # Plan Content Calendar
@@ -28,6 +28,14 @@ final result before replying; never run it in the background and tell the user t
 later. Without a foreground sub-agent, follow the same steps in the main thread.
 
 ## Route the request first
+
+For both conversational proposals and artifact-backed calendars, reuse context already supplied
+before asking for missing inputs. A request for fully filled topics needs a known content direction,
+supplied topics or usable account context; if all are absent, ask for the direction instead of
+inventing a niche. Generic advice and explicitly requested blank templates need no such clarification.
+Resolve an ambiguous planning interval before assigning dates or converting it into weeks. Preserve
+explicit dates and durations; while an anchor is missing, offer only a relative draft. Apply the
+input boundaries in `references/advice-and-proposals.md`, including region-dependent holidays.
 
 The request may arrive in any language. Decide which of these it is before anything else:
 

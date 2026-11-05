@@ -6,6 +6,31 @@ of these routes reserves a run or calls a script.
 
 The request may arrive in any language; the examples below describe equivalent intent.
 
+## Resolve missing content and date anchors
+
+Reuse the conversation's content direction, supplied topics, dates and region; ask only for what
+remains unresolved. If the creator asks for fully written daily topics or openings but none of the
+direction, topics or usable account context is known, ask one short question for the direction. A
+neutral structure may accompany it, clearly marked as unfilled. Do not choose a niche and call that
+plan ready to copy. This does not block general workflow advice, an explicitly requested template,
+or a concrete proposal for topics already supplied.
+
+Clarify an ambiguous planning interval before assigning absolute dates or a number of weeks. Calendar
+months and fixed day/week durations are different: ask whether the creator means a rolling interval
+or named calendar months, then preserve the agreed inclusive start and end. Do not silently replace
+calendar months with a fixed number of days or weeks, or substitute the remainder of the current
+month. Explicit date ranges and fixed durations need no redundant clarification. Relative topic
+ordering can still be delivered while an exact start date is unknown; do not attach speculative
+absolute dates to a clarification question.
+
+Holiday relevance and seasons need the target region and applicable evidence. Conversation language
+does not establish a country or hemisphere. Ask for unresolved region and date anchors together;
+until then, keep the draft region-neutral with holiday slots pending. Missing research is not
+permission to invent holiday dates, trends or creator selections. Keep this Skill's research and
+external-action boundaries unchanged.
+
+## Deliver the supported advice, review or proposal
+
 First distinguish advice, a fact-only schedule review, a proposed plan from supplied topics, and an artifact-backed execution calendar. For sustainable filming/editing workflows, restart guidance, content-role mix or a 100-video learning roadmap, return the strategy subtask to the host before demanding SelectedIdeas or finished media. Generic workflow advice may use stated assumptions; private account metrics are required only for account-specific diagnosis. Actual capacity claims need the Creator's time budget, and actual calendar slots still need selected content. Do not replace strategy with eight example slots or turn fixture content into the Creator's plan.
 
 For advice, answer the requested strategy now instead of offering a routing menu such as generic versus personalized planning. Give a usable proposed cadence and review checkpoints from the supplied constraints; label unconfirmed capacity as an assumption. A missing account or private metrics blocks an account-specific diagnosis, not general restart guidance. Do not state algorithm penalties or recovery guarantees as facts without applicable evidence; a practical restart plan need not depend on deciding that claim.
@@ -21,4 +46,3 @@ For all advice and proposed plans, preserve each applicable evidence limitation,
 When a calendar also needs new ideas or holiday context, the host discovers relevant research/ideation, reuses known region and dates, and obtains content selection before materializing those slots. Unknown region affects holiday relevance, not whether a neutral date skeleton can be shown. Missing selections remain explicit unfilled slots. This skill never invents holiday facts or performs publishing.
 
 A four-week horizon does not imply eight posts. Preserve the Creator-selected content set; do not expand, clone, or request new ideas just to fill every week. Use the declared cadence, and report unused slots or uneven distribution honestly. Missing cadence still requires clarification under the rule below. If only informal ideas are supplied, obtain the proper selected artifacts through the host; do not fabricate selection provenance or approve extra content.
-
