@@ -5,7 +5,7 @@ interaction gate, the optional thumbnail capability and the package boundaries.
 
 ## Decision rules (1–7)
 
-1. **SelectedIdea first**: accept only a selected, frozen idea. An unchosen candidate list is blocked. A literal topic/direction is valid only when the user explicitly selects it by asking to script that direction; normalize it only with `build_direct_selected_idea.py`, with no fabricated evidence or constraints.
+1. **Native package SelectedIdea first**: accept only a selected, frozen idea. An unchosen candidate list is blocked. A literal topic/direction is valid only when the user explicitly selects it by asking to script that direction; normalize it only with `build_direct_selected_idea.py`, with no fabricated evidence or constraints.
 2. **Evidence basis before claims**: preserve `source_backed`, `brief_based`, or `hypothesis` in the input snapshot. Empty evidence is valid for the latter two, but every factual sentence must remain qualified until proof is supplied.
 3. **Mode isolation**: `script_only`, `packaging_only`, and `full_package` are mutually exclusive output shapes. Packaging-only revises a supplied package; it never silently regenerates a script.
 4. **Production gates are explicit**: missing proof, assets, permissions, voice, or non-inferable production constraints affecting feasibility produce `draft_needs_user_input` plus one structured question batch. An omitted target duration alone uses `script_duration.py` automatic duration planning; ask only when platform/form is unclear or a non-inferable constraint affects feasibility. They cannot be represented as "easy to shoot" without minutes, assets, and effort assumptions.
@@ -34,7 +34,7 @@ Existing-image download, resize and preview are an optional host image capabilit
 
 ## Boundaries
 
-- Do not choose among Idea candidates. Require `SelectedIdea`, while allowing the explicit direct-user-selection normalization path above.
+- Do not choose among Idea candidates. Native packages require `SelectedIdea`, while allowing the explicit direct-user-selection normalization path above. Creative drafts use the already selected topic under `topic-drafts.md` without requiring `SelectedIdea`.
 - Do not perform trend/competitor research inside this Skill.
 - Do not recommend publish time; hand the completed package back to the creator without timing advice.
 - Do not synthesize final Thumbnail/cover artwork. The core package produces a designer/image-generator brief only; an optional host image capability may preview or deterministically resize an existing image.

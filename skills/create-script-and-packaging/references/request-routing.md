@@ -2,6 +2,46 @@
 
 Apply this before asking for SelectedIdea, source script, assets or private performance data. Reuse the conversation's selected topic, language, audience and source; a follow-up edits that same deliverable unless the user changes direction.
 
+## Resolve a referenced input before drafting
+
+For “use option 2”, “revise the previous version”, “continue that episode” or
+“another in the same series”, first identify the object the current request
+refers to in the conversation through this turn or its available source artifacts.
+Resolve a numbered choice to its original list and actual item; preserve that
+item's topic, constraints and evidence status. The ordinal alone is not a topic.
+Keep a native candidate's identity when available and use the existing selection
+path; do not fabricate a SelectedIdea or replace missing source content with a
+plausible topic to satisfy package inputs.
+
+When the referent is unique and its needed content is available, reuse it and
+complete the requested work without asking the user to supply it again. Check
+the requested version and scope rather than automatically using the newest draft.
+When several lists, scripts or episodes remain plausible, ask only which one is
+intended. When the referenced content is missing, first use any permitted recovery
+path for that same source, then ask only for the missing item or passage if it
+cannot be recovered. A matching title, account, genre or remembered summary does
+not fill in absent content. Preserve known constraints and independent completed
+work while resolving the gap.
+
+Keep the source's role explicit. A user-supplied script or an assistant draft the
+user selects can support a revision or fictional continuation as a draft; neither
+a creative proposal nor permission to edit proves that it was posted. A sequel to
+an actual published episode needs that episode's content, ending and unresolved
+point under [source-adaptation.md](source-adaptation.md). For an existing script's
+cover/opening alternatives, retain [partial-script-edits.md](partial-script-edits.md)
+and its exact-message, version and authorized-scope checks. Those structural checks
+do not establish that the agent chose the correct referent.
+
+Distinguish continuing a source's events from borrowing a style or format. For a
+same-series request, preserve whichever story continuity or format the user
+actually refers to; ask only when that distinction affects the requested work and
+remains ambiguous. An independent original brief, or an explicit request for a
+new story using supplied style directions or a visible sample, can proceed without
+retrieving a previous episode. Label creative proposals and retain the existing
+evidence limits on claims about a named account's actual style or published work.
+
+## Route the requested deliverable
+
 | User needs | Route and minimum input | Completion evidence |
 | --- | --- | --- |
 | Sequel, part 2, or continuation of a prior post | Follow the continuation check in [source-adaptation.md](source-adaptation.md); establish the actual previous episode before drafting | New main beats and payoff grounded in the previous ending; if the source cannot be recovered, request its missing ending rather than inventing a continuation |
@@ -12,7 +52,8 @@ Apply this before asking for SelectedIdea, source script, assets or private perf
 | Recent proven hooks, latest clips, thumbnail trends | Relevant public evidence must exist before package synthesis: reuse it from the conversation or another Skill's output, or name the Skill that collects it (`research-youtube-trends`, `research-instagram-trends`, `research-tiktok-trends`, `analyze-creator-competitors`, `analyze-tiktok-competitors`) | Actual source URLs, publication/window dates, observed performance and comparison basis; inspect visual/audio material before claiming its content |
 | Titles, covers or a script for a chosen topic | Reuse the exact selection and known constraints. If the requested creative draft is feasible but audience, goal or CTA has not been confirmed, follow [topic-drafts.md](topic-drafts.md); otherwise use the native direct-selection or upstream flow | The complete requested creative deliverable with proposals distinguished from confirmed inputs, or a validated native package when its inputs are available; no CTR or retention requirement unless the claim explicitly depends on private metrics |
 | Titles/covers for “my next gaming clip” with no clip facts | Ask only for the concrete moment, outcome or intended story plus genuinely missing audience/action/language constraints | Do not fabricate gameplay events or ask for a whole account history to unlock drafting |
-| Extract and deliver actual shorts or finished covers | Check that the host offers an execution capability and that the actual source media is authorized; this Skill renders no media | Real output files and relevant media verification; a beat sheet, cover brief or tutorial is not a completed edit |
+| Produce actual videos or edited shorts | Hand the resolved script and requirements to an available host media capability; follow [media-delivery.md](media-delivery.md) | Real output faithful to the requested subjects, visuals and required audio, verified for playback, layout and delivery; a beat sheet or generic substitute is not a completed video |
+| Produce finished covers | Check an available image capability and authorized source or original assets | Real image output faithful to the requested content, verified for layout, dimensions and delivery; a cover brief is not a finished image |
 
 A research request is not fulfilled by replacing requested observed examples with generated templates. If only 2 of 20 examples are verified, deliver those 2 with the evidence gap, or separately offer clearly labeled creative examples. “Latest” requires a fresh source listing and publication-date check, not a remembered video. Do not infer unseen actions, camera presence or thumbnail composition from titles.
 

@@ -1,9 +1,17 @@
 # Recommend and fulfill a script duration
 
-A current explicit duration wins. Reuse a prior duration only when the same brief,
-platform and format still apply; a new instruction overrides it. Never default
+A current user-specified duration wins. Reuse a prior user-confirmed duration only
+when the same brief, platform and format still apply; a new instruction overrides it. Never default
 all scripts to 8–10 minutes. Packaging-only/title edits reuse the existing script
 and do not trigger duration research.
+
+Keep an assistant's suggested length as a draft estimate unless the user confirms
+it. Asking to develop the same topic does not make every earlier suggestion an
+explicit current requirement. In a native intake, set `target_duration_seconds`
+only for the current user's explicit target; put an applicable prior confirmed
+target in `prior_target_seconds` with `prior_applies=true`. Otherwise omit the
+target and let the helper estimate it. A creative draft may propose its own
+duration without creating a native request; state that it is an estimate.
 
 Before building a script request with no duration, reuse relevant public duration
 fields already acquired for the target creator channel: in the conversation, or in
