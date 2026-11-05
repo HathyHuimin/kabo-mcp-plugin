@@ -636,6 +636,7 @@ def validate_authored_fields(request: dict[str, Any], errors: list[str], *,
     that passed their individual schemas. No input is coerced or repaired.
     """
     def ready(*fields: str) -> bool:
+        """Check whether every dependency passed its own field schema."""
         return valid_fields is None or all(field in valid_fields for field in fields)
 
     locale_fields = ("report_language",) if "report_language" in request else (
