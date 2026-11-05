@@ -34,7 +34,7 @@ Existing-image download, resize and preview are an optional host image capabilit
 
 ## Boundaries
 
-- Do not choose among Idea candidates. Native packages require `SelectedIdea`, while allowing the explicit direct-user-selection normalization path above. Creative drafts use the already selected topic under `references/topic-drafts.md` without requiring `SelectedIdea`.
+- Do not choose among Idea candidates. Native packages require `SelectedIdea`, while allowing the explicit direct-user-selection normalization path above. Creative drafts use the already selected topic under `topic-drafts.md` without requiring `SelectedIdea`.
 - Do not perform trend/competitor research inside this Skill.
 - Do not recommend publish time; hand the completed package back to the creator without timing advice.
 - Do not synthesize final Thumbnail/cover artwork. The core package produces a designer/image-generator brief only; an optional host image capability may preview or deterministically resize an existing image.
