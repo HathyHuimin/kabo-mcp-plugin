@@ -1,0 +1,35 @@
+name: Notify Web of a plugin release
+
+# A published release asks creator-skills to put the same Skills on Kabo Web
+# (repository_dispatch kabo-plugin-released → its plugin-web job). The job there is
+# idempotent: it publishes the latest release only if Web is not on it yet, honours
+# PLUGIN_WEB_AUTO / PLUGIN_WEB_HOLD, and a 15-minute cron backs it up. This workflow
+# never touches the release, the package or any marketplace.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch kabo-plugin-released to creator-skills
+        env:
+          # Fine-grained token or GitHub App token with actions/contents write on
+          # kabo-sh/creator-skills only. Missing → skip; the release step or the cron covers it.
+          GH_TOKEN: ${{ secrets.CREATOR_SKILLS_DISPATCH_TOKEN }}
+          # Informational only: the receiving job always resolves the latest release itself.
+          TAG: ${{ github.event.release.tag_name || 'latest' }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::CREATOR_SKILLS_DISPATCH_TOKEN is not set; no dispatch sent for $TAG. To publish it to Web, run: gh workflow run publish-skill-registry.yml -R kabo-sh/creator-skills -f action=plugin-web-publish"
+            exit 0
+          fi
+          jq -cn --arg tag "$TAG" '{event_type: "kabo-plugin-released", client_payload: {tag: $tag}}' \
+            | gh api --method POST repos/kabo-sh/creator-skills/dispatches --input -
+          echo "asked creator-skills to publish $TAG to Web"

@@ -36,3 +36,9 @@
   marketplace console or Publish. CI, a buildable ZIP, real-host and production acceptance, and
   marketplace review are separate facts. State any missing acceptance explicitly and never claim the
   plugin is ready for listing.
+- Kabo Web serves the Skills of the latest GitHub release (desktop stays on its frozen channel). When a
+  release is published, `.github/workflows/notify-web.yml` asks creator-skills to publish it to Web; if
+  that workflow reports the dispatch token missing, finish the release with
+  `gh workflow run publish-skill-registry.yml -R kabo-sh/creator-skills -f action=plugin-web-publish`
+  (idempotent; a no-op when Web is already on the release). Check with
+  `curl -s https://agent.kabo.sh/health | jq '.skill_channels.production.runtime.plugin_overlay'`.
