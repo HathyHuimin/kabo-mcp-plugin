@@ -93,7 +93,7 @@ def answer_text(finding, answer, zh=False):
                 share_word = "fell" if share < 0 else "rose" if share > 0 else "was unchanged"
                 amount_word = "fell" if amount < 0 else "rose" if amount > 0 else "was unchanged"
                 return (f"Between the two calendar periods in the supplied data, this source's share {share_word} and "
-                        f"{amount_name} {amount_word}. This describes the supplied data, not a cause or platform enforcement.")
+                        f"{amount_name} {amount_word}, which describes the supplied data, not a cause or platform enforcement.")
             return ("现有同窗口数据可以判断该来源占比变化，但缺少匹配的总量，不能确定绝对来源量如何变化，也不能据此证明平台限制。"
                     if zh else
                     "The matched-window data establishes the source-share change, but without matching totals it cannot establish the absolute source-amount change or platform enforcement.")
