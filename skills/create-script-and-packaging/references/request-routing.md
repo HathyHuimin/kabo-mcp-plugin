@@ -2,6 +2,13 @@
 
 Apply this before asking for SelectedIdea, source script, assets or private performance data. Reuse the conversation's selected topic, language, audience and source; a follow-up edits that same deliverable unless the user changes direction.
 
+First distinguish more ideas from packaging one idea. Requests for additional ideas
+or same-style variations of earlier directions belong to `develop-content-ideas`,
+even when those earlier suggestions include titles, covers or hooks. This Skill
+applies when the user selects one specific direction and asks for its script or
+packaging; the presence of packaging details in an idea list does not change a
+request for more ideas into a packaging task.
+
 ## Resolve a referenced input before drafting
 
 For “use option 2”, “revise the previous version”, “continue that episode” or
@@ -27,7 +34,10 @@ Keep the source's role explicit. A user-supplied script or an assistant draft th
 user selects can support a revision or fictional continuation as a draft; neither
 a creative proposal nor permission to edit proves that it was posted. A sequel to
 an actual published episode needs that episode's content, ending and unresolved
-point under [source-adaptation.md](source-adaptation.md). For an existing script's
+point under [source-adaptation.md](source-adaptation.md), before supplying any
+episode-specific recap or new events. The same check applies to practical advice
+that would fill in those events; with a missing source, keep general craft advice
+free of invented story details and resolve the gap first. For an existing script's
 cover/opening alternatives, retain [partial-script-edits.md](partial-script-edits.md)
 and its exact-message, version and authorized-scope checks. Those structural checks
 do not establish that the agent chose the correct referent.

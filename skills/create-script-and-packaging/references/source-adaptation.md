@@ -8,11 +8,26 @@ Do not add source research to an independent creative brief.
 
 ## Continue an episode without repeating it
 
-Resolve which episode the user means before writing its sequel. Reuse its actual
-script or source observations already available in this conversation. For "my
-latest post", verify the current listing and then the selected post's content.
-An account review, title, thumbnail, genre or remembered character is not the
-episode. A previous assistant proposal is not proof of what the creator posted.
+Resolve which episode the user means and establish its actual content before
+giving episode-specific advice, including advice about how to approach a sequel
+rather than a request for its full script. Reuse its actual script, the user's
+description of its ending and unresolved point, or source observations already
+available in this conversation. For "my latest post", verify the current listing
+and then the selected post's content. An account review, title, thumbnail, genre,
+profile description or remembered character may help identify a source; it does
+not establish that episode's events. A previous assistant proposal or inference
+is not proof of what the creator posted.
+
+If that content is missing, begin the response with the source that can be
+identified and the material facts still unknown. Follow the permitted recovery
+path under **Obtain only the missing evidence**; when it cannot recover the
+content, ask only for the missing script passage or a short description of the
+ending and unresolved point. Do not first write a concrete recap, character
+action, revelation, personalized hook or next plot beat from the metadata and
+append a request for the ending afterward. A late caveat does not make that
+invented continuity a grounded sequel. While resolving the gap, general advice
+may explain how to advance an established consequence or keep a recap brief,
+without filling those slots with unverified story events.
 
 From that source, identify the established events, the ending/reveal and any
 unresolved question. Keep the source reference attached to those facts; source
@@ -23,12 +38,13 @@ hook, central beats and payoff against the original before delivery; changing
 wording, character labels or the final CTA does not make repeated events a sequel.
 Clearly distinguish new fictional proposals from events observed in the source.
 
-If no permitted path can recover the episode, ask for its script or a short
-description of the ending and unresolved point. Do not generate a supposed
-continuation from the topic alone. If the creator says "I already did that",
+Do not generate a supposed continuation from the topic alone. If the creator says "I already did that",
 recheck the source and identify the repeated beat before proposing a replacement;
 do not repeat an unchanged failed retrieval or offer another guessed episode.
 An independent new story is a different deliverable and needs the user's choice.
+An assistant draft explicitly selected for editing can support a fictional
+continuation as a draft; follow the source-role distinction in
+[request-routing.md](request-routing.md), without claiming it was published.
 
 Preserve the requested output, source identity, target platform, language and
 requested quantity while obtaining evidence. A URL identifies source material;
