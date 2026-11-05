@@ -33,7 +33,10 @@ labels nor a disclaimer make invented percentages reliable. When asked for odds 
 appropriate validated predictive model, explain that no defensible percentage is available here;
 offer supported conditional calculations or ask for the minimum missing dated records instead.
 Do not label a scenario "most likely", assign scenario weights or create confidence intervals
-from a median, quartiles, a single snapshot or intuition. Calibration would require a defined
+from a median, quartiles, a single snapshot or intuition. Do not promise that a few more snapshots will make percentage odds available: two dated points
+can enable unchanged-pace arithmetic, not a calibrated predictive model. When requesting data,
+say what conditional calculation it enables and what will remain unknown.
+Calibration would require a defined
 outcome and horizon plus evaluation of predicted probabilities against held-out comparable
 outcomes; these calculations do not provide that evidence.
 

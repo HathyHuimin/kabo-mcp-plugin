@@ -22,7 +22,8 @@ positions. The schemas, deterministic computation, renderers and validators ship
 metrics or results after earlier advice. If platform, metric definition, post age or comparable
 baseline is unresolved, answer with the raw observations and one bundled clarification, then
 stop this turn. Do not rate the metrics, rank causes or prescribe edits yet; earlier assistant
-claims are not measurement evidence. Continue the diagnosis only after resolving that gate.
+claims are not measurement evidence. Even while asking, do not infer how many viewers stayed
+or completed the video from an average duration. Diagnose only after resolving the gate.
 
 **Delivery.** A diagnosis ends with `finish_diagnosis.py`, which prints the validated
 `report/VIDEO_DIAGNOSIS.md`. Relay it once, complete. A Chinese or English report already comes

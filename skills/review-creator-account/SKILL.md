@@ -25,7 +25,8 @@ scenario from dated samples and an explicit post count or observed cadence. The 
 new content at the samples' observed ages, not a monthly deadline or an existing post's future.
 If the requested target has no supported calculation, correct earlier overstatements, ask for
 the minimum dated records, and stop its numeric forecast; do not substitute a different target.
-Conditional arithmetic cannot supply calibrated odds. "Subjective" or "illustrative" labels do
+Additional snapshots can support conditional arithmetic, not calibrated odds. Never promise
+percentage predictions merely in exchange for more history. "Subjective" or "illustrative" labels do
 not justify invented weights, monthly curves or conversions.
 
 **Delivery.** The final step prints `creator_report: <path>` and then `ACCOUNT_REVIEW.md`. Deliver
