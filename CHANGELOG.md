@@ -2,6 +2,15 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.15（2026-11-05；GitHub Release）
+
+- `review-creator-account`：报告被校验器拒收后，删掉未过校验的报告，改完 synthesis 重跑同一条命令即可出报告；
+  失败信息不涉及作者字段（文件、权限等系统错误）时提示报告并停止（#104）。
+- `review-creator-account-deep`：`--workspace` 先认领本 workspace 里刚预留、还没开始的 run（独占认领，已开始的跳过），
+  一次请求只预留一个 run、只记一次用量（#104）。
+- 三个移植 Skill 去掉过时的 `metadata.version`，Web 端能收这几个包（#98）。
+- 生产回归：待补。
+
 ## 1.0.14（2026-11-05；GitHub Release）
 
 - 交接改为交结果编号（#83）：取数结果带一个短编号，模型只把编号填进续跑命令，脚本按编号下载、核对长度与 sha256 后落盘，
