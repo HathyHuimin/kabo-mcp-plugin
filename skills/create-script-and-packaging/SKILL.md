@@ -19,9 +19,12 @@ this into a video", hand the resolved script and production requirements to the 
 capability as `references/media-delivery.md` says, and check that capability against the concrete
 subjects, essential actions and required sound before promising a finished video.
 
-**Before any sequel, resolve its source.** If the user means a published post but its actual
-content is absent, this turn is a clarification only: ask one concise question for its script,
-link or a summary including the ending, then end the response and wait. Do not append a structure,
+**Before any sequel, resolve its source.** Reuse available content. If the creator already supplied
+or confirmed the exact source link, use the permitted recovery path in `references/source-adaptation.md`
+before asking for missing content; do not ask for that link again. A post list alone does not
+confirm which episode is meant. If the published content remains unavailable, this turn is a
+clarification only: ask for the missing script, source link or summary including the ending,
+then end the response and wait. Do not append a structure,
 hook, sample line or plot suggestion. A title, account review or earlier creative suggestion is
 not the post; other series in the account do not supply its characters or events. This boundary
 also applies to "how should I do part 2?" and overrides the generic creative-draft fallback.
