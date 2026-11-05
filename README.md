@@ -7,8 +7,8 @@ needed by each host. The AI host runs the workflows and writes
 reports; Kabo provides the data tools. The plugin does not hand work to Kabo's web agent, download
 Skills at runtime, or register lifecycle hooks.
 
-The current GitHub package release is [**1.0.9**](https://github.com/kabo-sh/kabo-mcp-plugin/releases/tag/v1.0.9),
-packaged as `kabo-1.0.9.zip`. Version 1.0.0 reset the public release numbering while retaining the latest
+The current GitHub package release is [**1.0.11**](https://github.com/kabo-sh/kabo-mcp-plugin/releases/tag/v1.0.11),
+packaged as `kabo-1.0.11.zip`. Version 1.0.0 reset the public release numbering while retaining the latest
 implementation. Earlier version history and source Skill versions remain separate. OpenAI marketplace
 review and production acceptance remain separate from this GitHub release.
 
@@ -102,7 +102,7 @@ for `-g`. The repository's `skills.lock.json` is a separate record of the origin
 
 - `#stable` follows published releases. It advances only after a release; installed files stay as
   they are until you run an installation or update command.
-- `#v1.0.9` pins one release. Updating does not switch to a newer tag; install the new tag explicitly.
+- `#v1.0.11` pins one release. Updating does not switch to a newer tag; install the new tag explicitly.
 - Without a ref, the CLI follows `main`, which includes unreleased changes.
 
 See [GitHub Releases](https://github.com/kabo-sh/kabo-mcp-plugin/releases) for new versions and release
@@ -299,7 +299,7 @@ same Skills.
 
 `diagnose-reach-drop`, `recommend-publish-timing`, `plan-platform-monetization` and
 `verify-platform-rule` are included in 1.0.9. Their complete cross-host acceptance is still pending;
-this release’s new connected-session acceptance covers short-window trend recommendations.
+Current release acceptance focuses on short-window content-language checks and user-approved cross-language searches.
 `verify-platform-rule` needs the `official_page_render_page` tool on `/mcp-pub` (restored by kabo#1817).
 
 `remake-viral-video` uses the `start_remake_video`, `get_remake_video` and `render_remake_video`
@@ -378,8 +378,11 @@ your own linked account, the agent reads the account's saved content profile (yo
 content, content language and formats) with `get_creator_profile`, keeps the complete result as a
 local file and passes it to the trends driver. The searches then start from your own seed words,
 leave out your own posts and accounts far larger or smaller than yours, and share the
-recommendations across your signature content. The content language only steers the search words;
-it never filters results by language. The Skills never write or edit the profile file. If the
+recommendations across your signature content. In the general trend-research Workflow, content
+language steers the search words. Short-window recommendations (seven days or less) also check
+candidate language before ranking. You can explicitly add other languages or allow any language
+for the current request; that choice overrides the account default without editing your profile.
+The Skills never write or edit the profile file. If the
 profile is missing or empty, workspace access is not granted, or Kabo does not offer the profile
 yet, the Skills run the same public trend scan as before.
 
@@ -390,7 +393,7 @@ with `update_content_preferences`. Your edits are kept per account and come back
 read, in this plugin and in Kabo's web app; the profile Kabo computed stays as it was, and you can
 reset your edits. A plain, unambiguous change is saved and repeated back to you in one sentence; a
 guess, a removal, a merge or a reset is restated for you to confirm first. Your market is only the
-default search region (Instagram search takes none), and like the language it never filters
-results. An edit applies from the next trend run. Saving needs write access, which your host asks
+default search region (Instagram search takes none); it never filters results by region.
+Content-language checks follow the short-window rules above. An edit applies from the next trend run. Saving needs write access, which your host asks
 you to approve the first time; without it, or when Kabo does not offer the tool yet, nothing is
 saved and the research runs as before.

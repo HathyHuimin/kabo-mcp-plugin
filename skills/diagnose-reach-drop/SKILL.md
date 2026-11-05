@@ -2,7 +2,7 @@
 name: diagnose-reach-drop
 description: "Diagnose Instagram, TikTok or YouTube traffic changes, including recent drops, low or stalled performance, source shifts and apparent audience mismatch. Use review-creator-account for broad performance or follower-loss analysis, and verify-platform-rule for current rules or settings."
 license: MIT
-compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching public account history also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for account history only: data."
+compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching public account history also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for account history only: data."
 metadata:
   version: "0.4.10"
 allowed-tools: get_research_data_job get_research_data_download collect_account_history
@@ -77,8 +77,8 @@ Public account history comes from one `collect_account_history` call that `drive
 over: the backend resolves the account and fetches its bounded recent history in that one call.
 
 - **Hand-over.** `drive.py fetch` exits 0 after printing a `call:` line. That pause is unfinished
-  work. Make exactly that call with the arguments verbatim; save the result to the file named under
-  it, then run the printed resume command, which fetches the saved file itself. Never retype, paste, hand-write or patch data.
+  work. Make exactly that call with the arguments verbatim, then run the printed resume command
+  with each call's result id in it (`--id NN=<id>`: the 22 characters between `research-export/v1/` and `.json` in that result's download url), which fetches every result itself; save a result, whole, to the file named under its slot only when it has no download url. Never retype, paste, hand-write or patch data.
 - **Anything else** — a refused fetch, an expired link, a queued job or a failed call — follow
   `references/data-calls.md`. An invalid-input error is never retried unchanged: confirm the exact
   handle with the user.

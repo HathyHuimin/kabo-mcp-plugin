@@ -2,7 +2,7 @@
 name: verify-platform-rule
 description: "Verify platform rules, rumours, thresholds, features and settings from registered official pages, with quotes, URLs and retrieval dates. Covers feature availability, entry paths, configuration and Instagram Insights timeframe/filter/sort controls. Use plan-platform-monetization for creator eligibility, diagnose-reach-drop for account reach diagnosis, and review-creator-account for account or owner-metric analysis. Not for pricing, content coaching or end-to-end operational playbooks."
 license: MIT
-compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
+compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download render_official_pages
 metadata:
   version: "0.18.24"
@@ -66,9 +66,8 @@ run before the first fetch (or reuse a readiness note); if the official page ren
 ready, report the missing capability and stop.
 
 - **Hand-over.** `drive.py fetch` exits 0 after printing one `call:` line that reads every planned
-  page. That pause is unfinished work. Make exactly that call with the arguments verbatim; save the
-  result to the file named under it, then run the printed resume command, which fetches the saved
-  file itself. Never retype or paste page text.
+  page. That pause is unfinished work. Make exactly that call with the arguments verbatim, then run
+  the printed resume command with each call's result id in it (`--id NN=<id>`: the 22 characters between `research-export/v1/` and `.json` in that result's download url), which fetches every result itself; save a result, whole, to the file named under its slot only when it has no download url. Never retype or paste page text.
 - **Anything else** — a refused fetch, an expired link, a queued job, a failed call — follow
   `references/data-calls.md`. A failed page read is evidence: `drive.py` records that page as
   unreachable. An invalid-input error (such as a

@@ -27,17 +27,28 @@ First read `references/short-window-topic-gate.md` and freeze its request contex
    - Heat lane: for each intent, `{"q": "<intent phrase>", "published_after": "<until minus 30
      days>", "published_before": "<until>", "order": "viewCount"}`.
 
-   Add `"delivery": "download"` and leave every other argument at its default. Save the complete
-   result as is, download link included and `calls` whole, to
+   Add `"delivery": "download"`. If the connected tool schema exposes `include_content_signals`, set
+   it to `true` so the same detail calls return declared audio-language evidence. If `queries[].language`
+   is available, use the query's planned approved language as its YouTube language code
+   (for example `en`, `es`, `zh-Hans` or `zh-Hant`), as a relevance preference, never a hard filter.
+   A single-language scope uses that language on every query. For an approved multilingual or
+   unrestricted search, spread the two subject-and-use intents across the chosen search languages,
+   keeping each intent's language on both its window and heat query. State which languages this
+   bounded search covered; never apply the account's original language to every translated query.
+   If no language preference is supported or applicable to a query, omit it. Older tools
+   may lack these optional inputs: omit them, keep the local language gate, and report missing audio
+   evidence. Leave every other argument at its default. Do not save the result and never call
+   `get_research_data_download` yourself: its result id, the 22 characters between
+   `research-export/v1/` and `.json` in its download url, is all `place` needs. Only a result with
+   no download url is saved whole, as returned, to
    `<run directory>/host-results/01-collect_youtube_recent_videos.json` (with the host's file-write
-   ability or a single-quoted heredoc, never as a command-line argument); never call
-   `get_research_data_download` yourself.
+   ability, never as a command-line argument), and `--id` is left out.
 
-4. Place and merge it with the frozen window right away (`place` fetches the saved file itself;
-   links expire in 10 minutes):
+4. Place and merge it with the frozen window right away (`place` fetches the result itself; ids
+   expire in 10 minutes):
 
    ```bash
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/complete_youtube_short_window.py' place --since <since> --until <until> --output short-window-input.json
+   cd '<run directory>' && python3 '<skill directory>/scripts/complete_youtube_short_window.py' place --id=<result id> --since <since> --until <until> --output short-window-input.json
    ```
 
    It writes each search and each `get_video` chunk as its own envelope file and merges them into

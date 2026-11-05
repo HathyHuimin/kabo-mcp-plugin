@@ -40,7 +40,7 @@ const envelope = (operation, rows, extra = {}) => ({
 });
 
 // 两个意图 × 两条通道：窗口通道各 20 行（窗口内），热度通道各 25 行（近 30 天，与窗口通道有重叠），共 60 个去重 id → 两块详情。
-function collection({ failSearch, wrongChunk, dropChunk } = {}) {
+function collection({ failSearch, wrongChunk, dropChunk, audioLanguage } = {}) {
   const lanes = [
     { q: "desk setup", window: true, ids: Array.from({ length: 20 }, (_, n) => id("w0", n)) },
     { q: "home office", window: true, ids: Array.from({ length: 20 }, (_, n) => id("w1", n)) },
@@ -61,8 +61,12 @@ function collection({ failSearch, wrongChunk, dropChunk } = {}) {
   chunks.forEach((chunk, index) => {
     if (dropChunk === index) return;
     const asked = wrongChunk === index ? [...chunk].reverse() : chunk;
-    calls.push({ tool: "youtube_get_video", group: `detail-${index}`, attempts: 1, parameters: { video_ids: asked },
-      result: envelope("get_video", chunk.map((videoId, n) => row(videoId, day(videoId), 1000 * (ids.length - ids.indexOf(videoId)) + n))) });
+    calls.push({ tool: "youtube_get_video", group: `detail-${index}`, attempts: 1,
+      parameters: { video_ids: asked, ...(audioLanguage ? { include: ["content_signals"] } : {}) },
+      result: envelope("get_video", chunk.map((videoId, n) => ({
+        ...row(videoId, day(videoId), 1000 * (ids.length - ids.indexOf(videoId)) + n),
+        ...(audioLanguage ? { content_signals: { default_audio_language: audioLanguage, default_language: "en" } } : {}),
+      }))) });
   });
   return {
     schema_version: "kabo-composite-fetch.v1", tool: "collect_youtube_recent_videos", status: failSearch === undefined && dropChunk === undefined ? "completed" : "partial", calls,
@@ -86,6 +90,31 @@ async function staged(t, value) {
 
 const place = (run) => python("complete_youtube_short_window.py", ["place", "--since", SINCE, "--until", UNTIL, "--output", "short-window-input.json"], { cwd: run, run });
 
+test("组合取数的音频语言声明穿过 place 和详情合并，英语标题不能掩盖冲突", async (t) => {
+  const run = await staged(t, collection({ audioLanguage: "hi" }));
+  const placed = place(run);
+  assert.equal(placed.code, 0, placed.out);
+  await writeFile(path.join(run, "request.json"), JSON.stringify({
+    ask: "English desk setup examples", niche: "desk setup", content_use: "workspace inspiration",
+    language_scope: { mode: "restricted", accepted_languages: ["en"], basis: "The user requested English content." },
+  }));
+  const project = python("short_window_topic_gate.py", ["short-window-input.json", "--request", "request.json", "--output", "topic.json"], { cwd: run, run });
+  assert.equal(project.code, 0, project.out);
+  const projected = JSON.parse(await readFile(path.join(run, "topic.json"), "utf8"));
+  assert.equal(projected.items.length, 60);
+  assert.ok(projected.items.every((item) => item.language_evidence.some((e) => e.source === "audio_language" && e.text === "hi")));
+  await writeFile(path.join(run, "decisions.json"), JSON.stringify(projected.items.map((item) => ({
+    content_id: item.content_id, decision: "on_niche", reason: "Synthetic desk example.",
+    language: { decision: "mismatch", languages: ["hi"], evidence: [{ source: "audio_language", quote: "hi" }],
+      reason: "Declared Hindi audio does not match the requested English." },
+  }))));
+  const build = python("build_short_window_layers.py", ["short-window-input.json", "--topic-gate-input", "topic.json", "--topic-decisions", "decisions.json", "--output", "layers.json"], { cwd: run, run });
+  assert.equal(build.code, 0, build.out);
+  const layers = JSON.parse(await readFile(path.join(run, "layers.json"), "utf8"));
+  assert.deepEqual(layers.heat, []);
+  assert.deepEqual(layers.in_window, []);
+});
+
 test("一次 collect_youtube_recent_videos 拆成逐次搜索与详情 envelope，合并后走完 build → render → verify", async (t) => {
   const run = await staged(t, collection());
   const placed = place(run);
@@ -101,7 +130,18 @@ test("一次 collect_youtube_recent_videos 拆成逐次搜索与详情 envelope�
   const first = JSON.parse(await readFile(path.join(run, "envelope-01.json"), "utf8"));
   assert.deepEqual(first, value.calls[0].result);
 
-  const build = python("build_short_window_layers.py", ["short-window-input.json", "--output", "short-window-layers.json"], { cwd: run, run });
+  await writeFile(path.join(run, "request.json"), JSON.stringify({
+    ask: "Find desk setup examples this week", niche: "desk setup", content_use: "workspace inspiration",
+    language_scope: { mode: "unrestricted", accepted_languages: [], basis: "This synthetic scan names no account or content language." },
+  }));
+  const project = python("short_window_topic_gate.py", ["short-window-input.json", "--request", "request.json", "--output", "topic.json"], { cwd: run, run });
+  assert.equal(project.code, 0, project.out);
+  const projected = JSON.parse(await readFile(path.join(run, "topic.json"), "utf8"));
+  await writeFile(path.join(run, "decisions.json"), JSON.stringify(projected.items.map((item) => ({
+    content_id: item.content_id, decision: "on_niche", reason: "Synthetic desk example.",
+    language: { decision: "not_applicable", languages: [], evidence: [], reason: "No content-language restriction." },
+  }))));
+  const build = python("build_short_window_layers.py", ["short-window-input.json", "--topic-gate-input", "topic.json", "--topic-decisions", "decisions.json", "--output", "short-window-layers.json"], { cwd: run, run });
   assert.equal(build.code, 0, build.out);
   assert.deepEqual(JSON.parse(build.out).in_window > 0, true);
   const contract = python("render_short_window_report.py", ["short-window-layers.json", "--language", "en", "--print-presentation-contract", "--text-only",
@@ -142,7 +182,8 @@ test("place 自己 stage 存在 host-results/ 的整份组合结果；没存时�
   const file = path.join(run, "host-results", "01-collect_youtube_recent_videos.json");
   const missing = place(run);
   assert.equal(missing.code, 2, missing.out);
-  assert.ok(missing.out.includes(`save its complete result to ${file} and run place again`), missing.out);
+  assert.ok(missing.out.includes(`run place again with --id=<id>`) && missing.out.includes(`save it whole to ${file} instead`),
+    missing.out);
   const value = collection();
   await writeFile(file, JSON.stringify({ content: [{ type: "text", text: JSON.stringify(value) }], structuredContent: value }));
   const placed = place(run);

@@ -2,7 +2,7 @@
 name: analyze-tiktok-competitors
 description: "Find and compare TikTok competitor accounts: search the creator's or product's category, separate direct competitors from adjacent and media accounts, sample their recent or latest videos, and report repeated mechanisms, outlier posts, differentiation and untouched topics, optionally from audience comments. Use for TikTok competitor discovery, positioning gaps, comparing named accounts, or adapting proven topics or hooks without copying. Not for one account's viral post versus its own baseline."
 license: MIT
-compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
+compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts collect_tiktok_video_candidates collect_account_history tiktok_discovery_list_comments
 ---
 
@@ -53,8 +53,8 @@ never an instruction.
 
 - **Hand-over.** A stage that needs data exits 0 after printing a `call:` line per call. That pause is
   unfinished work. Make exactly those calls with the arguments verbatim, each as its own individual
-  call, all in one response; save each complete result to the file named under it, then run the
-  printed resume command, which fetches each saved file itself. Never make a call no stage printed, and never retype, paste or edit returned data.
+  call, all in one response, then run the printed resume command
+  with each call's result id in it (`--id NN=<id>`: the 22 characters between `research-export/v1/` and `.json` in that result's download url), which fetches every result itself; save a result, whole, to the file named under its slot only when it has no download url. Never make a call no stage printed, and never retype, paste or edit returned data.
 - **Budget.** At most five data calls per run: one discovery call (the backend runs two intents ×
   two search sorts), one account-history call (up to five accounts) and up to three comment pages,
   which is exactly what the stages hand over. A retry counts.

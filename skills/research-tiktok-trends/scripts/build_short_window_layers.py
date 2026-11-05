@@ -127,9 +127,9 @@ def build(payload: dict[str, Any], gate_input: dict[str, Any] | None = None,
     # Missing source evidence is not proof of a completed empty search.
     if not has_source_collection(payload):
         raise MissingPlacement("short-window input has no completed source collection; place the completed responses before building layers")
-    if (gate_input is None) != (topic_decisions is None):
-        raise ValueError("topic input and decisions must be provided together")
-    eligible, audit = topic_gate.apply(payload, gate_input, topic_decisions) if gate_input is not None else (None, None)
+    if gate_input is None or topic_decisions is None:
+        raise ValueError("short-window build requires topic input and complete content-language decisions")
+    eligible, audit = topic_gate.apply(payload, gate_input, topic_decisions)
     heat: list[dict[str, Any]] = []
     in_window: list[dict[str, Any]] = []
     seen: set[str] = set()
