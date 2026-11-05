@@ -78,8 +78,7 @@ class ConversationContract(unittest.TestCase):
         self.assertEqual((0, "ok", "ready_for_generation"),
                          (code, prep["status"], prep["decision"]["status"]))
         request = self.request()
-        self.assertEqual(self.intent["user_brief"], request["user_brief"])
-        self.assertEqual(self.intent["exclusions"], request["exclusions"])
+        self.assertEqual(self.intent, {field: request[field] for field in self.intent})
         self.assertIsNone(request["generation_basis"]["direct_topic"])
         self.assertEqual(3, request["idea_count"])
         context = request["conversation_context"]
@@ -274,6 +273,45 @@ class ConversationContract(unittest.TestCase):
                 output["ideas"] = broken
                 errors = validator.validate_idea_set(output, self.request(), self.root / "request.json")
                 self.assertTrue(any("schema" in error for error in errors), errors)
+                self.assertFalse(any("has no attribute" in error or "not iterable" in error for error in errors), errors)
+
+    def test_legacy_chinese_schema_and_translation_errors_are_reported_together(self):
+        """Keep translation diagnostics available for supported legacy Chinese reports."""
+        self.intent["report_language"] = "zh"
+        self.intent["language_targets"] = ["zh"]
+        self.prep()
+        output = self.output()
+        del output["report_language"]
+        output["overview"].update(headline="下一组选题", missing_context_effect="没有新的研究资料")
+        for idea in output["ideas"]:
+            idea["why_for_creator"] = "符合已声明的创作者背景"
+        output["ideas"][0]["unexpected"] = True
+        output["evidence_gap_translations"] = [{"source_text": "not an original source", "report_text": "错误来源"}]
+        errors = validator.validate_idea_set(output, self.request(), self.root / "request.json")
+        self.assertTrue(any("unexpected" in error for error in errors), errors)
+        self.assertTrue(any("Presentation translation must name one unique original gap" in error for error in errors), errors)
+        self.assertFalse(any("Missing report_language" in error for error in errors), errors)
+
+    def test_unrecognized_legacy_prose_keeps_its_language_error(self):
+        """Reject missing language metadata without hiding an independent schema error."""
+        self.prep()
+        output = self.output()
+        del output["report_language"]
+        output["ideas"][0]["unexpected"] = True
+        errors = validator.validate_idea_set(output, self.request(), self.root / "request.json")
+        self.assertTrue(any("unexpected" in error for error in errors), errors)
+        self.assertTrue(any("Missing report_language" in error for error in errors), errors)
+
+    def test_malformed_overview_does_not_crash_legacy_locale_detection(self):
+        """Keep non-object prose containers away from legacy locale dereferences."""
+        self.prep()
+        for overview in (None, "malformed", ["headline"], True):
+            with self.subTest(overview=overview):
+                output = self.output()
+                del output["report_language"]
+                output["overview"] = overview
+                errors = validator.validate_idea_set(output, self.request(), self.root / "request.json")
+                self.assertTrue(any("overview" in error and "schema" in error for error in errors), errors)
                 self.assertFalse(any("has no attribute" in error or "not iterable" in error for error in errors), errors)
 
 
