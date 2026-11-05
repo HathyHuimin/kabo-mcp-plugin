@@ -4,7 +4,6 @@ import argparse
 import difflib
 import json
 from pathlib import Path
-import re
 import unicodedata
 
 
@@ -13,11 +12,48 @@ def passage_units(text):
     normalized = unicodedata.normalize("NFKC", text).casefold()
     # 无空格文字按字符分段；英语、乌尔都语等原有分词保持不变。
     unspaced = ("CJK ", "HIRAGANA ", "KATAKANA ", "HANGUL ", "THAI ", "LAO ", "KHMER ", "MYANMAR ")
-    segmented = "".join(
-        f" {char} " if unicodedata.name(char, "").startswith(unspaced) else char
-        for char in normalized
-    )
-    return re.findall(r"\w+", segmented)
+    # 附标必须跟随前面的基字符，不能被正则丢掉或拆成独立单元。
+    clusters = []
+    for char in normalized:
+        if unicodedata.category(char).startswith("M") and clusters:
+            clusters[-1] += char
+        else:
+            clusters.append(char)
+    units, word = [], ""
+    for cluster in clusters:
+        base = cluster[0]
+        is_word = base.isalnum() or base == "_"
+        if is_word and not unicodedata.name(base, "").startswith(unspaced):
+            word += cluster
+            continue
+        if word:
+            units.append(word)
+            word = ""
+        if is_word:
+            units.append(cluster)
+    if word:
+        units.append(word)
+    return units
+
+
+def substantial_blocks(old, new, minimum=12):
+    """Keep long exact matches without subdividing regions containing only short ones."""
+    if old == new:
+        return [difflib.Match(0, 0, len(old))] if len(old) >= minimum else []
+    matcher = difflib.SequenceMatcher(None, old, new, autojunk=False)
+    regions = [(0, len(old), 0, len(new))]
+    blocks = []
+    while regions:
+        alo, ahi, blo, bhi = regions.pop()
+        if min(ahi - alo, bhi - blo) < minimum:
+            continue
+        match = matcher.find_longest_match(alo, ahi, blo, bhi)
+        if match.size < minimum:
+            continue
+        blocks.append(match)
+        regions.append((alo, match.a, blo, match.b))
+        regions.append((match.a + match.size, ahi, match.b + match.size, bhi))
+    return blocks
 
 
 def check_overlap(source, continuation):
@@ -27,7 +63,7 @@ def check_overlap(source, continuation):
     new = passage_units(continuation)
     if max(len(old), len(new)) > 8_000:
         raise ValueError("Compare the selected section, up to 8,000 passage units per file.")
-    blocks = [block for block in difflib.SequenceMatcher(None, old, new, autojunk=False).get_matching_blocks() if block.size >= 12]
+    blocks = substantial_blocks(old, new)
     copied = sum(block.size for block in blocks)
     new_ratio = copied / len(new) if new else 0
     old_ratio = copied / len(old) if old else 0
