@@ -91,9 +91,9 @@ first data call (or reuse a supplied readiness note).
    ask which country THIS account is registered in - never where the creator lives.
 
    Where the country comes from differs by platform, and `region_source` records which:
-   - YouTube declares it on the account. It arrives as `data.channel.country` on the
-     `youtube_list_channel_uploads` response - not on `youtube_get_channel`, which omits it - so the
-     call you make anyway for the upload window also settles the region. Record `account_declared`.
+   - YouTube declares it on the account. The retrieval in step 2 already carries it, and the derive
+     step puts it into the request as `account_declared`; write `UNKNOWN` / `unknown` in the request
+     unless the creator named a different country for this account.
    - Instagram and TikTok report no country on any operation. Ask which country the account is
      registered in and record `user_stated`; if they do not say, `UNKNOWN`.
 
@@ -102,7 +102,8 @@ first data call (or reuse a supplied readiness note).
 
 2. Retrieve public account facts for that platform only, and place each successful response as an
    Envelope as described above (`snapshot/envelope-01.json`, `-02`, … in call order):
-   - YouTube: `youtube_get_channel` for the subscriber count, then `youtube_list_channel_uploads`
+   - YouTube: `youtube_get_channel` with `include: ["channel_profile"]` for the subscriber count and
+     the declared country, then `youtube_list_channel_uploads`
      with `max_results: 50`, following `cursor` until the 90-day window is covered or the chain ends.
    - Instagram: `instagram_resolve_profile` for the follower count.
    - TikTok: `tiktok_list_account_posts` with the normalized handle. Its response carries
