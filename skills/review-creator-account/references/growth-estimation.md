@@ -5,8 +5,8 @@ Use `<skill directory>/scripts/estimate_growth.py` for a growth estimate, includ
 ## Decide whether the requested forecast is identifiable
 
 First resolve the target from the immediately preceding request and reply. For an existing post,
-a single lifetime view/like observation does not define its next-month or next-year trajectory.
-If that is all the evidence, correct earlier invented odds, ask for dated observations of that
+a single lifetime view/like observation alone does not define its next-month or next-year trajectory.
+If that is all the evidence and the user supplied no explicit future rate, correct earlier invented odds, ask for dated observations of that
 post, and stop the numeric forecast. Do not substitute a channel-content scenario to fill the
 requested monthly table. If the user switches targets, assess the new target separately.
 
@@ -68,6 +68,18 @@ and uncertainty next to each conditional result. Controllable goals and experime
 not promises about what the platform will distribute.
 
 For a public review, `drive.py growth` replaces the two-step request below: run it in the review's run directory, choose one listed choice, save it as `review_growth_input.json` with the user's number and wording filled in, and run it again before writing the synthesis. `--metric` and `--horizon-days` follow the user's question (views, 30 days by default). Only `content_scenario` belongs in that file. `drive.py report` binds it to `snapshot.json`, `account_analysis.json` and the retained `question.txt`, recomputes the estimate, and includes the number, formula, observation ages, deadline comparison and sensitivity meaning in the validated `ACCOUNT_REVIEW.md`. The normal creator-report handoff carries the complete answer; no separate model-written growth summary is needed. Outside a review run, dated stock or standalone calculations keep the direct interface below.
+
+## Choose the supported output path
+
+A growth-only request or follow-up uses the standalone `estimate_growth.py` interface and its
+printed Markdown handoff. It can calculate `observed_pace` or `assumed_pace` from their dated
+inputs, including one dated baseline plus an explicit user-supplied future rate. The latter is a
+conditional assumption, not a measured trajectory or probability.
+
+Inside a complete public review, `drive.py growth` and the composed `ACCOUNT_REVIEW.md` currently
+support only `content_scenario`. Do not pass stock-pace inputs into that report contract or claim
+they are included. Use the separate standalone calculation for a growth-only follow-up instead.
+This clarification does not extend the public-review schema or hide unsupported coverage.
 
 ## Evidence → choice → answer
 

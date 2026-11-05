@@ -6,8 +6,10 @@ An earlier assistant's platform assumption or causal claim is not verified evide
 
 ## Choose the response branch first
 
-Check whether the actual platform, analytics definition, elapsed time since publication, and a
-same-age comparison are established by the user's records. If any is missing, this turn is a
+For a post comparison, check the actual platform, analytics definition, elapsed time since
+publication and a same-age comparison. For account-level source/audience or period comparisons,
+check matching populations and observation windows instead; a single post age is not required.
+If the relevant basis is missing from the user's records, this turn is a
 clarification: repeat the supplied values without rating them, ask one bundled question for the
 missing context, and stop. Do not append a leading diagnosis, an edit prescription, or a claim
 about what "most likely" happened. Putting questions after a diagnosis does not satisfy this gate.

@@ -13,7 +13,8 @@ modules, write the plan and write the analysis around the computed facts.
 
 **Before attributing results**, including follow-ups reporting that earlier advice failed, read
 [post-publication review](references/post-publication-review.md). Align the platform, metric
-definition, time since publication and comparison first. If these are missing, clarify before
+definition and comparison first: post age for post comparisons, matching populations/windows
+for account comparisons. If the relevant basis is missing, clarify before
 starting a numeric diagnosis; do not invent a cohort to make the workflow run. A missing-input
 reply is not a completed diagnosis and does not require the report pipeline below.
 
