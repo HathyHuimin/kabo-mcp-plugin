@@ -2,6 +2,16 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.12（2026-11-04；GitHub Release）
+
+- `remake-viral-video`：创作者只有照片时也能出片：`start-call --creator-photo`（1–4 个公开 JPEG/PNG 链接，与视频合计最多 4 个）
+  进 `creator.photo_urls`；只有照片时先向用户要一段本人说话的视频，实在没有才在 4 个预设音色里让用户选（`--voice-preset`）。
+  规则在 `references/creator-photos.md`，与网页端 0.1.35 一致。依赖 kabo#2011（`/mcp-pub` 服务端安全取图）与 runner V2-r72。
+- 生产回归（Codex，OAuth 连 `kabo.sh/mcp-pub`，测试账号，runner V2-r74 系）：照片 + 本人视频（job `dadcaedf`）与只有照片
+  （job `e76090ba`）均交付。只有照片时先问「有没有 10–30 秒本人说话的公开视频」，用户说没有后才按编号列出 4 个预设音色，
+  选 3 号后用 Male calm 出片，最终说明照实告诉用户「长相来自照片、声音是预设」，插件侧全部通过。
+  runner 侧：照片 + 视频同时给时，长相参考全部取自视频，交付说明也没写照片来源（已转 runner 跟进）。
+
 ## 1.0.11（2026-11-04；GitHub Release）
 
 - `remake-viral-video`：说明收窄到「要成片时才用」，同网页端 creator-remake-web 0.1.36（creator-skills #955）：借参考结构写稿、
