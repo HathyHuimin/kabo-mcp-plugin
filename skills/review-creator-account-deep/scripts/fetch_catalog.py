@@ -6,8 +6,9 @@ the first Feed page + the first Reels page, YouTube `get_channel` + the latest 5
 `list_account_posts` request (at most `CATALOG_CALL_CAP` catalog calls; the backend retries a briefly
 failed page once). Each run prints one JSON object:
 
-- `needs_calls`: the one call to make, the absolute file to save its complete result in, and `rerun`
-  (this command with `--placed`), which fetches the saved result, places each call as
+- `needs_calls`: the one call to make and `rerun` (this command with `--placed --id <id>`), which
+  fetches the result by its result id (or, for a result with no download url, from the fallback
+  file `save_as`), places each call as
   `catalog/NN-<operation>.json` in issue order, assembles the analysis and then runs `watch_media.py`
   on it, so its output ends with the watch hand-over (workflow step 2).
 - `ok`: `account_analysis.json` is ready in this run.
@@ -192,13 +193,22 @@ def history_call(platform: str, handle: str, channel_id: str | None) -> dict[str
                                                    "delivery": "download"}}
 
 
-def take_saved(path: Path) -> None:
-    """取回存好的组合结果（没有就绪下载时 stage）；宿主已自己落过盘、没另存文件时照用已落的那份。"""
+def take_saved(path: Path, result_id: str | None = None) -> None:
+    """按结果编号取组合结果（没有编号时读退路文件，没有就绪下载时 stage）；宿主已自己落过盘时照用已落的那份。"""
     import static_host
+    if result_id and not static_host.composite_records(COMPOSITE_TOOL):
+        try:
+            static_host.fetch_id(COMPOSITE_TOOL, result_id)
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            raise ValueError(f"--id {result_id} gave no usable {COMPOSITE_TOOL} result ({error}). Run rerun again "
+                             "with the id from that call's download url") from None
+        return
     if not path.is_file():
         if static_host.composite_records(COMPOSITE_TOOL):
             return
-        raise ValueError(f"{path} is missing: save the complete {COMPOSITE_TOOL} result there, then run rerun again")
+        raise ValueError(f"no {COMPOSITE_TOOL} result: run rerun again with --id <id>, the id from that call's "
+                         f"download url (only for a result with no download url, save it whole at {path} and "
+                         "leave --id out)")
     raw = path.read_bytes()
     result = static_host.fetch(COMPOSITE_TOOL, raw)
     if result.get("fetched") == 0:
@@ -244,7 +254,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--account", default="", help="the account the user named (with or without @)")
     parser.add_argument("--channel-id", help="YouTube only: the UC… channel id, instead of --account")
     parser.add_argument("--workspace", help="reserve this request's run directory under this workspace first")
-    parser.add_argument("--placed", action="store_true", help="the printed call was made and its result saved")
+    parser.add_argument("--placed", action="store_true", help="the printed call was made")
+    parser.add_argument("--id", dest="result_id", help="the result id of the printed call")
     parser.add_argument("--call-failed", action="store_true",
                         help="the printed call failed twice without returning any result")
     # 目录就绪后直接接着跑 watch_media.py（中间没有判断），把看片的交接一并打印。
@@ -276,7 +287,7 @@ def main(argv: list[str] | None = None) -> int:
                                                  "the account cannot be fetched right now and stop; do not guess "
                                                  "whether it exists.")
             if not args.call_failed:
-                take_saved(saved)
+                take_saved(saved, args.result_id)
             place_composite()
             rows = placed()
             profile_check(args.platform, label, rows)
@@ -301,11 +312,14 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps({"status": "needs_calls", "run_directory": str(Path.cwd().resolve()),
                       "call": history_call(args.platform, handle, args.channel_id),
                       "save_as": str(saved),
-                      "rerun": " ".join([*rerun, "--placed"]),
+                      "rerun": " ".join([*rerun, "--placed", "--id", "<id>"]),
                       "if_the_call_failed": " ".join([*rerun, "--call-failed"]),
-                      "next_action": "Make this one call with exactly its arguments, save its complete result as "
-                                     "save_as as is, download link included (write the file with your file-write tool "
-                                     "or a single-quoted heredoc; never download anything yourself), then run rerun. "
+                      "next_action": "Make this one call with exactly its arguments. Do not save its result: its "
+                                     "download url holds its result id, the 22 characters between "
+                                     "`research-export/v1/` and `.json`; run rerun with <id> replaced by that id. "
+                                     "Only if the result has no download url, save it whole as save_as (with your "
+                                     "file-write tool) and drop `--id <id>` from rerun. Never download anything "
+                                     "yourself. "
                                      "If the call itself fails without returning a result, make it once more; if it "
                                      "fails again, run if_the_call_failed instead. Never write or edit catalog/ files. "
                                      "Every later command in this run uses run_directory."},

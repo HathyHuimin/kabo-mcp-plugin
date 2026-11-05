@@ -26,8 +26,10 @@ function shell(command) {
 }
 const calls = (out) => out.split("\n").filter((line) => line.startsWith("call: ")).map((line) => JSON.parse(line.slice(6)));
 const reads = (out) => out.split("\n").filter((line) => line.startsWith("read: ")).map((line) => JSON.parse(line.slice(6)));
-const saveOf = (out) => out.split("\n").find((line) => line.startsWith("  save: ")).slice(8);
-const resumeOf = (out) => { const line = out.split("\n").find((l) => l.startsWith("Then run this one command")); return line.slice(line.indexOf("cd '")); };
+// 这几例走「没有下载链接」的退路：结果存进交接点名的文件，续跑去掉 --id。按编号取的那条路见文件末尾两例。
+const saveOf = (out) => out.split("\n").find((line) => line.startsWith("  result ")).split("has no download url: ")[1].slice(0, -1);
+const resumeOf = (out) => { const line = out.split("\n").find((l) => l.startsWith("Then run this one command")); return line.slice(line.indexOf("cd '")).replace(/ --id <id>$/, ""); };
+const withoutId = (command) => command.replace(/ --id <id>$/, "");
 
 const ids = ["DfixtureA01", "DfixtureB02", "DfixtureC03"];
 const analysis = {
@@ -169,7 +171,7 @@ test("目录一次组合调用：--workspace 占 run 并交一个 call，续跑�
     calls: list.map(([tool, envelope]) => ({ tool, parameters: { handle: "neutral.creator" }, group: "acct-0", attempts: 1, result: envelope })),
     summary: { accounts: [] }, coverage: { deadline_reached: false, unfinished: [], provider_calls: 3 }, limitations: [] };
   await save(handed.save_as, result);
-  const second = shell(handed.rerun);
+  const second = shell(withoutId(handed.rerun));
   assert.equal(second.code, 0, second.out);
   assert.match(second.out, /"status": "ok"/);
   for (const [index, [, envelope]] of list.entries()) {
@@ -189,10 +191,90 @@ test("目录组合调用：资料页不存在如实说；调用两次都失败�
   await save(first.save_as, { schema_version: "kabo-composite-fetch.v1", tool: "collect_account_history", status: "failed",
     calls: [{ tool: "instagram_resolve_profile", parameters: { handle: "ghost" }, group: "acct-0", attempts: 1, result: missing }],
     summary: { accounts: [] }, coverage: { deadline_reached: false, unfinished: [], provider_calls: 1 }, limitations: [] });
-  const second = shell(first.rerun);
+  const second = shell(withoutId(first.rerun));
   assert.match(second.out, /"reason": "account_not_found"/);
 
   const other = JSON.parse(python("fetch_catalog.py", ["--workspace", workspace, "--platform", "instagram", "--account", "x"], { cwd: os.tmpdir() }).out);
   const failed = shell(other.if_the_call_failed);
   assert.match(failed.out, /"reason": "service_failed"/);
+});
+
+// 按结果编号取（kabo ADR-0084「2026-11-04」）：模型只把编号填进续跑命令，脚本向 Kabo 取同一份字节、按响应头的
+// sha256 与长度校验后落盘，不存任何文件。进程内替换 urllib 的 HTTPS 收发，不联网。
+const RESULT_ID = "Neutral_Result-Id01234";
+const BY_ID = `https://kabo.sh/v1/research-downloads/${RESULT_ID}`;
+const BY_ID_HARNESS = String.raw`
+import base64, contextlib, hashlib, http.client, io, json, os, sys, urllib.request, urllib.response
+scripts, spec_file = sys.argv[1], sys.argv[2]
+spec = json.load(open(spec_file))
+sys.path.insert(0, scripts)
+requests = []
+class FakeHTTPS(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        requests.append(req.full_url)
+        body = base64.b64decode(spec["download"])
+        head = ("Content-Type: application/json\r\nContent-Length: %d\r\nX-Content-SHA256: %s\r\n\r\n"
+                % (len(body), hashlib.sha256(body).hexdigest())).encode()
+        response = urllib.response.addinfourl(io.BytesIO(body), http.client.parse_headers(io.BytesIO(head)), req.full_url, 200)
+        response.msg = "fake"
+        return response
+import static_host
+static_host.build_opener = lambda: urllib.request.build_opener(static_host.NoRedirect(), FakeHTTPS())
+os.environ["KABO_STATIC_RUN_DIR"] = spec["run"]
+os.chdir(spec["run"])
+module = __import__(spec["script"])
+out = io.StringIO()
+with contextlib.redirect_stdout(out):
+    code = module.main(spec["argv"])
+print(json.dumps({"code": code, "out": out.getvalue(), "requests": requests,
+                  "host_results": sorted(os.listdir("host-results")) if os.path.isdir("host-results") else []}))
+`;
+async function byId(run, script, argv, download) {
+  const spec = path.join(run, "..", `by-id-${script}.json`);
+  await writeFile(spec, JSON.stringify({ run, script, argv, download: Buffer.from(JSON.stringify(download)).toString("base64") }));
+  const result = spawnSync("python3", ["-c", BY_ID_HARNESS, scripts, spec], { encoding: "utf8", env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" } });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  return JSON.parse(result.stdout.trim().split("\n").at(-1));
+}
+
+test("看片按结果编号续跑：交接只要编号，续跑自己取、不存文件，走到终态", async (t) => {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "kabo-deep-media-id-"));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  const run = python("static_host.py", ["init", "--workspace", workspace]).out.trim();
+  await writeFile(path.join(run, "account_analysis.json"), JSON.stringify(analysis));
+  const first = python("watch_media.py", ["account_analysis.json"], { cwd: run, run });
+  assert.equal(first.code, 0, first.out);
+  assert.match(first.out, /Do not save the result/);
+  assert.match(first.out, / --id <id>$/m);
+  const args = calls(first.out)[0].arguments;
+  const resumed = await byId(run, "watch_media", ["account_analysis.json", "--placed", "--id", `${RESULT_ID}.json`], composite(args));
+  assert.equal(resumed.code, 0, resumed.out);
+  assert.deepEqual(resumed.requests, [BY_ID]);
+  assert.deepEqual(resumed.host_results, []);
+  assert.match(resumed.out, /"status": "watched", "pending_jobs": 0/);
+});
+
+test("目录按结果编号续跑：rerun 填编号即可，不存文件，接上看片交接", async (t) => {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "kabo-deep-catalog-id-"));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  const handed = JSON.parse(python("fetch_catalog.py", ["--workspace", workspace, "--platform", "instagram", "--account", "@neutral.creator"], { cwd: os.tmpdir() }).out);
+  assert.match(handed.rerun, / --placed --id <id>$/);
+  assert.match(handed.next_action, /Do not save its result/);
+  const list = [
+    ["instagram_resolve_profile", igEnvelope("resolve_profile", { profile: { id: "u1", pk: "u1", username: "neutral.creator", follower_count: 12000, media_count: 9 } })],
+    ["instagram_list_posts", igEnvelope("list_posts", igPage("FP", 3, false))],
+    ["instagram_list_reels", igEnvelope("list_reels", igPage("RL", 6, true))],
+  ];
+  const result = { schema_version: "kabo-composite-fetch.v1", tool: "collect_account_history", status: "completed",
+    calls: list.map(([tool, envelope]) => ({ tool, parameters: { handle: "neutral.creator" }, group: "acct-0", attempts: 1, result: envelope })),
+    summary: { accounts: [] }, coverage: { deadline_reached: false, unfinished: [], provider_calls: 3 }, limitations: [] };
+  const resumed = await byId(handed.run_directory, "fetch_catalog",
+    ["--platform", "instagram", "--account", "@neutral.creator", "--placed", "--id", RESULT_ID], result);
+  assert.equal(resumed.code, 0, resumed.out);
+  assert.deepEqual(resumed.requests, [BY_ID]);
+  assert.deepEqual(resumed.host_results, []);
+  for (const [index, [, envelope]] of list.entries()) {
+    const placed = JSON.parse(await readFile(path.join(handed.run_directory, `catalog/0${index + 1}-${envelope.operation}.json`), "utf8"));
+    assert.deepEqual(placed, envelope);
+  }
 });

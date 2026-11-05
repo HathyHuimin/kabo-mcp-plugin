@@ -42,9 +42,14 @@ MAX_ROUNDS = 6
 # 首尾必含、其余均匀取，10 条视频 50 张，留在 Web 每回合 60 张图的上限以内。
 OPENING_SECONDS = 3
 FRAMES_PER_VIDEO = 5
-SAVE_RULE = ("Save the result as is, download link included, to the absolute path under it; write the file with "
-             "your file-write tool or a single-quoted heredoc, never by passing the result as a command-line "
-             "argument. Never call get_research_data_download and never download anything yourself.")
+# 与 connector_driver.py 的交接同一个办法（kabo ADR-0084「2026-11-04」）：模型只交结果编号，续跑按编号自己取；
+# 存文件只是没有下载链接时的退路。
+SAVE_RULE = ("Do not save the result. Its download url holds its result id: the 22 characters between "
+             "`research-export/v1/` and `.json`. Put the id of your last call's result into the resume command "
+             "below as `--id <id>`. Only if that result has no download url, save it whole, as returned, to the "
+             "fallback file named under the call (with the host's file-write tool, never as a command-line "
+             "argument) and leave `--id` out. Never download anything yourself; call get_research_data_download "
+             "only when the resume says the id expired.")
 
 
 def say(text: str) -> None:
@@ -108,7 +113,7 @@ def resume_command(args: argparse.Namespace) -> str:
             "--output-language", args.output_language,
             *[part for content_id in args.named_content_id for part in ("--named-content-id", content_id)], "--placed"]
     return (f"cd {run_directory} && KABO_STATIC_RUN_DIR={run_directory} python3 "
-            + " ".join(quote(part) for part in argv))
+            + " ".join(quote(part) for part in argv) + " --id <id>")
 
 
 def hand_over_media(plan: dict[str, Any], args: argparse.Namespace, note: str = "") -> None:
@@ -124,11 +129,11 @@ def hand_over_media(plan: dict[str, Any], args: argparse.Namespace, note: str = 
         f"Hand-over: make this one call now with the arguments verbatim; the backend queues the metadata, transcript "
         f"and keyframe jobs of all {videos} selected videos and waits for them. If its result still reports running "
         f"jobs (coverage.pending above 0), make the same call again right away with the same arguments (nothing is "
-        f"queued or charged twice) until pending is 0 or you have made it {MAX_ROUNDS} times, saving each result over "
-        f"the same file. " + SAVE_RULE)
+        f"queued or charged twice) until pending is 0 or you have made it {MAX_ROUNDS} times; only the last result "
+        f"counts. " + SAVE_RULE)
     say("call: " + json.dumps({"tool": TOOL, "arguments": call_arguments(plan)}, ensure_ascii=False))
-    say(f"  save: {file}")
-    say("Then run this one command right away (it fetches and checks the saved result; links expire in 10 "
+    say(f"  result  (fallback file, only if the result has no download url: {file})")
+    say("Then run this one command right away, <id> replaced by the last result's id (ids expire in 10 "
         "minutes): " + resume_command(args))
 
 
@@ -138,17 +143,34 @@ def staged_since(moment: str | None) -> bool:
     return any(str(record.get("staged_at") or "") >= moment for record in static_host.composite_records(TOOL))
 
 
-def take_saved() -> None:
+def take_saved(result_id: str | None = None) -> None:
     current = state()
     taken = current.setdefault("taken", {})
-    for name in current.get("awaiting") or []:
+    awaiting = current.get("awaiting") or []
+    if result_id:
+        # 编号给的是最近一次交接那一份；之前各次交接的退路文件仍按下面的办法取。
+        name = awaiting[-1] if awaiting else ""
+        key = "id:" + static_host.result_id_of(result_id)
+        if name and taken.get(name) != key:
+            try:
+                static_host.fetch_id(TOOL, result_id)
+            except (ValueError, OSError, KeyError, TypeError) as error:
+                raise ValueError(f"--id {result_id} gave no usable {TOOL} result ({error}). Run the same resume "
+                                 "command again with the id from the last call's download url") from None
+            taken[name] = key
+            save_state(current)
+        awaiting = awaiting[:-1]
+    for name in awaiting:
         path = Path(name)
         if not path.is_file() and staged_since(current.get("handed_at")):
             # 宿主已用自己的方式把结果落进本 run（例如直接 stage），没有另存文件：照用已落的那份。
             continue
+        if str(taken.get(name) or "").startswith("id:"):
+            continue
         if not path.is_file():
-            raise ValueError(f"{path} is missing: save the complete {TOOL} result there, then run the same "
-                             "resume command again")
+            raise ValueError(f"no result for this hand-over: run the same resume command again with --id <id>, the "
+                             f"id from the last {TOOL} call's download url (only for a result with no download url, "
+                             f"save it whole at {path} and leave --id out)")
         raw = path.read_bytes()
         digest = hashlib.sha256(raw).hexdigest()
         if taken.get(name) == digest:
@@ -253,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--named-content-id", action="append", default=[])
     parser.add_argument("--output-language", choices=("en", "zh-CN"), default="en")
     parser.add_argument("--placed", action="store_true")
+    parser.add_argument("--id", dest="result_id", help="the result id of the last collect_video_media call")
     args = parser.parse_args(argv)
     try:
         plan = prepare(args)
@@ -265,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
                 say("This watch round was already handed over; make the call printed earlier, or run with --placed.")
             hand_over_media(plan, args)
             return 0
-        take_saved()
+        take_saved(args.result_id)
         records = static_host.composite_records(TOOL)
         if not records:
             raise ValueError(f"no {TOOL} result was saved in this run; make the printed call and save it first")

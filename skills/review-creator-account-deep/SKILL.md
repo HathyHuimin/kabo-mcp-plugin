@@ -94,8 +94,8 @@ page per format, at most `CATALOG_CALL_CAP` (4) catalog calls per run.
      python3 '<skill directory>/scripts/fetch_catalog.py' --workspace '<user-workspace>' --platform <instagram|youtube|tiktok> --account "<named account>" --output-language <en|zh-CN> [--cap 10] [--named-content-id "<id>"]
      ```
 
-     It prints one JSON. `needs_calls`: its `run_directory` is this run's; make its one call, save
-     the result as `save_as`, then run its `rerun`, as its `next_action` says. Never write or edit
+     It prints one JSON. `needs_calls`: its `run_directory` is this run's; make its one call, then run
+     its `rerun` with that result's id, as its `next_action` says. Never write or edit
      `catalog/` files. The rerun prints `ok` and continues straight into step 2 (its output ends
      with the watch hand-over). On `ok`, `<analysis>` is this run's `account_analysis.json`; this
      path has no standard report and a smaller sample, so quote only the scripted catalog numbers
@@ -123,8 +123,8 @@ page per format, at most `CATALOG_CALL_CAP` (4) catalog calls per run.
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/watch_media.py' '<analysis>' --output-language <en|zh-CN> [--cap 10] [--named-content-id "<id>"]
    ```
 
-   Make the printed call, save its result where it says, repeat the same call while its result still
-   reports running jobs (`coverage.pending` above 0), then run the printed resume command. The resume
+   Make the printed call, repeat the same call while its result still reports running jobs
+   (`coverage.pending` above 0), then run the printed resume command with the last result's id. The resume
    may hand the same call over again while jobs are running; do as it says. `status: stopped` means
    no selected video can be watched: say so and describe no hooks or cuts. Catalog labels in
    `catalog_plus.md` come from title, cover, first sentence, duration and whether the URL sits on

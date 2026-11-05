@@ -14,9 +14,10 @@ minutes, not seconds (on a ten-video Instagram watch set the thirty jobs landed 
 minutes), so:
 
 - while the result still reports running jobs (`coverage.pending` above 0), make the same call again
-  right away with the same arguments and save the newest result over the same file;
-- then run the printed resume command. It fetches the saved result, and while jobs are still running
-  it hands the same call over again with a new file to save; do as it says.
+  right away with the same arguments; only the newest result counts;
+- then run the printed resume command with `--id <id>`, the newest result's id (see
+  `data-calls.md`). It fetches that result itself, and while jobs are still running it hands the
+  same call over again; do as it says.
 - Never call the `public_video_*` tools, `get_research_data_job` or `get_research_data_download`
   yourself for the watch set, and never change the call's arguments: a changed request under the
   same `run_key` is refused for that item and queues nothing.
