@@ -1,6 +1,6 @@
 ---
 name: create-script-and-packaging
-description: "Write scripts, hooks and platform packaging for a chosen topic; continue an existing draft or help plan part 2 of a previous post; adapt a specified video into written clips or carousel copy; rewrite openings, CTAs, captions or cover text. Use for a chosen idea, a stated topic or a referenced earlier episode. Not for choosing ideas, trend research, publish timing, new artwork, CTR predictions or publishing."
+description: "Write, continue or complete scripts and stories, including a short follow-up asking to finish an earlier part. Continue available drafts from their stopping point; ask for missing published source content before inventing a sequel. Also write hooks, captions, cover text and platform packaging, or adapt a specified video into written clips or carousel copy. Not for choosing ideas, trend research, publish timing, new artwork, CTR predictions or publishing."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Optional saved-script access requires the Kabo MCP at https://kabo.sh/mcp-pub. Source-video facts and channel samples come from the creator or existing evidence. Optional image operations need host image download, resize and preview. Kabo permissions, saved scripts only: workspace:read to read, workspace:write to save or replace on request."
 allowed-tools: list_scripts get_script save_script update_script start_skill_run
