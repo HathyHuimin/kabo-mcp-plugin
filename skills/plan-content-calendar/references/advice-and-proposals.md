@@ -15,7 +15,7 @@ neutral structure may accompany it, clearly marked as unfilled. Do not choose a 
 plan ready to copy. This does not block general workflow advice, an explicitly requested template,
 or a concrete proposal for topics already supplied.
 
-Clarify an ambiguous planning interval before assigning absolute dates or a number of weeks. Calendar
+For a new dated proposal, clarify an ambiguous interval before assigning absolute dates or a number of weeks. Calendar
 months and fixed day/week durations are different: ask whether the creator means a rolling interval
 or named calendar months, then preserve the agreed inclusive start and end. A rolling month-based
 interval is still measured in calendar months, not a fixed day count. Keep those units in the
@@ -24,7 +24,10 @@ equivalent unless the creator requested one. Do not silently replace calendar mo
 number of days or weeks, or substitute the remainder of the current
 month. Explicit date ranges and fixed durations need no redundant clarification. Relative topic
 ordering can still be delivered while an exact start date is unknown; do not attach speculative
-absolute dates to a clarification question.
+absolute dates to a clarification question. These checks do not hold back a review of stated times,
+conflicts or reminders: show its requested horizon with supported commitments and unfilled remainder
+first. When the start is unknown, use a relative review or clearly conditional anchor rather than
+requiring native artifacts to deliver that review.
 
 Holiday relevance and seasons need the target region and applicable evidence. Conversation language
 does not establish a country or hemisphere. Ask for unresolved region and date anchors together;

@@ -29,11 +29,13 @@ later. Without a foreground sub-agent, follow the same steps in the main thread.
 
 ## Route the request first
 
-For both conversational proposals and artifact-backed calendars, reuse context already supplied
-before asking for missing inputs. A request for fully filled topics needs a known content direction,
+Reuse context already supplied before asking for missing inputs. When reviewing stated times or
+conflicts, first show the supported review and its requested horizon, with unknown content left
+unfilled; missing artifacts or an exact date anchor must not replace this review with questions.
+A request for fully filled topics needs a known content direction,
 supplied topics or usable account context; if all are absent, ask for the direction instead of
 inventing a niche. Generic advice and explicitly requested blank templates need no such clarification.
-Resolve an ambiguous planning interval before assigning dates or converting it into weeks. Keep
+For a new dated proposal, resolve an ambiguous interval before assigning dates or converting it into weeks. Keep
 month-based clarification in calendar-month units, not an assumed fixed day count. Preserve
 explicit dates and durations; while an anchor is missing, offer only a relative draft. Apply the
 input boundaries in `references/advice-and-proposals.md`, including region-dependent holidays.
