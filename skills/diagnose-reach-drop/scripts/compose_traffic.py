@@ -87,9 +87,10 @@ def answer_text(finding, answer, zh=False):
             amount = (fact.get("count_change") or {}).get("difference")
             if (fact.get("window_basis") or [None])[0] == "calendar" and type(amount) in (int, float) and math.isfinite(amount):
                 # One English sentence; the delivery step translates it into the creator's language.
-                estimated = [bool(group.get("estimated_from_share")) for group in fact.get("groups", [])]
-                amount_name = ("its amount, estimated from the reported shares," if estimated and all(estimated) else
-                               "its amount, partly estimated from the reported shares," if any(estimated) else "its amount")
+                # estimated_from_share marks a group with at least one share-derived row, so it cannot tell a
+                # wholly estimated amount from a partly estimated one.
+                estimated = any(group.get("estimated_from_share") for group in fact.get("groups", []))
+                amount_name = "its amount, at least partly estimated from the reported shares," if estimated else "its amount"
                 share_word = "fell" if share < 0 else "rose" if share > 0 else "was unchanged"
                 amount_word = "fell" if amount < 0 else "rose" if amount > 0 else "was unchanged"
                 return (f"Between the two calendar periods in the supplied data, this source's share {share_word} and "

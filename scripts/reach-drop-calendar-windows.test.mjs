@@ -81,8 +81,7 @@ test("direct counts with an unchanged share say so, without an estimate note", a
 
 test("two calendar weeks get a period verdict, not 'missing matching totals'", async () => {
   const { out, verdict } = await prepare(brief());
-  assert.match(verdict, /Between the two calendar periods in the supplied data, this source's share fell and its amount, partly estimated from the reported shares, fell, which describes the supplied data, not a cause or platform enforcement\.$/m, out + verdict);
-  assert.doesNotMatch(verdict, /amount, estimated from the reported shares/);
+  assert.match(verdict, /Between the two calendar periods in the supplied data, this source's share fell and its amount, at least partly estimated from the reported shares, fell, which describes the supplied data, not a cause or platform enforcement\.$/m, out + verdict);
   assert.doesNotMatch(verdict, /两个日历周期|account's source mix/);
   assert.doesNotMatch(verdict, /缺少匹配的总量|without matching totals/);
 });
