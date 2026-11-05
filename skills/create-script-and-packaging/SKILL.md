@@ -18,15 +18,6 @@ several steps, and wait for its final result before replying; never run it in th
 tell the user the report will come later. Without a foreground sub-agent, follow the same steps in
 the main thread.
 
-**Continuity of existing material.** For both a published sequel and a selected draft continuation,
-read `references/source-adaptation.md` and establish the latest applicable source, its stopping
-point and current character states before writing. Continue from that point; do not replay completed
-beats or undo an established condition without showing the change first. An available selected
-draft is sufficient for fictional continuation, but not proof of a published episode. Missing
-published content must be recovered or requested before concrete sequel advice; account metadata
-and assistant guesses cannot establish it. General craft advice and independent original briefs
-do not require a previous episode.
-
 **Native package delivery.** The Creator-facing result is `SCRIPT_PACKAGE.md`, written by the
 renderer after both validators pass. Deliver it once, exactly as rendered: never summarize, rewrite or retype it, and
 never append a second paraphrased report. Explanations around it are in the creator's language;
