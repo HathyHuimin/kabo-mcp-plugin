@@ -5,14 +5,28 @@ import difflib
 import json
 from pathlib import Path
 import re
+import unicodedata
+
+
+def passage_units(text):
+    """Normalize Unicode and split unspaced scripts without splitting other words."""
+    normalized = unicodedata.normalize("NFKC", text).casefold()
+    # 无空格文字按字符分段；英语、乌尔都语等原有分词保持不变。
+    unspaced = ("CJK ", "HIRAGANA ", "KATAKANA ", "HANGUL ", "THAI ", "LAO ", "KHMER ", "MYANMAR ")
+    segmented = "".join(
+        f" {char} " if unicodedata.name(char, "").startswith(unspaced) else char
+        for char in normalized
+    )
+    return re.findall(r"\w+", segmented)
 
 
 def check_overlap(source, continuation):
+    """Measure substantial literal reuse; do not judge semantic continuity."""
     # 只检查连续复制片段，不声称判断人物状态或语义连续性。
-    old = re.findall(r"\w+", source.casefold())
-    new = re.findall(r"\w+", continuation.casefold())
+    old = passage_units(source)
+    new = passage_units(continuation)
     if max(len(old), len(new)) > 8_000:
-        raise ValueError("Compare the selected section, up to 8,000 words per file.")
+        raise ValueError("Compare the selected section, up to 8,000 passage units per file.")
     blocks = [block for block in difflib.SequenceMatcher(None, old, new, autojunk=False).get_matching_blocks() if block.size >= 12]
     copied = sum(block.size for block in blocks)
     new_ratio = copied / len(new) if new else 0
@@ -21,9 +35,10 @@ def check_overlap(source, continuation):
     repeated = copied >= 60 and max(new_ratio, old_ratio) >= 0.20
     return {
         "status": "empty" if not old or not new else "repeated_source" if repeated else "no_large_literal_replay",
-        "source_words": len(old),
-        "continuation_words": len(new),
-        "copied_passage_words": copied,
+        "passage_unit": "word, or character for scripts commonly written without word spaces",
+        "source_units": len(old),
+        "continuation_units": len(new),
+        "copied_passage_units": copied,
         "copied_fraction_of_source": round(old_ratio, 4),
         "copied_fraction_of_continuation": round(new_ratio, 4),
         "limitation": "Checks substantial literal reuse only; an Agent must still check scope, paraphrased repetition, established facts and character states.",
@@ -31,6 +46,7 @@ def check_overlap(source, continuation):
 
 
 def main():
+    """Read bounded UTF-8 files, print overlap evidence and return its status."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--continuation", type=Path, required=True)
