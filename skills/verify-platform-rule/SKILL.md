@@ -4,8 +4,6 @@ description: "Verify a platform rule, rumour, threshold change, feature or setti
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download render_official_pages start_skill_run
-metadata:
-  version: "0.18.24"
 ---
 
 # Verify Platform Rule
