@@ -203,7 +203,7 @@ def place_envelopes(record: dict[str, Any]) -> tuple[list[str], list[str]]:
             continue
         content_id, operation = group.rsplit("/", 1)
         flag = f"{content_id}:{operation}={job['job_id']}"
-        if job.get("status") in ("queued", "running"):
+        if job.get("status") in static_host.PENDING:
             pending.append(flag)
         else:
             bindings.append(flag)
