@@ -4,13 +4,22 @@ Apply this gate to initial diagnoses and follow-ups, including results after ear
 Reuse facts already supplied; ask together only for the missing facts needed for this decision.
 An earlier assistant's platform assumption or causal claim is not verified evidence.
 
+## Reuse or retrieve available evidence
+
+Reuse supplied records and verified artifacts. When the platform and target are known, use the
+existing authorized metadata/account-history tools and workflow to fill publicly available
+publication times and comparison data before asking the creator for them. Do not stop a normal
+public-data diagnosis simply because the user did not type a baseline. Ask only about what remains
+unavailable, ambiguous or private; do not guess the platform to retrieve unrelated evidence.
+
 ## Choose the response branch first
 
 For a post comparison, check the actual platform, analytics definition, elapsed time since
 publication and a same-age comparison. For account-level source/audience or period comparisons,
 check matching populations and observation windows instead; a single post age is not required.
-If the relevant basis is missing from the user's records, this turn is a
-clarification: ask one bundled question for the missing context and end the reply. Do not append a leading diagnosis, an edit prescription, or a claim
+If the relevant basis remains missing after available evidence is checked, this turn is a
+clarification: ask one bundled question covering every unresolved item, including the comparison
+basis, and end the reply. Do not append a leading diagnosis, an edit prescription, or a claim
 about what "most likely" happened. Putting questions after a diagnosis does not satisfy this gate.
 Even a tentative statement that a subgroup watched most of the video is an interpretation:
 an average duration alone does not identify that subgroup. Do not add a metric interpretation to a clarification question. Earlier assistant language, including the platform it assumed, does not fill missing evidence.

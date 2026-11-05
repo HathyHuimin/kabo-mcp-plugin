@@ -19,7 +19,8 @@ positions. The schemas, deterministic computation, renderers and validators ship
 
 **Performance follow-up: clarify before diagnosing.** Read
 [post-publication review](references/post-publication-review.md) for reported analytics or results
-after earlier advice. Missing platform, metric definition, post age or comparable baseline means
+after earlier advice. Reuse records and retrieve available metadata/baselines for a known target.
+If platform, metric definition, post age or comparable baseline is still missing,
 **this turn only asks one bundled clarification and ends**. Do not add a leading or trailing
 interpretation, ratings, viewer-subgroup claims or editing advice. Once the creator supplies the
 missing context, proceed with evidence-based hypotheses and useful checks.
