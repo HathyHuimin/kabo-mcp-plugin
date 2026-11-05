@@ -180,6 +180,10 @@ def build(intent: dict[str, Any], output: Path, *, creator_profile: Path | None 
             raise RequestInputError(f"{conversation_context} is not an available file", field="conversation_context",
                 next_action="Restore the exact earlier visible messages from this conversation, including the referenced text. Do not invent a previous IdeaSet or rewrite the current brief.")
         if conversation_context.resolve() != retained_conversation.resolve():
+            try:
+                bound_conversation_context(conversation_context, base)
+            except ValueError as error:
+                raise RequestInputError(str(error), field="conversation_context") from error
             base.mkdir(parents=True, exist_ok=True)
             retained_conversation.write_bytes(conversation_context.read_bytes())
         try:

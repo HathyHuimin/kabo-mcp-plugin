@@ -61,6 +61,14 @@ class ConversationContract(unittest.TestCase):
         """Read the request that the builder actually retained for core."""
         return json.loads((self.root / "request.json").read_text())
 
+    def run_builder(self, source):
+        """Exercise direct rebuilds against an existing run's output directory."""
+        result = subprocess.run([sys.executable, "-B", str(SKILL / "scripts/build_idea_request.py"),
+            "--intent", str(self.root / "intent.json"), "--output", str(self.root / "request.json"),
+            "--conversation-context", str(source)], capture_output=True, text=True)
+        self.assertTrue(result.stdout, result.stderr)
+        return result.returncode, json.loads(result.stdout)
+
     def output(self):
         """Build three structurally valid proposals without grading creative quality."""
         output = copy.deepcopy(FIXTURE["idea_set"])
@@ -161,6 +169,39 @@ class ConversationContract(unittest.TestCase):
         self.assertEqual((1, "failed"), (code, core["status"]))
         self.assertIn("checksum", core["error"])
         self.assertFalse((self.root / "RESULT.md").exists())
+
+    def test_invalid_direct_rebuild_preserves_existing_request_and_context(self):
+        """Reject invalid replacement sources before overwriting retained evidence."""
+        self.prep()
+        retained = self.root / self.request()["conversation_context"]["path"]
+        old_context = retained.read_bytes()
+        old_request = (self.root / "request.json").read_bytes()
+        bad_quote = copy.deepcopy(self.source)
+        bad_quote["reference"]["quote"] = "not in source"
+        bad_sources = [json.dumps(bad_quote), json.dumps({"messages": []}), "{broken json"]
+        for index, text in enumerate(bad_sources):
+            with self.subTest(index=index):
+                source = self.root / f"bad-replacement-{index}.json"
+                source.write_text(text)
+                code, result = self.run_builder(source)
+                self.assertEqual((1, "failed"), (code, result["status"]))
+                self.assertEqual(old_context, retained.read_bytes())
+                self.assertEqual(old_request, (self.root / "request.json").read_bytes())
+                self.assertEqual([], validator.validate_request(self.request(), self.root / "request.json"))
+
+    def test_valid_direct_rebuild_binds_the_replacement_bytes(self):
+        """Allow a valid replacement and bind the rebuilt request to its exact bytes."""
+        self.prep()
+        replacement = copy.deepcopy(self.source)
+        replacement["messages"][0]["text"] = "Use only ordinary survival-world materials."
+        source = self.write("valid-replacement.json", replacement)
+        code, result = self.run_builder(source)
+        self.assertEqual((0, "ok"), (code, result["status"]))
+        context = self.request()["conversation_context"]
+        self.assertEqual(replacement["messages"], context["messages"])
+        self.assertEqual(source.read_bytes(), (self.root / context["path"]).read_bytes())
+        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), context["sha256"])
+        self.assertEqual([], validator.validate_request(self.request(), self.root / "request.json"))
 
     def test_one_correction_only_and_no_reset_after_exhaustion(self):
         """Keep an exhausted preparation budget final after a source is corrected."""
