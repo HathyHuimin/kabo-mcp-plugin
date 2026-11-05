@@ -17,13 +17,16 @@ Do not require proof of publication or ask for the same draft again.
    its final action, already completed beats, current character states and the condition of props
    that the continuation uses. A superseded outline
    does not override the latest selected text.
-   Before drafting, write `source-state.md` from that text: the stopping action and every established
-   loss or constraint on a character, object or resource, with its short source quote. Include
+   Before drafting, write `source-state.md` from that text: the stopping action, established past
+   events and every loss or constraint on a character, object or resource, with its short source quote. Include
    unavailable abilities and broken, lost or consumed objects even if the planned continuation
    does not use them. Keep them unavailable unless the new text explicitly establishes a transition.
 2. Write only the missing continuation into `continuation.md`. Its first new action follows the
    source's last action; do not restart the part. One brief orienting sentence is enough. Preserve
-   established past events. A new twist may add consequences, not replace what already happened.
+   established past events. Distinguish what the source showed from a character's belief or an
+   unresolved question. A new twist can develop the latter without undoing the former. If a new
+   account contradicts an established event, depict the conflict and reconcile it in the story,
+   or leave that account explicitly unverified; do not silently adopt it as the new truth.
 3. Run the literal-overlap check on those actual files, with both texts returned for review:
 
    ```sh
@@ -38,6 +41,8 @@ Do not require proof of publication or ask for the same draft again.
    then every entry in `source-state.md` versus its actual use or absence in the finished text,
    including the ending and cliffhanger. Do not drop a constraint from review because it was
    absent from the outline. Quote the relevant short passages, rather than only declaring that a check passed.
+   Compare any new explanation of a past event to the source's actual account; a denial of that
+   event is not an added consequence just because the review calls it a revelation.
    A damaged or lost object cannot silently work again; a character cannot silently regain an
    ability. Depict any repair, replacement, recovery or other transition before relying on it.
    Explicitly attribute recordings, imitations, gestures and inner thoughts so they cannot read as
