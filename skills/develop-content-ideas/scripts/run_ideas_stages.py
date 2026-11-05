@@ -201,9 +201,7 @@ def run_prep(args: argparse.Namespace) -> int:
                              "Use the original upstream JSON artifact, not its Markdown report. Do not hand-write a replacement.")).issue
                 for row in not_json)
         files_available = not issues
-        # Check readable conversation input even when an independent upstream
-        # file is missing. Otherwise its reference error surfaces only after the
-        # one allowed correction has already been spent restoring that file.
+        # 缺失上游文件不能遮住可独立检查的聊天引用错误；一次反馈列全。
         if (args.conversation_context is not None and args.conversation_context.is_file()
                 and not any(row["flag"] == "--conversation-context" for row in not_json)):
             try:

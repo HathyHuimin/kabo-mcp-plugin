@@ -1,0 +1,208 @@
+{
+  "intent": {
+    "schema_version": "idea-request.v3-candidate2",
+    "request_id": "followup",
+    "created_at": "2026-08-22T00:00:00Z",
+    "task_intent": "open_shortlist",
+    "idea_count": 3,
+    "hook_option_count": 1,
+    "goal": {
+      "status": "confirmed",
+      "value": "make the next content decision"
+    },
+    "audience": {
+      "status": "confirmed",
+      "value": "AI sales teams"
+    },
+    "desired_audience_action": {
+      "status": "confirmed",
+      "value": "save and try the workflow"
+    },
+    "platform_targets": [
+      "instagram"
+    ],
+    "language_targets": [
+      "en"
+    ],
+    "report_language": "en",
+    "user_brief": {
+      "status": "provided",
+      "text": "Three more in that style, but no racing."
+    },
+    "generation_basis": {
+      "direct_topic": null,
+      "required_sources": [],
+      "allow_brief_fallback": false,
+      "continuation_quote": "Three more in that style"
+    },
+    "production_constraints": {
+      "status": "partial",
+      "total_time_minutes": 120,
+      "time_per_item": "30 minutes",
+      "budget": "organic",
+      "available_assets": [
+        "screen_recording"
+      ],
+      "filming_mode": "talking_head",
+      "editing_capacity": "basic",
+      "publishing_cadence": "weekly"
+    },
+    "exclusions": {
+      "topics": [
+        "racing"
+      ],
+      "claims": [
+        "guaranteed results"
+      ],
+      "formats": [],
+      "assets": []
+    }
+  },
+  "idea_set": {
+    "schema_version": "idea-set.v3-candidate1",
+    "report_language": "en",
+    "idea_set_id": "set-001",
+    "request_id": "followup",
+    "created_at": "2026-08-22T00:01:00Z",
+    "status": "ready_for_selection",
+    "task_intent": "open_shortlist",
+    "source_mode": "brief_only",
+    "overview": {
+      "headline": "candidate",
+      "portfolio_logic": "compare options",
+      "recommended_candidate_ids": [
+        "idea-001"
+      ],
+      "missing_context_effect": "none"
+    },
+    "gates": {
+      "selection_missing": [],
+      "production_missing": [],
+      "blocked_reasons": []
+    },
+    "interaction": {
+      "next_actions": [
+        "choose"
+      ]
+    },
+    "evidence_summary": {
+      "upstream_source_ids": [],
+      "source_context_refs": [],
+      "video_analysis_ids": [],
+      "has_account_context": false,
+      "data_gaps": []
+    },
+    "evidence_gap_translations": [
+      {
+        "source_text": "brief_only",
+        "report_text": "brief_only"
+      },
+      {
+        "source_text": "open_shortlist",
+        "report_text": "open_shortlist"
+      },
+      {
+        "source_text": "ready_for_selection",
+        "report_text": "ready_for_selection"
+      }
+    ]
+  },
+  "idea": {
+    "idea_id": "idea-001",
+    "rank": 1,
+    "working_title": "A workflow boundary worth showing (1)",
+    "why_for_creator": "fits the declared creator context",
+    "audience_problem": "the next step is unclear",
+    "content_promise": "show a repeatable decision",
+    "angle": "use a visible decision split",
+    "platforms": [
+      "instagram"
+    ],
+    "formats": [
+      "reel"
+    ],
+    "hook_preview": {
+      "opening_line": "The dangerous part is not the reply; it is not knowing when to stop.",
+      "progressive_line": null,
+      "mechanism": "contrarian boundary"
+    },
+    "hook_options": [],
+    "making_direction": "show the workflow on screen",
+    "content_outline": [
+      {
+        "order": 1,
+        "beat": "set up",
+        "purpose": "create tension",
+        "evidence_refs": []
+      },
+      {
+        "order": 2,
+        "beat": "show decision",
+        "purpose": "teach the rule",
+        "evidence_refs": []
+      },
+      {
+        "order": 3,
+        "beat": "close",
+        "purpose": "give next action",
+        "evidence_refs": []
+      }
+    ],
+    "creator_fit": {
+      "status": "hypothesis",
+      "rationale": "sparse, absent, or complete profile"
+    },
+    "evidence_basis": "brief_based",
+    "why_now": "timeliness is bounded by the supplied snapshot",
+    "source_context_refs": [],
+    "evidence_refs": [],
+    "primary_evidence_ref": null,
+    "differentiation": "original workflow example",
+    "must_differ": [
+      "do not invent customer outcomes",
+      "do not claim competitor results"
+    ],
+    "production_feasibility": {
+      "status": "assessed",
+      "effort": "medium",
+      "estimated_minutes": {
+        "min": 20,
+        "max": 30
+      },
+      "required_assets": [
+        "screen_recording"
+      ],
+      "assets_used": [
+        "screen_recording"
+      ],
+      "assumptions": []
+    },
+    "evaluation": {
+      "evidence_strength": {
+        "rating": "medium",
+        "reason": "context refs"
+      },
+      "creator_fit": {
+        "rating": "medium",
+        "reason": "profile"
+      },
+      "differentiation": {
+        "rating": "medium",
+        "reason": "original"
+      },
+      "timeliness": {
+        "rating": "medium",
+        "reason": "snapshot"
+      },
+      "production_feasibility": {
+        "rating": "medium",
+        "reason": "bounded"
+      }
+    },
+    "risks": [
+      "unverified claims remain hypothetical"
+    ],
+    "missing_inputs": [],
+    "selection_status": "candidate"
+  }
+}

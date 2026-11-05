@@ -85,7 +85,9 @@ lineage validation still apply. Collection failure does not authorize brief fall
 
    Add the artifact flags this run has: `--creator-profile`, `--account-review`, `--trend-report`
    with `--trend-context`, `--competitor-report` with `--competitor-context`, `--video-analysis`,
-   or `--comment-context`. Account evidence reaches prep as `--account-review <copied
+   or `--comment-context`. A continuation also takes either `--previous-ideas` or
+   `--conversation-context`, as *Continuations* in `references/core-generation.md` defines.
+   Account evidence reaches prep as `--account-review <copied
    account_review.json>` alone: prep projects that review into `account_idea_context.json` in this
    run itself. Never write or edit an account context by hand; an `--account-context` that differs
    from the review's projection is rejected. Prep writes `request.json`, `decision.json`, and the
