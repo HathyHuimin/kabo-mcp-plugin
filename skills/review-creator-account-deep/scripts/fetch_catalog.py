@@ -15,7 +15,8 @@ failed page once). Each run prints one JSON object:
 - `stopped`: the account cannot be reviewed here; tell the user the message and stop.
 
 `--workspace <dir>` reserves this request's run directory first (the same as `static_host.py init`),
-so reserving the run and handing over the catalog call are one command. `--call-failed` records that
+so reserving the run and handing over the catalog call are one command. A run this Skill reserved in
+the same workspace within the last 30 minutes and still empty is taken instead of reserving another. `--call-failed` records that
 the call itself failed twice without returning a result. When this run already holds
 `account_analysis.json`, nothing is fetched.
 """
@@ -248,6 +249,46 @@ def profile_check(platform: str, label: str, rows: list[dict[str, Any]]) -> None
                                      "cannot be fetched right now and stop; do not guess whether it exists.")
 
 
+# 实测（1.0.14 回归）：模型先跑了 static_host.py init、记了一次 start_skill_run，又跑 --workspace 再预留
+# 一个 run，于是同一个请求按两个 run_id 记了两次用量。--workspace 先认领本 workspace 里刚预留、
+# 还没放进任何东西的本 Skill run，没有才新建；一个请求始终只有一个 run。
+FRESH_RUN_SECONDS = 30 * 60
+
+
+def untouched_run(workspace: str) -> Path | None:
+    import time
+    base = Path(workspace).resolve() / ".kabo-runs"
+    if not base.is_dir():
+        return None
+    for run in sorted(base.iterdir(), reverse=True):
+        marker = run / ".static-run.json"
+        if run.is_symlink() or not marker.is_file() or time.time() - marker.stat().st_mtime > FRESH_RUN_SECONDS:
+            continue
+        try:
+            if json.loads(marker.read_text(encoding="utf-8")).get("skill") != SCRIPTS.parent.name:
+                continue
+        except (OSError, ValueError):
+            continue
+        # 只有 init 建的空目录与标记文件：任何已落盘的文件（包括别的请求留下的认领标记）都说明这个 run
+        # 已经开始，跳过它接着找。认领用独占创建，两个请求不会同时认领同一个 run。
+        if any(path.is_file() and path != marker for path in run.rglob("*")):
+            continue
+        if claim(run):
+            return run
+    return None
+
+
+CLAIM = ".catalog-claim"
+
+
+def claim(run: Path) -> bool:
+    try:
+        os.close(os.open(run / CLAIM, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
+        return True
+    except FileExistsError:
+        return False
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--platform", choices=sorted(CONTENT), required=True)
@@ -269,7 +310,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.workspace and not os.environ.get("KABO_STATIC_RUN_DIR"):
             import static_host
-            run_directory = static_host.init(args.workspace)
+            run_directory = untouched_run(args.workspace)
+            if run_directory is None:
+                run_directory = Path(static_host.init(args.workspace))
+                claim(run_directory)
             os.chdir(run_directory)
             os.environ["KABO_STATIC_RUN_DIR"] = str(run_directory)
         if ANALYSIS.exists():

@@ -736,14 +736,31 @@ def stage_report(args: argparse.Namespace) -> None:
     growth_args = (["--growth-input", GROWTH_INPUT, "--growth-snapshot", SNAPSHOT,
                     "--growth-question-file", QUESTION] if Path(GROWTH_INPUT).exists() else [])
     check_args = ["--check-existing"] if getattr(args, "verify_existing", False) is True else []
-    cd.script("compose_review.py", "--analysis", ANALYSIS, "--synthesis", SYNTHESIS, *profile_args,
-              *growth_args, "--output-dir", str(output_dir), *check_args)
-    cd.script("validate_artifacts.py", "--analysis", ANALYSIS, "--synthesis", SYNTHESIS,
-              "--report", str(output_dir / "account_review.json"), "--profile", str(output_dir / "creator_profile.json"))
-    cd.script("validate_creator_report.py", "--report", str(output_dir / "account_review.json"),
-              "--synthesis", SYNTHESIS, "--markdown", str(output_dir / "ACCOUNT_REVIEW.md"),
-              "--analysis", ANALYSIS, *growth_args,
-              *[arg for path in stored for arg in ("--envelope", str(path))])
+    correctable = getattr(args, "allow_authoring_correction", False) is True
+    try:
+        cd.script("compose_review.py", "--analysis", ANALYSIS, "--synthesis", SYNTHESIS, *profile_args,
+                  *growth_args, "--output-dir", str(output_dir), *check_args)
+        cd.script("validate_artifacts.py", "--analysis", ANALYSIS, "--synthesis", SYNTHESIS,
+                  "--report", str(output_dir / "account_review.json"), "--profile", str(output_dir / "creator_profile.json"))
+        cd.script("validate_creator_report.py", "--report", str(output_dir / "account_review.json"),
+                  "--synthesis", SYNTHESIS, "--markdown", str(output_dir / "ACCOUNT_REVIEW.md"),
+                  "--analysis", ANALYSIS, *growth_args,
+                  *[arg for path in stored for arg in ("--envelope", str(path))])
+    except cd.StageError as error:
+        if not correctable:
+            raise
+        # 实测（1.0.14 回归）：compose 已写出报告、校验器才拒收，留下的未过校验的报告让改完重跑撞上
+        # 「a report already exists」，verify-report 又因 synthesis 已改而对不上，这条补救路径走不通。
+        # 未过校验的报告不是交付物：删掉它们，标记本 run 改过稿（最终仍由 verify-report 复核）。
+        for name in ("account_review.json", "creator_profile.json", "ACCOUNT_REVIEW.md"):
+            path = output_dir / name
+            if path.is_file() and not path.is_symlink():
+                path.unlink()
+        AUTHORING_CORRECTION_MARKER.write_text("needs_revision\n", encoding="utf-8")
+        raise cd.StageError(f"{error}\nThe unvalidated report was removed. If the message above names "
+                            f"authored synthesis text, correct only that text in this same open run, then "
+                            f"repeat this same report command. If it names no authored field (a file, "
+                            f"permission or other system error), this step failed: report it and stop.") from None
     report = (output_dir / "ACCOUNT_REVIEW.md").resolve()
     # 本 run 从未返回 needs_revision 时，这次 report 就是最终步：两个校验器刚在同一份字节上通过，
     # verify-report 再跑一遍只会重复 compose 和两次校验。
