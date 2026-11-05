@@ -468,14 +468,14 @@ test("fetch 与 stage 不互相指回：产物全部不可用时指向缺口记�
   assert.deepEqual(Buffer.from(staged.files[Object.keys(staged.files).find((name) => name.endsWith("-0.png"))], "base64"), png);
 });
 
-test("九份 static_host.py 的共用部分逐字相同；交给模型的调用带 delivery，且钉住的 tools/list 声明了它", async (t) => {
+test("各份 static_host.py 的共用部分逐字相同；交给模型的调用带 delivery，且钉住的 tools/list 声明了它", async (t) => {
   const tools = new Map(JSON.parse(await readFile(path.join(root, "contracts/directory-mcp/tools-list.json"), "utf8")).tools.map((tool) => [tool.name, tool]));
   const shared = new Set();
   for (const id of fetchSkills) {
     const text = await readFile(path.join(root, "skills", id, "scripts/static_host.py"), "utf8");
     shared.add(text.slice(text.indexOf("def evidence_id():")));
   }
-  assert.equal(fetchSkills.length, 13);
+  assert.equal(fetchSkills.length, 15);
   assert.equal(shared.size, 1, "evidence_id 之后的共用函数在各副本间不一致");
   const probe = String.raw`
 import json, runpy, sys
@@ -740,7 +740,7 @@ const VIDEO = ["--connector", "youtube-public", "--operation", "get_video"];
 const VIDEO_META = { connector_id: "youtube-public", operation: "get_video", delivery: "download" };
 
 test("persist：宿主导出的原始工具结果放在 snapshot/、host-results/ 或运行目录根都不算已放置；放置过的照旧去重", async (t) => {
-  assert.equal(persistCopies.size, 13);
+  assert.equal(persistCopies.size, 15);
   assert.equal(persistVariants.length, 3);
   const raw = (full) => downloadResult({ result: withoutData(full) });
   const placements = [

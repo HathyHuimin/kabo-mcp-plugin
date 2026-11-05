@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Income rows: one Skill's own part of a "what does my income add up to" answer.
 
-The rows share one shape with Kabo's brand-deal pricing, which is not bundled in this plugin, so
-the main agent can put platform payouts and brand deals side by side in one reply. The shape and
-the three rules below hold for every row:
+Two Skills write these rows in the same shape - platform payouts in one, brand deals in the other -
+and the main agent puts them side by side in one reply. This file ships byte-identical in both
+Skills, so the shape and the three rules below cannot drift apart:
 
 1. An eligibility bar is not income. A row only carries an amount its own Skill computed.
 2. Rows whose rates rest on different kinds of evidence are never added into one total.

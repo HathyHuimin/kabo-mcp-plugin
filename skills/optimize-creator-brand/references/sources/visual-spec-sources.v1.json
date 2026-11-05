@@ -1,0 +1,118 @@
+{
+  "schema_version": "platform-policy-sources.v1",
+  "library_version": "2026.09.1",
+  "compiled_at": "2026-09-14",
+  "staleness_budget_days": 120,
+  "sources": [
+    {
+      "source_id": "youtube.channel_banner_specs",
+      "platform": "youtube",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Change your channel's banner image",
+      "url": "https://support.google.com/youtube/answer/10456525",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-14",
+      "retrieval": {
+        "method": "plain_fetch",
+        "note": "Measured 2026-09-14: a plain fetch returns 8605 characters of article text containing the dimensions verbatim. No JS render needed. Note the rendered copy prints thousands separators (2,560) while the plain body does not (2560); match on digits without commas."
+      },
+      "watch_urls": null,
+      "watch_urls_absent_reason": "Image-spec edits are not announced. YouTube revises the numbers in place on this help page without a blog post or changelog entry, so there is no upstream page that would signal the change. Re-reading this page on the staleness budget is the only detection there is.",
+      "carries": "Banner minimum upload dimension 2048 x 1152 px at 16:9, the safe area for text and logos at that minimum (1235 x 338 px), and the recommended dimension 2560 x 1440 px called out for TV.",
+      "does_not_carry": "Any pixel dimension for the channel profile picture (avatar). It covers the banner only.",
+      "language": "en"
+    },
+    {
+      "source_id": "youtube.thumbnail_specs",
+      "platform": "youtube",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Add video thumbnails",
+      "url": "https://support.google.com/youtube/answer/72431",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-14",
+      "retrieval": {
+        "method": "plain_fetch",
+        "note": "Measured 2026-09-14: a plain fetch returns 8986 characters of article text containing 3840 verbatim. No JS render needed."
+      },
+      "watch_urls": null,
+      "watch_urls_absent_reason": "Same as the banner page: thumbnail numbers are edited in place with no announcement, so nothing upstream carries the change. The staleness budget is the detection.",
+      "carries": "Thumbnail resolution 3840 x 2160 px for videos and 2160 x 3840 for Shorts, a minimum width of 640 px for videos and minimum height of 640 px for Shorts, aspect ratios 16:9 for videos, 9:16 for Shorts and 1:1 for podcast playlists, and the upload size ceilings (mobile 2 MB for video thumbnails, 10 MB for podcasts; desktop 50 MB).",
+      "does_not_carry": "Channel avatar or banner dimensions, and any statement that 1280 x 720 is the current recommendation. The page states 3840 x 2160; the widely repeated 1280 x 720 figure is not on it.",
+      "language": "en"
+    },
+    {
+      "source_id": "instagram.photo_resolution",
+      "platform": "instagram",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Instagram photo resolution and aspect ratio",
+      "url": "https://help.instagram.com/1631821640426723",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-14",
+      "retrieval": {
+        "method": "js_rendered",
+        "note": "Measured 2026-09-14: a plain fetch returns HTTP 200 but only 13 characters of visible text - the body is a client shell, and the one 1080x1080 string in the raw HTML sits in a meta keywords tag, not the article. official-page-render/render_page returns the 3612-character article."
+      },
+      "watch_urls": null,
+      "watch_urls_absent_reason": "Meta does not announce help-page spec edits for image resolution anywhere a reader could subscribe to; the page is revised in place. Re-render on the staleness budget.",
+      "carries": "Uploads are kept at up to 1080 pixels wide; a photo between 320 and 1080 pixels wide keeps its original resolution as long as the aspect ratio is between 1.91:1 and 3:4 (at 1080 wide, a height between 566 and 1440); the guidance to upload at least 1080 pixels wide within that ratio range.",
+      "does_not_carry": "Any pixel dimension for the Instagram profile photo (avatar), and any fixed per-surface size such as a feed post or Reels cover. The quoted numbers are about shared photos, not the avatar - do not re-use them as an avatar spec.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.creator_tools_upload",
+      "platform": "tiktok",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Creator tools on TikTok",
+      "url": "https://support.tiktok.com/en/using-tiktok/creating-videos/creator-tools-on-tiktok",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-14",
+      "retrieval": {
+        "method": "js_rendered",
+        "note": "Measured 2026-09-14: a plain fetch returns HTTP 200 with 28 characters of visible text - a client shell. official-page-render/render_page returns the 7726-character article."
+      },
+      "watch_urls": null,
+      "watch_urls_absent_reason": "TikTok revises help-centre specs in place; the newsroom carries product launches, not spec edits. Re-render on the staleness budget.",
+      "carries": "Upload resolution 720x1280 or higher and a file-size ceiling of less than 10 GB.",
+      "does_not_carry": "Any pixel dimension for the TikTok profile photo (avatar), and any cover-image spec.",
+      "language": "en"
+    },
+    {
+      "source_id": "tiktok.profile_setup",
+      "platform": "tiktok",
+      "domains": [
+        "product_help"
+      ],
+      "role": "rule_source",
+      "title": "Setting up your profile",
+      "url": "https://support.tiktok.com/en/getting-started/setting-up-your-profile",
+      "source_authority": "official_help_page",
+      "status": "verified",
+      "verified_at": "2026-09-14",
+      "retrieval": {
+        "method": "js_rendered",
+        "note": "Measured 2026-09-14: a plain fetch returns HTTP 200 with 1518 characters - navigation labels and the section headings only, no article body, so the absence of a pixel figure cannot be read off it. official-page-render/render_page returns the article, which describes adding and cropping a profile photo as steps."
+      },
+      "watch_urls": null,
+      "watch_urls_absent_reason": "Nothing upstream announces edits to this page. Re-render on the staleness budget.",
+      "carries": "The steps for adding and cropping a profile photo.",
+      "does_not_carry": "Any pixel dimension, aspect ratio or file-size limit for the profile photo. This row exists so that a later run stops looking: TikTok does not publish an avatar size, and its absence here is measured, not assumed.",
+      "language": "en"
+    }
+  ]
+}

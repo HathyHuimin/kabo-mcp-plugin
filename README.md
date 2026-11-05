@@ -2,7 +2,7 @@
 
 Kabo helps you research public creator accounts, compare competitors, find trends, analyze videos,
 develop content ideas and scripts, and remake a viral talking-head video with you in it. This
-repository contains one plugin: a `kabo` MCP connection, fifteen bundled Skills, and the metadata
+repository contains one plugin: a `kabo` MCP connection, eighteen bundled Skills, and the metadata
 needed by each host. The AI host runs the workflows and writes
 reports; Kabo provides the data tools. The plugin does not hand work to Kabo's web agent, download
 Skills at runtime, or register lifecycle hooks.
@@ -16,7 +16,7 @@ review and production acceptance remain separate from this GitHub release.
 
 | Your setup | Install |
 | --- | --- |
-| You already connected Kabo MCP in your AI host | [Skills only](#skills-only): use Git, ZIP or the optional skills CLI to add the fifteen workflows and keep your existing connection. |
+| You already connected Kabo MCP in your AI host | [Skills only](#skills-only): use Git, ZIP or the optional skills CLI to add the eighteen workflows and keep your existing connection. |
 | You want the MCP connection and workflows together | [Full plugin](#installation-and-authentication): use your host's plugin installer. |
 
 [MCP setup and Skills guide](https://kabo.sh/docs/mcp#skills) ·
@@ -264,7 +264,7 @@ Normal update commands:
 
 The connection and OAuth resource stay at `/mcp-pub` when moving from the old 3.0.1 or 3.1.x versions.
 Renumbering alone does not change authorization. Older installations using `/mcp-directory` must
-reauthorize for `/mcp-pub`. The current package has fifteen fixed Skills, downloads full evidence, and
+reauthorize for `/mcp-pub`. The current package has eighteen fixed Skills, downloads full evidence, and
 stores raw tool results in each run's `host-results/` directory. The old dynamic menu, channel switch,
 download cache and Node runner are no longer included. Validate in a separate workspace before
 updating the existing `kabo` entry. Old research directories are not migrated or deleted automatically.
@@ -283,16 +283,16 @@ mcp.json                        # Production MCP connection
 .claude-plugin/marketplace.json  # Claude Code marketplace (not included in the ZIP)
 .agents/plugins/marketplace.json # Codex marketplace (not included in the ZIP)
 .mcp.json                       # Claude Code HTTP MCP configuration
-skills/                         # Fifteen complete Skills and their resources
+skills/                         # Eighteen complete Skills and their resources
 skills.lock.json                # Original Skill source and versions
 runtime-contract.json           # Fixed tool and Skill inventory
 CHANGELOG.md                    # Version history (Chinese)
 ```
 
-The fifteen Skills cover video analysis, standard and deep account reviews, scripts and packaging,
+The eighteen Skills cover video analysis, standard and deep account reviews, scripts and packaging,
 content ideas, Instagram/TikTok/YouTube trends, creator/TikTok competitor research, reach-drop
 diagnosis, publish-timing recommendations, platform monetization plans, official platform rule checks,
-and `remake-viral-video`, which remakes a viral talking-head or voice-over video of 90 seconds or less
+brand identity options and media kits, content calendars, brand-deal pricing, and `remake-viral-video`, which remakes a viral talking-head or voice-over video of 90 seconds or less
 (talking videos may cut to screen recordings or show a product) with the creator in it. See
 [skills.lock.json](skills.lock.json) for exact IDs and source versions. All hosts use the
 same Skills.
@@ -301,6 +301,8 @@ same Skills.
 `verify-platform-rule` are included in 1.0.9. Their complete cross-host acceptance is still pending;
 Current release acceptance focuses on short-window content-language checks and user-approved cross-language searches.
 `verify-platform-rule` needs the `official_page_render_page` tool on `/mcp-pub` (restored by kabo#1817).
+`optimize-creator-brand`, `plan-content-calendar` and `price-creator-brand-deals` are ported from
+creator-skills; their cross-host acceptance is pending.
 
 `remake-viral-video` uses the `start_remake_video`, `get_remake_video` and `render_remake_video`
 tools on `/mcp-pub`. Its scripts download the brief and the finished MP4 from the same signed

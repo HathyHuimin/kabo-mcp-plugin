@@ -19,7 +19,10 @@
     "diagnose-reach-drop",
     "recommend-publish-timing",
     "plan-platform-monetization",
-    "verify-platform-rule"
+    "verify-platform-rule",
+    "optimize-creator-brand",
+    "plan-content-calendar",
+    "price-creator-brand-deals"
   ],
   "requiredTools": [
     "analyze_content_video",

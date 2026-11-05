@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "publish-schedule.v1",
+  "title": "PublishSchedule",
+  "description": "The accepted time, tied to a draft, in a state a downstream runtime can update. This object is deliberately thin — it records a decision and its provenance, and it schedules nothing. Reminders, queueing and actual publishing are App services. Its one hard rule is that it must never launder a refusal into a recommendation: a creator may schedule any time they like, but when the engine abstained, the resulting schedule carries source 'creator_choice_not_recommended' and no confidence.",
+  "type": "object",
+  "required": ["schema_version", "schedule_id", "recommendation_ref", "draft_ref", "scheduled_at", "timezone", "source", "state", "state_history"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "publish-schedule.v1" },
+    "schedule_id": { "type": "string" },
+    "recommendation_ref": {
+      "type": "string",
+      "description": "The PublishRecommendation this decision was taken against, whether it recommended or abstained."
+    },
+    "draft_ref": {
+      "type": "string",
+      "description": "The Draft / SelectedIdea / ScriptPackage this time belongs to. Without it a schedule cannot be attributed back to the content that was planned, which is what post-result learning needs later."
+    },
+
+    "scheduled_at": { "type": "string", "format": "date-time", "description": "Absolute instant, offset included." },
+    "timezone": {
+      "type": "object",
+      "required": ["zone", "source"],
+      "additionalProperties": false,
+      "allOf": [{
+        "if": {
+          "properties": {"source": {"enum": ["not_supplied", "zone_unresolved"]}},
+          "required": ["source"]
+        },
+        "then": {"properties": {"zone": {"type": "null"}}},
+        "else": {"properties": {"zone": {"type": "string", "minLength": 1}}}
+      }],
+      "properties": {
+        "zone": { "type": ["string", "null"], "description": "IANA zone the creator sees this time in; null when no usable creator zone was supplied." },
+        "source": { "enum": ["creator_confirmed", "profile_confirmed", "assumed", "not_supplied", "zone_unresolved"] }
+      }
+    },
+
+    "source": {
+      "enum": ["engine_recommended", "creator_choice_not_recommended", "creator_override_of_recommendation"],
+      "description": "Where the time came from. 'engine_recommended' is only permitted when the referenced recommendation has outcome 'recommended' and the time falls inside one of its windows. When the engine abstained, a creator may still schedule — that is their call — but it is recorded as their choice, never as advice."
+    },
+    "confidence": {
+      "type": ["string", "null"],
+      "enum": ["high", "medium", "low", null],
+      "description": "Carried over from the recommendation. Must be null whenever source is not 'engine_recommended'."
+    },
+
+    "state": {
+      "enum": ["proposed", "accepted", "scheduled", "published", "abandoned"],
+      "description": "proposed: offered to the creator. accepted: the creator agreed to this time. scheduled: a runtime holds it. published: it went out. abandoned: dropped without publishing."
+    },
+    "state_history": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Append-only. A schedule that changed silently cannot be audited later against the post result.",
+      "items": {
+        "type": "object",
+        "required": ["state", "at", "by"],
+        "additionalProperties": false,
+        "properties": {
+          "state": { "enum": ["proposed", "accepted", "scheduled", "published", "abandoned"] },
+          "at": { "type": "string", "format": "date-time" },
+          "by": { "enum": ["engine", "creator", "runtime"] },
+          "note": { "type": ["string", "null"] }
+        }
+      }
+    },
+
+    "published_result_ref": {
+      "type": ["string", "null"],
+      "description": "Set once the post exists. Post-result learning will read this to close the loop; that loop is not implemented here and requires the shared state store plus an owner refresh."
+    }
+  }
+}

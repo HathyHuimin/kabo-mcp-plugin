@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creator-ai.local/schemas/creator-profile.v3.json",
+  "title": "CreatorProfile V3",
+  "description": "A slim cross-task creator profile containing stable, currently usable values. Time-window metrics, rankings, provenance wrappers, and persistence metadata are excluded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile_id", "accounts"],
+  "properties": {
+    "schema_version": {"const": "creator-profile.v3", "description": "The profile contract version; it is not the profile revision."},
+    "profile_id": {"type": "string", "minLength": 1, "description": "Stable identifier for the creator profile."},
+    "accounts": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Platform accounts associated with this creator.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["platform", "handle"],
+        "properties": {
+          "platform": {"type": "string", "minLength": 1, "description": "Source platform, such as instagram or youtube."},
+          "handle": {"type": "string", "minLength": 1, "description": "Platform handle or stable channel reference."}
+        }
+      }
+    },
+    "markets": {"type": "array", "uniqueItems": true, "description": "Markets the creator explicitly operates in or consistently discusses; not audience geography analytics.", "items": {"type": "string", "minLength": 1}},
+    "audience": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Compact audience hypothesis for downstream personalization.",
+      "properties": {
+        "summary": {"type": "string", "minLength": 1, "description": "Concise description combining market, segment, and core person when supported."},
+        "needs": {"type": "array", "uniqueItems": true, "description": "Observed or reasonably summarized audience problems, barriers, or desired changes.", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "positioning": {"type": "string", "minLength": 1, "description": "The most coherent account positioning supported by current creator context and content."},
+    "niche": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "One English homepage sentence for downstream search, same shape as mobile creator_account.niche. Not an enum, id, or pillar. Omit when the public bio, display name, and follower count cannot support a specific audience-and-topic sentence."
+    },
+    "content_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reusable content themes and mechanisms for downstream content tasks.",
+      "properties": {
+        "pillars": {"type": "array", "uniqueItems": true, "description": "Recurring content themes worth preserving or testing.", "items": {"type": "string", "minLength": 1}},
+        "formats": {"type": "array", "uniqueItems": true, "description": "Observed content formats such as reel, feed, short, or video.", "items": {"type": "string", "minLength": 1}},
+        "hooks": {"type": "array", "uniqueItems": true, "description": "Reusable opening mechanisms, not verbatim scripts.", "items": {"type": "string", "minLength": 1}},
+        "caption_phrases": {"type": "array", "uniqueItems": true, "description": "Recurring short phrases taken verbatim from the creator's own captions, ranked by how many distinct posts contain them, in the original content language. Deterministically extracted, never rewritten or translated: downstream retrieval matches literally against captions, so paraphrased mechanisms retrieve nothing.", "items": {"type": "string", "minLength": 1}},
+        "languages": {"type": "array", "uniqueItems": true, "description": "Observed content languages or explicitly requested output languages.", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "key_missing_info": {"type": "array", "uniqueItems": true, "description": "Small set of missing stable facts that would materially change downstream recommendations.", "items": {"type": "string", "minLength": 1}},
+    "extensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Allowlisted incubator fields that downstream tasks must not require.",
+      "properties": {
+        "offer": {"type": "string", "minLength": 1, "description": "Creator product, service, course, or consulting offer when explicitly provided or consistently stated."},
+        "content_style": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional recurring style signals supported by multiple content samples.",
+          "properties": {
+            "voice": {"type": "array", "uniqueItems": true, "description": "Recurring voice or persona perspective.", "items": {"type": "string", "minLength": 1}},
+            "structures": {"type": "array", "uniqueItems": true, "description": "Recurring narrative structures.", "items": {"type": "string", "minLength": 1}},
+            "ctas": {"type": "array", "uniqueItems": true, "description": "Directly observed calls to action.", "items": {"type": "string", "minLength": 1}},
+            "hashtags": {"type": "array", "uniqueItems": true, "description": "Repeated hashtags observed in source captions.", "items": {"type": "string", "minLength": 1}}
+          }
+        }
+      }
+    }
+  }
+}

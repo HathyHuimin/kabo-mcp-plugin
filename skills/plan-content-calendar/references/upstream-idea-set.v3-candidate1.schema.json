@@ -1,0 +1,547 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creator-ai.local/schemas/idea-set.v3-candidate1.json",
+  "title": "IdeaSetV3Candidate1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "idea_set_id",
+    "request_id",
+    "created_at",
+    "status",
+    "task_intent",
+    "source_mode",
+    "overview",
+    "ideas",
+    "gates",
+    "interaction",
+    "evidence_summary"
+  ],
+  "properties": {
+    "schema_version": {"const": "idea-set.v3-candidate1"},
+    "idea_set_id": {"type": "string", "minLength": 1},
+    "evidence_gap_translations": {
+      "type": "array",
+      "description": "Optional report-language translations of source-derived gaps; originals remain in evidence_summary.data_gaps for provenance and semantic checks.",
+      "items": {"type": "object", "additionalProperties": false, "required": ["source_text", "report_text"], "properties": {"source_text": {"type": "string", "minLength": 1}, "report_text": {"type": "string", "minLength": 1}}}
+    },
+    "request_id": {"type": "string", "minLength": 1},
+    "report_language": {"type": "string", "minLength": 1, "description": "Report and interaction language tag; omitted only for legacy Chinese requests. Unsupported locales must be explicit, never silently substituted."},
+    "created_at": {"type": "string", "format": "date-time"},
+    "status": {
+      "enum": [
+        "ready_for_selection",
+        "needs_selection_context",
+        "blocked_invalid_or_unsafe_input",
+        "blocked_missing_required_source"
+      ]
+    },
+    "task_intent": {
+      "enum": ["open_shortlist", "capacity_plan", "rework_content", "brief_only"]
+    },
+    "source_mode": {
+      "enum": ["evidence_rich", "context_only", "profile_video", "profile_only", "video_only", "brief_only"]
+    },
+    "overview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headline", "portfolio_logic", "recommended_candidate_ids", "missing_context_effect"],
+      "properties": {
+        "headline": {"type": "string", "minLength": 1},
+        "portfolio_logic": {"type": "string", "minLength": 1},
+        "recommended_candidate_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "missing_context_effect": {"type": "string"}
+      }
+    },
+    "ideas": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {"$ref": "#/$defs/ideaCandidate"}
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selection_missing", "production_missing", "blocked_reasons"],
+      "properties": {
+        "selection_missing": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "production_missing": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "blocked_reasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "interaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["next_actions"],
+      "properties": {
+        "next_actions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "choose",
+              "revise",
+              "refresh_evidence",
+              "provide_own_direction",
+              "answer_selection_question",
+              "answer_production_question",
+              "blocked"
+            ]
+          }
+        }
+      }
+    },
+    "evidence_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["upstream_source_ids", "source_context_refs", "video_analysis_ids", "has_account_context", "data_gaps"],
+      "properties": {
+        "upstream_source_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "source_context_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "video_analysis_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "has_account_context": {"type": "boolean"},
+        "data_gaps": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {"const": "ready_for_selection"}
+        }
+      },
+      "then": {
+        "properties": {
+          "ideas": {"minItems": 1},
+          "overview": {
+            "properties": {
+              "recommended_candidate_ids": {"minItems": 1}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "ready_for_selection"}}},
+      "then": {
+        "properties": {
+          "gates": {
+            "properties": {
+              "selection_missing": {"maxItems": 0},
+              "blocked_reasons": {"maxItems": 0}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "needs_selection_context"}}},
+      "then": {
+        "properties": {
+          "gates": {
+            "properties": {
+              "selection_missing": {"minItems": 1},
+              "blocked_reasons": {"maxItems": 0}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": ["blocked_invalid_or_unsafe_input", "blocked_missing_required_source"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "ideas": {"maxItems": 0},
+          "overview": {
+            "properties": {
+              "recommended_candidate_ids": {"maxItems": 0}
+            }
+          },
+          "gates": {
+            "properties": {"blocked_reasons": {"minItems": 1}}
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"task_intent": {"const": "capacity_plan"}}},
+      "then": {
+        "properties": {
+          "ideas": {
+            "items": {
+              "properties": {
+                "production_feasibility": {
+                  "properties": {
+                    "estimated_minutes": {"$ref": "#/$defs/estimatedMinutes"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "task_intent": {"const": "rework_content"},
+          "status": {"enum": ["ready_for_selection", "needs_selection_context"]}
+        }
+      },
+      "then": {
+        "properties": {
+          "ideas": {
+            "minItems": 1,
+            "maxItems": 1,
+            "items": {
+              "properties": {
+                "hook_options": {"minItems": 3, "maxItems": 5},
+                "source_context_refs": {"minItems": 1}
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "ideas": {
+            "items": {
+              "properties": {"hook_options": {"maxItems": 0}}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"source_mode": {"const": "brief_only"}}},
+      "then": {
+        "properties": {
+          "ideas": {
+            "items": {
+              "properties": {
+                "source_context_refs": {"maxItems": 0},
+                "evidence_refs": {"maxItems": 0},
+                "primary_evidence_ref": {"type": "null"},
+                "creator_fit": {
+                  "properties": {
+                    "status": {"enum": ["hypothesis", "unassessed"]}
+                  }
+                }
+              }
+            }
+          },
+          "evidence_summary": {
+            "properties": {
+              "upstream_source_ids": {"maxItems": 0},
+              "source_context_refs": {"maxItems": 0},
+              "video_analysis_ids": {"maxItems": 0}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "ratedDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rating", "reason"],
+      "properties": {
+        "rating": {"enum": ["high", "medium", "low", "unknown"]},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "outlineBeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order", "beat", "purpose", "evidence_refs"],
+      "properties": {
+        "order": {"type": "integer", "minimum": 1},
+        "beat": {"type": "string", "minLength": 1},
+        "purpose": {"type": "string", "minLength": 1},
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "evidenceSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal_id",
+        "evidence_ref",
+        "entity_type",
+        "entity_ref",
+        "creator_ref",
+        "content_title",
+        "source_url",
+        "metric",
+        "value",
+        "unit",
+        "baseline",
+        "outlier_multiple",
+        "calculation_ref",
+        "observed_at",
+        "confidence"
+      ],
+      "properties": {
+        "signal_id": {"type": "string", "minLength": 1},
+        "evidence_ref": {"type": "string", "minLength": 1},
+        "entity_type": {"enum": ["content", "account", "pattern", "keyword", "comment"]},
+        "entity_ref": {"type": "string", "minLength": 1},
+        "creator_ref": {"type": ["string", "null"]},
+        "content_title": {"type": ["string", "null"]},
+        "source_url": {"type": ["string", "null"], "format": "uri"},
+        "metric": {"type": "string", "minLength": 1},
+        "value": {"type": "number"},
+        "unit": {"enum": ["count", "ratio", "percent", "seconds", "currency", "score"]},
+        "baseline": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["statistic", "value", "sample_size", "cohort"],
+              "properties": {
+                "statistic": {"enum": ["median", "mean", "percentile", "other"]},
+                "value": {"type": "number"},
+                "sample_size": {"type": "integer", "minimum": 1},
+                "cohort": {"type": "string", "minLength": 1}
+              }
+            }
+          ]
+        },
+        "outlier_multiple": {"type": ["number", "null"], "minimum": 0},
+        "calculation_ref": {"type": ["string", "null"]},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "confidence": {"enum": ["high", "medium", "low"]}
+      }
+    },
+    "hookPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opening_line", "progressive_line", "mechanism"],
+      "properties": {
+        "opening_line": {"type": "string", "minLength": 1},
+        "progressive_line": {"type": ["string", "null"], "minLength": 1},
+        "mechanism": {"type": "string", "minLength": 1}
+      }
+    },
+    "hookOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["option_id", "opening_line", "progressive_line", "mechanism", "rationale"],
+      "properties": {
+        "option_id": {"type": "string", "minLength": 1},
+        "opening_line": {"type": "string", "minLength": 1},
+        "progressive_line": {"type": ["string", "null"], "minLength": 1},
+        "mechanism": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    },
+    "estimatedMinutes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": {"type": "integer", "minimum": 1},
+        "max": {"type": "integer", "minimum": 1}
+      }
+    },
+    "ideaCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idea_id",
+        "rank",
+        "working_title",
+        "why_for_creator",
+        "audience_problem",
+        "content_promise",
+        "angle",
+        "platforms",
+        "formats",
+        "hook_preview",
+        "hook_options",
+        "making_direction",
+        "content_outline",
+        "creator_fit",
+        "evidence_basis",
+        "why_now",
+        "source_context_refs",
+        "evidence_refs",
+        "primary_evidence_ref",
+        "differentiation",
+        "must_differ",
+        "production_feasibility",
+        "evaluation",
+        "risks",
+        "missing_inputs",
+        "selection_status"
+      ],
+      "properties": {
+        "idea_id": {"type": "string", "minLength": 1},
+        "rank": {"type": "integer", "minimum": 1},
+        "working_title": {"type": "string", "minLength": 1},
+        "why_for_creator": {"type": "string", "minLength": 1},
+        "audience_problem": {"type": "string", "minLength": 1},
+        "content_promise": {"type": "string", "minLength": 1},
+        "angle": {"type": "string", "minLength": 1},
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "formats": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "hook_preview": {"$ref": "#/$defs/hookPreview"},
+        "hook_options": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/hookOption"}
+        },
+        "making_direction": {"type": "string", "minLength": 1},
+        "content_outline": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 5,
+          "items": {"$ref": "#/$defs/outlineBeat"}
+        },
+        "creator_fit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "rationale"],
+          "properties": {
+            "status": {"enum": ["confirmed", "hypothesis", "unassessed"]},
+            "rationale": {"type": "string", "minLength": 1}
+          }
+        },
+        "evidence_basis": {
+          "enum": ["source_backed", "brief_based", "hypothesis"]
+        },
+        "why_now": {"type": "string", "minLength": 1},
+        "source_context_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "primary_evidence_ref": {"type": ["string", "null"], "minLength": 1},
+        "differentiation": {"type": "string", "minLength": 1},
+        "must_differ": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "production_feasibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "effort", "estimated_minutes", "required_assets", "assets_used", "assumptions"],
+          "properties": {
+            "status": {"enum": ["requires_user_confirmation", "assessed"]},
+            "effort": {"enum": ["low", "medium", "high", "unknown"]},
+            "estimated_minutes": {
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/estimatedMinutes"}
+              ]
+            },
+            "required_assets": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1}
+            },
+            "assets_used": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1}
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "evaluation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["evidence_strength", "creator_fit", "differentiation", "timeliness", "production_feasibility"],
+          "properties": {
+            "evidence_strength": {"$ref": "#/$defs/ratedDimension"},
+            "creator_fit": {"$ref": "#/$defs/ratedDimension"},
+            "differentiation": {"$ref": "#/$defs/ratedDimension"},
+            "timeliness": {"$ref": "#/$defs/ratedDimension"},
+            "production_feasibility": {"$ref": "#/$defs/ratedDimension"}
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "missing_inputs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "selection_status": {"const": "candidate"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"evidence_basis": {"const": "source_backed"}}},
+          "then": {"properties": {"evidence_refs": {"minItems": 1}, "source_context_refs": {"minItems": 1}}}
+        },
+        {
+          "if": {"properties": {"evidence_basis": {"enum": ["brief_based", "hypothesis"]}}},
+          "then": {"properties": {"evidence_refs": {"maxItems": 0}}}
+        }
+      ]
+    }
+  }
+}

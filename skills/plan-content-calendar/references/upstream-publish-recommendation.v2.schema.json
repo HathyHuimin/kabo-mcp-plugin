@@ -1,0 +1,1133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "publish-recommendation.v2",
+  "title": "PublishRecommendation",
+  "description": "What recommend-publish-timing returns. v2 changes what decides the answer. v1 gated on whether a rank test could detect a timing effect in the creator's own history, which on five real accounts was never true — publishers do not post into their bad hours, so observational history has no control group, and no amount of further posting creates one. The product question is not whether an effect is detectable but when to publish, so v2 ranks the creator's own windows and reports how many metrics agree. Agreement is the confidence a creator can actually judge. The rank tests are kept in evidence_base as an audit layer and decide nothing.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "recommendation_id",
+    "request_ref",
+    "outcome",
+    "evidence_base",
+    "causal_boundary",
+    "refused_fallbacks",
+    "limitations",
+    "reproducibility"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "publish-recommendation.v2"
+    },
+    "recommendation_id": {
+      "type": "string"
+    },
+    "request_ref": {
+      "type": "string"
+    },
+    "outcome": {
+      "enum": [
+        "recommended",
+        "no_clear_window",
+        "abstain_no_history",
+        "abstain_no_publish_time"
+      ],
+      "description": "recommended: at least two windows were rankable and the metrics agree on one. no_clear_window: the windows were ranked and the metrics disagree, so the honest answer is to publish now rather than wait for a window none of the data prefers — this is an answer and the product shows it as one. The two abstain_* values are the only genuine refusals left: no rows at all, or a source that reports no publish hour to rank. Thin samples, an unconfirmed timezone and age skew no longer refuse; they subtract from confidence and say so."
+    },
+    "recommendation": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Present on recommended and on no_clear_window alike — the second carries `publish_now` instead of a window. Never populated from a generic or platform-wide time.",
+      "additionalProperties": false,
+      "properties": {
+        "windows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "The product spec asks for a window. What makes it auditable is the supporting sample and how many metrics chose it; a window that only one metric of five prefers must not read the same as one all five prefer.",
+            "required": [
+              "end_local",
+              "metrics_agreeing",
+              "metrics_compared",
+              "resolution",
+              "start_local",
+              "supporting_n",
+              "weekday",
+              "zone"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "weekday": {
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "description": "'all' only when both halves of the week hold posts. When the cohort contains just one — this account has never published at a weekend — the window is narrowed to that half, because 'all days' cannot describe a day with no data. Narrowed further to 'weekday' or 'weekend' when the weekday note is strong enough, which needs both samples."
+              },
+              "start_local": {
+                "type": "string",
+                "description": "Start of the window, in analysis_zone."
+              },
+              "end_local": {
+                "type": "string",
+                "description": "End of the window, in `zone`. One hour after `start_local` at hour resolution."
+              },
+              "supporting_n": {
+                "type": "integer",
+                "description": "Posts published in the recommended hour itself, at hour resolution — not the neighbourhood."
+              },
+              "metrics_agreeing": {
+                "type": "integer",
+                "description": "How many panel metrics rank this window first."
+              },
+              "metrics_compared": {
+                "type": "integer"
+              },
+              "zone": {
+                "type": "string",
+                "description": "IANA zone the hours are stated in. `start_local`/`end_local` are named for the creator's clock and for two versions held UTC; the zone travels beside them so a consumer can tell which clock it is reading without inferring it."
+              },
+              "resolution": {
+                "type": "string",
+                "description": "`hour` when the kernel curve resolved a single hour, otherwise the grid width that answered (`3h`, `6h`, `12h`). The two are different objects: an hour is a peak on a circular curve, a block is the winner of a vote between boxes."
+              },
+              "neighbourhood_n": {
+                "type": "integer",
+                "description": "Posts in the +/-1.5h neighbourhood, which steadied the reading. Reported separately from `supporting_n` and never in place of it: the neighbours are what stopped one lucky post from reading as a pattern, they are not what the recommendation rests on. Quoting 13 where the hour itself carries 5 would inflate the evidence by the width of the kernel."
+              }
+            }
+          }
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "description": "Derived, not asserted: metric agreement and supporting sample set it, then the penalties in confidence_penalties subtract from it."
+        },
+        "publish_now": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "True on no_clear_window. Nothing in the history prefers one window, so waiting for a better hour costs a publishing slot and buys nothing measurable."
+        },
+        "confidence_penalties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "statement",
+              "costs_confidence"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "statement": {
+                "type": "string"
+              },
+              "costs_confidence": {
+                "type": "boolean",
+                "description": "True when the caveat could make the ranking itself wrong (a thin winning window, a winner that merely holds older posts, a single-metric panel). False when it only affects how the result reads — an unconfirmed timezone leaves the ranking intact and the labels in UTC."
+              },
+              "params": {
+                "type": "object",
+                "description": "The values the engine interpolated into `statement`, as data. `statement` is an English audit sentence; a report in the creator's language is written from these rather than translated from that, so a figure the creator reads is the figure the engine computed."
+              }
+            }
+          },
+          "description": "What lowered confidence and why, in the creator's words. These are the conditions v1 refused on: unconfirmed timezone, thin winning bucket, a winning window whose posts are simply older. Reporting them beats refusing on them."
+        }
+      }
+    },
+    "evidence_base": {
+      "type": "object",
+      "required": [
+        "cohort",
+        "bucketing"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "cohort": {
+          "type": "object",
+          "required": [
+            "platform",
+            "format",
+            "mature_n"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "platform": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string"
+            },
+            "maturity_days": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "mature_n": {
+              "type": "integer"
+            },
+            "total_n": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "window": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_mode": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "snapshot_sha256": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "timezone": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "analysis_zone": {
+              "type": "string"
+            },
+            "source": {
+              "enum": [
+                "creator_confirmed",
+                "profile_confirmed",
+                "assumed",
+                "platform_utc_only",
+                "not_supplied",
+                "zone_unresolved"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "bucketing": {
+          "type": "array",
+          "minItems": 1,
+          "description": "One entry per bucketing scheme that was actually evaluated. Reporting only the scheme that happens to look best is not permitted.",
+          "items": {
+            "type": "object",
+            "required": [
+              "scheme",
+              "buckets_total",
+              "buckets_nonempty",
+              "max_bucket_n",
+              "min_bucket_n"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "scheme": {
+                "type": "string"
+              },
+              "buckets_total": {
+                "type": "integer"
+              },
+              "buckets_nonempty": {
+                "type": "integer"
+              },
+              "max_bucket_n": {
+                "type": "integer"
+              },
+              "min_bucket_n": {
+                "type": "integer"
+              },
+              "zero_observation_strata": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "description": "Strata with no observations at all. These are structurally unknown, not average."
+              },
+              "distribution": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                }
+              },
+              "bucket_mean": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "description": "Mean of the metric per occupied bucket. Added after a bare-baseline run showed that withholding the outcome does not prevent a wrong reading — it only prevents the reader from seeing that the leading bucket is one post deep, or that the spread inside a bucket exceeds the spread between buckets. Always read with `robustness` and `power`."
+              },
+              "leading_bucket": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The bucket with the highest mean, or null when fewer than two buckets hold posts. This is not what the recommendation ranks on — the winner comes from medians, because a mean comparison mistakes two viral posts for a publishing pattern. Read it as an audit figure, never as the answer."
+              },
+              "robustness": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "Leave-one-out check on the ranking. A leader that does not survive the deletion of any single post is not a finding.",
+                "properties": {
+                  "leader_survives_any_single_deletion": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              },
+              "leading_bucket_statistic": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "mean",
+                  null
+                ],
+                "description": "Names the statistic behind leading_bucket so it cannot be mistaken for the ranking basis."
+              }
+            }
+          }
+        },
+        "dispersion": {
+          "type": "object",
+          "description": "Only what the power calculation consumes, plus the two inputs needed to recompute it.",
+          "required": [
+            "metric",
+            "mean",
+            "stdev",
+            "coefficient_of_variation"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "metric": {
+              "type": "string"
+            },
+            "mean": {
+              "type": "number"
+            },
+            "stdev": {
+              "type": "number"
+            },
+            "coefficient_of_variation": {
+              "type": "number"
+            }
+          }
+        },
+        "power": {
+          "type": "object",
+          "required": [
+            "method",
+            "targets",
+            "actual_max_group_n",
+            "powered"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "type": "string"
+            },
+            "alpha": {
+              "type": "number"
+            },
+            "target_power": {
+              "type": "number"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "target_relative_effect",
+                  "required_n_per_group"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "target_relative_effect": {
+                    "type": "number"
+                  },
+                  "required_n_per_group": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "actual_max_group_n": {
+              "type": "integer"
+            },
+            "powered": {
+              "type": "boolean"
+            }
+          }
+        },
+        "practical_stakes": {
+          "type": "object",
+          "description": "Whether the question is worth answering at all, which sample size never settles. A 30% difference on an account averaging 149 views is about 45 views; telling a creator to spend five months collecting evidence for that points them at the wrong lever.",
+          "additionalProperties": false,
+          "properties": {
+            "metric_range": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "detectable_absolute_effect_at_30_percent": {
+              "type": "number"
+            },
+            "note": {
+              "type": "string"
+            },
+            "longest_publishing_gap_days": {
+              "type": "integer"
+            },
+            "gap_note": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A long break changes reach on its own; posts either side of it are not really one cohort."
+            }
+          }
+        },
+        "age_accumulation": {
+          "type": "object",
+          "description": "The maturity confound measured rather than only asserted: older half against newer half. Stating the caveat without testing it was the easier and less honest option.",
+          "additionalProperties": false,
+          "properties": {
+            "measured": {
+              "type": "boolean"
+            },
+            "older_half_mean": {
+              "type": "number"
+            },
+            "newer_half_mean": {
+              "type": "number"
+            },
+            "relative_gap": {
+              "type": "number"
+            },
+            "note": {
+              "type": "string"
+            },
+            "posts_per_half": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "description": "Posts in each half of the age split."
+            },
+            "posts_excluded_from_both_halves": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "description": "1 when the cohort is odd: the median-aged post enters neither half, so the two half means do not average back to the cohort mean. Recorded because a reader who tries that arithmetic and fails will conclude the object contradicts itself."
+            }
+          }
+        },
+        "significance": {
+          "type": "object",
+          "description": "The gate. Rank based because the metric is long-tailed: a mean comparison reads two viral posts as a publishing pattern, and its sample-size estimate then demands years of posting to settle a question the ranks answer today.",
+          "additionalProperties": false,
+          "required": [
+            "method",
+            "alpha",
+            "schemes",
+            "any_scheme_testable",
+            "any_significant",
+            "decisive_scheme"
+          ],
+          "properties": {
+            "method": {
+              "type": "string"
+            },
+            "alpha": {
+              "type": "number"
+            },
+            "minimum_group_n": {
+              "type": "integer"
+            },
+            "schemes_testable": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "any_scheme_testable": {
+              "type": "boolean"
+            },
+            "any_significant": {
+              "type": "boolean"
+            },
+            "decisive_scheme": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "schemes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "scheme",
+                  "group_n",
+                  "group_median",
+                  "testable",
+                  "kruskal_wallis",
+                  "strongest_pair"
+                ],
+                "properties": {
+                  "scheme": {
+                    "type": "string"
+                  },
+                  "group_n": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer"
+                    }
+                  },
+                  "group_median": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "number"
+                    }
+                  },
+                  "testable": {
+                    "type": "boolean"
+                  },
+                  "not_testable_because": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "smallest_reachable_p_on_strongest_pair": {
+                    "type": "number"
+                  },
+                  "p_holm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "kruskal_wallis": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "additionalProperties": false,
+                    "required": [
+                      "h",
+                      "df",
+                      "p_value"
+                    ],
+                    "properties": {
+                      "h": {
+                        "type": "number"
+                      },
+                      "df": {
+                        "type": "integer"
+                      },
+                      "p_value": {
+                        "type": "number"
+                      },
+                      "tie_corrected": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "strongest_pair": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "additionalProperties": false,
+                    "required": [
+                      "higher",
+                      "lower",
+                      "median_higher",
+                      "median_lower",
+                      "n_higher",
+                      "n_lower",
+                      "mann_whitney",
+                      "selection",
+                      "p_is_decision_statistic"
+                    ],
+                    "properties": {
+                      "higher": {
+                        "type": "string"
+                      },
+                      "lower": {
+                        "type": "string"
+                      },
+                      "median_higher": {
+                        "type": "number"
+                      },
+                      "median_lower": {
+                        "type": "number"
+                      },
+                      "n_higher": {
+                        "type": "integer"
+                      },
+                      "n_lower": {
+                        "type": "integer"
+                      },
+                      "mann_whitney": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "u",
+                          "observed_superiority",
+                          "detectable_superiority",
+                          "smallest_reachable_p",
+                          "p_value"
+                        ],
+                        "properties": {
+                          "u": {
+                            "type": "number"
+                          },
+                          "z": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "p_value": {
+                            "type": "number"
+                          },
+                          "observed_superiority": {
+                            "type": "number",
+                            "description": "P(a post from the higher stratum outranks one from the lower). 0.5 is no difference."
+                          },
+                          "detectable_superiority": {
+                            "type": "number",
+                            "description": "The superiority at which this test would just reject. A null result is only as strong as this number is small."
+                          },
+                          "smallest_reachable_p": {
+                            "type": "number",
+                            "description": "The lowest two-sided p these group sizes can produce under total separation."
+                          }
+                        }
+                      },
+                      "selection": {
+                        "type": "string",
+                        "description": "How this pair was picked. post_hoc_widest_median_gap means after seeing the data."
+                      },
+                      "p_is_decision_statistic": {
+                        "type": "boolean",
+                        "description": "False: the pair was selected post hoc, so its p-value is optimistic. Outcomes are decided on the Holm-corrected omnibus."
+                      }
+                    }
+                  },
+                  "duplicate_of": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Set when this scheme produces the same partition as an earlier one and therefore inherits its result rather than costing another correction."
+                  }
+                }
+              }
+            },
+            "distinct_tests_corrected_for": {
+              "type": "integer",
+              "description": "How many genuinely different partitions were tested. Schemes that produce the same grouping under different names are corrected for once, not twice."
+            }
+          }
+        },
+        "ranking": {
+          "type": "object",
+          "description": "The comparison that decides the outcome: every rankable window, ranked by every metric. Absent on the two abstain outcomes: with no rows, or no publish hour, there is nothing to rank.",
+          "additionalProperties": false,
+          "required": [
+            "granularity_hours",
+            "granularity_reason",
+            "minimum_posts_per_window",
+            "windows",
+            "metric_votes",
+            "winner"
+          ],
+          "properties": {
+            "granularity_hours": {
+              "type": "integer",
+              "enum": [
+                3,
+                6,
+                12
+              ],
+              "description": "Three hours by default. Coarsened only when fewer than two windows are rankable — never because some windows are empty, since an empty window means the creator has never tried it and coarsening would hide that."
+            },
+            "granularity_reason": {
+              "type": "string"
+            },
+            "minimum_posts_per_window": {
+              "type": "integer"
+            },
+            "analysis_zone": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "windows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "window",
+                  "n",
+                  "rankable",
+                  "medians"
+                ],
+                "properties": {
+                  "window": {
+                    "type": "string"
+                  },
+                  "n": {
+                    "type": "integer"
+                  },
+                  "rankable": {
+                    "type": "boolean"
+                  },
+                  "medians": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  },
+                  "rank_by_metric": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "never_tried": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Windows with no posts at all. Information, not a gap: the creator has never published there."
+            },
+            "metric_votes": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Which window each metric ranks first, keyed by metric name."
+            },
+            "winner": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "agreement": {
+              "type": "number",
+              "description": "Share of compared metrics choosing the winner."
+            },
+            "dissenting_metrics": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "weekday_note": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "stronger": {
+                  "type": "string",
+                  "description": "The named day, or 'weekday'/'weekend' when only the two-way split could answer."
+                },
+                "weekday_n": {
+                  "type": "integer"
+                },
+                "weekend_n": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "metrics_agreeing": {
+                  "type": "integer"
+                },
+                "statement": {
+                  "type": "string"
+                },
+                "resolution": {
+                  "enum": [
+                    "weekday",
+                    "weekpart"
+                  ],
+                  "description": "Which split answered. `weekday` names one day of the week and is worth more to a creator — a slot in a calendar rather than a rule — but it is a seven-way split of the same posts, so it is offered only when most of the week has been used and the metrics agree. `weekpart` is the two-way fallback."
+                },
+                "per_metric": {
+                  "type": "object",
+                  "description": "Which day each metric put first, when the seven-way split answered."
+                },
+                "days_compared": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The days that carried enough posts of their own to enter the comparison."
+                },
+                "params": {
+                  "type": "object",
+                  "description": "The values the engine interpolated into `statement`, as data. `statement` is an English audit sentence; a report in the creator's language is written from these rather than translated from that, so a figure the creator reads is the figure the engine computed."
+                },
+                "code": {
+                  "type": "string"
+                }
+              },
+              "description": "Supplementary only. Never narrows the window into a weekday+hour cell: eight windows across seven days is 56 cells, which no creator's history fills."
+            },
+            "abstaining_metrics": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Metric name to why it cast no vote. A metric tied across its own top windows names no first choice, and ranking it anyway hands the win to whichever window label sorts first. These metrics leave the agreement denominator, so `confidence_penalties` carries the fact that the panel was narrower than it looks."
+            },
+            "weekparts_observed": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "weekday",
+                  "weekend"
+                ]
+              },
+              "description": "Which halves of the week the mature cohort actually contains. Recorded because a window scoped to 'all' days against a weekend stratum holding zero posts is an overstatement an isolated run caught."
+            },
+            "granularity": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Why the windows were sliced this wide, as data. `granularity_reason` says the same thing in one English sentence; this is what a report in another language is written from.",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object",
+                  "description": "The values the engine interpolated into `statement`, as data. `statement` is an English audit sentence; a report in the creator's language is written from these rather than translated from that, so a figure the creator reads is the figure the engine computed."
+                }
+              }
+            }
+          }
+        },
+        "metric_panel": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Copied from the history so the recommendation is auditable on its own."
+        },
+        "hour_curve": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The circular kernel read of the day: a median per hour, each borrowing the hours either side of it so a single hour is readable on a history that would leave most hours empty. This is what resolves the answer; `ranking` below is the fixed grid, kept as the fallback and the audit trail.",
+          "required": [
+            "hours",
+            "kernel_half_width_hours",
+            "minimum_own_posts",
+            "minimum_posts_in_window",
+            "minimum_prominence"
+          ],
+          "properties": {
+            "kernel_half_width_hours": {
+              "type": "number"
+            },
+            "minimum_posts_in_window": {
+              "type": "integer"
+            },
+            "minimum_prominence": {
+              "type": "number"
+            },
+            "hours": {
+              "type": "object",
+              "description": "Hour of day to its median and the post count the kernel window held.",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "median",
+                  "n",
+                  "own_n",
+                  "own_median"
+                ],
+                "properties": {
+                  "median": {
+                    "type": "number",
+                    "description": "The hour's reading: its own median weighted against each neighbour's. Pooling the raw posts instead lets whichever neighbour holds the most decide, which put this cohort's peak an hour before the posts that caused it."
+                  },
+                  "n": {
+                    "type": "integer",
+                    "description": "Posts in the +/-1.5h neighbourhood."
+                  },
+                  "own_n": {
+                    "type": "integer",
+                    "description": "Posts published in this hour itself. An hour must carry at least `minimum_own_posts` of these before it can be named."
+                  },
+                  "own_median": {
+                    "type": "number",
+                    "description": "Median over this hour's own posts alone."
+                  }
+                }
+              }
+            },
+            "host_constrained": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "description": "Set when the host proposed candidate windows and the engine's own best hour fell outside them. Records what the engine would have said, so a constrained answer is never mistaken for an unconstrained one."
+            },
+            "minimum_own_posts": {
+              "type": "integer",
+              "description": "Posts an hour must carry itself before it is eligible to be the answer."
+            }
+          }
+        },
+        "signals": {
+          "type": "array",
+          "description": "Every evidence source this task can draw on, present or absent, each stating its own status. A source that is missing appears here as a named gap rather than shortening the answer without saying why. Only `own_history_hour` can resolve an hour by itself: the question is about this creator's account, and the others corroborate it, narrow the day, or declare themselves unavailable.",
+          "items": {
+            "type": "object",
+            "required": [
+              "signal",
+              "status"
+            ],
+            "properties": {
+              "signal": {
+                "enum": [
+                  "own_history_hour",
+                  "own_history_weekpart",
+                  "peer_accounts_hour",
+                  "audience_online"
+                ]
+              },
+              "status": {
+                "type": "string"
+              },
+              "hour": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "detail": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "accounts": {
+                "type": "array",
+                "description": "Peer signal only. Every account whose posts fed this hour, with a handle and a URL. This is not decoration: an unnamed aggregate of other people's posting times is the generic best-time chart this module refuses, and the attribution is the whole difference.",
+                "items": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "abstain_reason": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Required whenever the outcome is an abstain_*. Null on recommended and on no_clear_window — the latter carries `finding` instead.",
+      "required": [
+        "code",
+        "statement",
+        "missing",
+        "unlock_threshold"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "statement": {
+          "type": "string"
+        },
+        "missing": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unlock_threshold": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "What would have to be true before a recommendation becomes possible. Concrete counts, not 'more data'. Five per-bucket and cadence fields were removed: they date from v1, when the threshold was 'collect N posts per bucket' and the answer was 1484 posts across 12.7 years. Two of them were emitted as null on every run and three were never emitted at all.",
+          "additionalProperties": false,
+          "properties": {
+            "current_total_mature_posts": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "also_requires": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "params": {
+          "type": "object",
+          "description": "The values the engine interpolated into `statement`, as data. `statement` is an English audit sentence; a report in the creator's language is written from these rather than translated from that, so a figure the creator reads is the figure the engine computed."
+        }
+      }
+    },
+    "finding": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Present on no_clear_window: what the ranking found and what would sharpen it. It carries no unlock threshold and no list of what is missing, and no longer declares fields for them — the comparison ran, so there is nothing to collect towards. It used to share `abstain_reason`'s shape, which left nine properties whose only possible value was null.",
+      "required": [
+        "code",
+        "sensitivity",
+        "statement"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "statement": {
+          "type": "string"
+        },
+        "sensitivity": {
+          "enum": [
+            "medium_effect_ruled_out",
+            "only_large_effect_ruled_out",
+            "metrics_disagree",
+            "too_few_comparable_windows"
+          ],
+          "description": "Present on no_clear_window. Separates 'we looked and there is nothing' from 'we could only have seen something enormous', which are different claims."
+        },
+        "what_would_change_this": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "params": {
+          "type": "object",
+          "description": "The values the engine interpolated into `statement`, as data. `statement` is an English audit sentence; a report in the creator's language is written from these rather than translated from that, so a figure the creator reads is the figure the engine computed."
+        }
+      }
+    },
+    "causal_boundary": {
+      "type": "string",
+      "description": "Explicit statement that publish-hour differences observed in organic history are correlational and confounded by topic, format, maturity, and audience mix."
+    },
+    "refused_fallbacks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fallbacks that were deliberately NOT used, so a reader can tell abstention from a gap in implementation."
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reproducibility": {
+      "type": "object",
+      "required": [
+        "run_id",
+        "generated_at",
+        "formula_set_version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "formula_set_version": {
+          "type": "string"
+        },
+        "input_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "command": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

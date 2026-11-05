@@ -1,0 +1,561 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creator-ai.local/schemas/content-calendar.v1.json",
+  "title": "ContentCalendarV1",
+  "description": "A reviewable content plan. It is not authorization, a publish queue or a record that anything was scheduled or published.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "calendar_id",
+    "request_id",
+    "created_at",
+    "intent",
+    "projection_mode",
+    "status",
+    "planning_window",
+    "summary",
+    "slot_decision",
+    "slots",
+    "unfilled_slots",
+    "unscheduled",
+    "gaps",
+    "interaction",
+    "exports",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": "content-calendar.v1"},
+    "calendar_id": {"type": "string", "minLength": 1},
+    "request_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "intent": {"enum": ["four_week_plan", "date_range_plan", "choose_for_slot"]},
+    "projection_mode": {"enum": ["full_calendar", "focus_slot_patch"]},
+    "status": {
+      "enum": [
+        "ready_for_review",
+        "partial_needs_user_input",
+        "needs_user_selection"
+      ]
+    },
+    "planning_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_date", "end_date", "weeks", "timezone", "timezone_source"],
+      "properties": {
+        "start_date": {"type": "string", "format": "date"},
+        "end_date": {"type": "string", "format": "date"},
+        "weeks": {"type": "integer", "minimum": 1, "maximum": 13},
+        "timezone": {"type": "string", "minLength": 1},
+        "timezone_source": {
+          "enum": ["creator_confirmed", "profile_confirmed", "assumed"]
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_slot_count",
+        "planned_slot_count",
+        "unfilled_slot_count",
+        "timed_slot_count",
+        "capacity_status",
+        "prep_complete_count",
+        "production_complete_count",
+        "distinct_content_count"
+      ],
+      "properties": {
+        "target_slot_count": {"type": "integer", "minimum": 0},
+        "planned_slot_count": {"type": "integer", "minimum": 0},
+        "unfilled_slot_count": {"type": "integer", "minimum": 0},
+        "timed_slot_count": {"type": "integer", "minimum": 0},
+        "capacity_status": {"enum": ["within", "exceeded", "unknown"]},
+        "prep_complete_count": {"type": "integer", "minimum": 0},
+        "production_complete_count": {"type": "integer", "minimum": 0},
+        "distinct_content_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "slot_decision": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/slotDecision"}
+      ]
+    },
+    "slots": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/slot"}
+    },
+    "unfilled_slots": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/unfilledSlot"}
+    },
+    "unscheduled": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/unscheduled"}
+    },
+    "gaps": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/gap"}
+    },
+    "interaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["next_action", "required_decisions", "runtime_handoff"],
+      "properties": {
+        "next_action": {
+          "enum": [
+            "review_calendar",
+            "select_more_ideas",
+            "complete_packages",
+            "resolve_constraints",
+            "review_content_diversity",
+            "choose_slot_item",
+            "confirm_slot_choice",
+            "execute_confirmed_handoff"
+          ]
+        },
+        "required_decisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["decision_id", "question", "affected_refs"],
+            "properties": {
+              "decision_id": {"type": "string", "minLength": 1},
+              "question": {"type": "string", "minLength": 1},
+              "affected_refs": {
+                "type": "array",
+                "items": {"type": "string", "minLength": 1}
+              }
+            }
+          }
+        },
+        "runtime_handoff": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "requires_user_confirmation",
+            "requested_actions",
+            "action_scopes",
+            "publish_execution",
+            "confirmation_scope"
+          ],
+          "properties": {
+            "requires_user_confirmation": {"const": true},
+            "requested_actions": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "enum": ["save_calendar", "upsert_calendar_slot", "create_pre_publish_reminders", "activate_post_publish_reminders_after_receipt", "prepare_publish_handoff"]
+              }
+            },
+            "action_scopes": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/actionScope"}
+            },
+            "publish_execution": {"const": "not_performed"},
+            "confirmation_scope": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["status", "calendar_id", "slot_ids", "expires_at"],
+              "properties": {
+                "status": {"const": "not_granted"},
+                "calendar_id": {"type": "string", "minLength": 1},
+                "slot_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+                "expires_at": {"type": "null"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "exports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["format", "path", "sha256", "record_count"],
+        "properties": {
+          "format": {"enum": ["csv", "ics"]},
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "record_count": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_skill", "source_artifact_refs", "decision_rationales", "refused_fallbacks"],
+      "properties": {
+        "candidate_skill": {"const": "plan-content-calendar@0.1.24"},
+        "source_artifact_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/artifactRef"}
+        },
+        "decision_rationales": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "refused_fallbacks": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "artifact_id", "schema_version", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "artifact_id": {"type": "string", "minLength": 1},
+        "schema_version": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "assetRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "path", "sha256", "media_type"],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "media_type": {"enum": ["image", "video", "audio"]}
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["account_ref", "platform", "idea_format", "production_format", "publish_format"],
+      "properties": {
+        "account_ref": {"type": "string", "minLength": 1},
+        "platform": {"enum": ["instagram", "youtube", "tiktok"]},
+        "idea_format": {"type": "string", "minLength": 1},
+        "production_format": {"enum": ["short_form", "long_form"]},
+        "publish_format": {"type": "string", "minLength": 1}
+      }
+    },
+    "cadenceTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["account_ref", "platform", "production_format", "publish_format"],
+      "properties": {
+        "account_ref": {"type": "string", "minLength": 1},
+        "platform": {"enum": ["instagram", "youtube", "tiktok"]},
+        "production_format": {"enum": ["short_form", "long_form", null]},
+        "publish_format": {"type": ["string", "null"]}
+      }
+    },
+    "slotDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_id", "idempotency_key", "target_publish_at", "target", "candidate_item_ids", "candidate_evaluations", "selected_item_id", "outcome", "selection_basis", "confirmation_status", "confirmed_at", "rationale", "requires_creator_confirmation"],
+      "properties": {
+        "decision_id": {"type": "string", "minLength": 1},
+        "idempotency_key": {"type": "string", "minLength": 1},
+        "target_publish_at": {"type": "string", "format": "date-time"},
+        "target": {"$ref": "#/$defs/target"},
+        "candidate_item_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "candidate_evaluations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["item_id", "eligible", "operationally_ready", "existing_commitment_at_target", "reason"],
+            "properties": {
+              "item_id": {"type": "string", "minLength": 1},
+              "eligible": {"type": "boolean"},
+              "operationally_ready": {"type": "boolean"},
+              "existing_commitment_at_target": {"type": "boolean"},
+              "reason": {"enum": ["eligible", "target_mismatch", "immutable_schedule_conflict", "proposed_schedule_conflict", "creator_locked_time_conflict", "publish_prep_incomplete"]}
+            }
+          }
+        },
+        "selected_item_id": {"type": ["string", "null"]},
+        "outcome": {"enum": ["confirmed_slot_assignment", "selected_existing_commitment", "selected_creator_preference", "selected_unique_ready", "selected_creator_priority", "selected_upstream_priority", "conflicting_existing_commitments", "needs_creator_choice", "no_eligible_item"]},
+        "selection_basis": {"enum": ["creator_confirmation", "existing_commitment", "creator_preference", "unique_operational_readiness", "creator_priority", "upstream_priority", "none"]},
+        "confirmation_status": {"enum": ["pending", "confirmed"]},
+        "confirmed_at": {"type": ["string", "null"], "format": "date-time"},
+        "rationale": {"type": "string", "minLength": 1},
+        "requires_creator_confirmation": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"confirmation_status": {"const": "confirmed"}}},
+          "then": {
+            "properties": {
+              "selected_item_id": {"type": "string", "minLength": 1},
+              "confirmed_at": {"type": "string", "format": "date-time"}
+            }
+          },
+          "else": {
+            "properties": {
+              "confirmed_at": {"type": "null"}
+            }
+          }
+        }
+      ]
+    },
+    "actionScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "slot_ids"],
+      "properties": {
+        "action": {"enum": ["save_calendar", "upsert_calendar_slot", "create_pre_publish_reminders", "activate_post_publish_reminders_after_receipt", "prepare_publish_handoff"]},
+        "slot_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slot_id",
+        "week_index",
+        "item_id",
+        "title",
+        "content_preview",
+        "planning_state",
+        "planned_date",
+        "publish_at",
+        "target",
+        "selected_idea_ref",
+        "script_package_request_ref",
+        "script_package_ref",
+        "production",
+        "timing",
+        "publish_prep",
+        "reminders",
+        "required_actions"
+      ],
+      "properties": {
+        "slot_id": {"type": "string", "minLength": 1},
+        "week_index": {"type": "integer", "minimum": 1, "maximum": 13},
+        "item_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "content_preview": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["audience_problem", "content_promise", "angle", "hook"],
+          "properties": {
+            "audience_problem": {"type": "string", "minLength": 1},
+            "content_promise": {"type": "string", "minLength": 1},
+            "angle": {"type": "string", "minLength": 1},
+            "hook": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["opening_line", "progressive_line", "mechanism"],
+              "properties": {
+                "opening_line": {"type": "string", "minLength": 1},
+                "progressive_line": {"type": ["string", "null"]},
+                "mechanism": {"type": "string", "minLength": 1}
+              }
+            }
+          }
+        },
+        "planning_state": {"enum": ["proposed", "locked"]},
+        "planned_date": {"type": "string", "format": "date"},
+        "publish_at": {"type": ["string", "null"], "format": "date-time"},
+        "target": {"$ref": "#/$defs/target"},
+        "selected_idea_ref": {"$ref": "#/$defs/artifactRef"},
+        "script_package_request_ref": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/artifactRef"}
+          ]
+        },
+        "script_package_ref": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/artifactRef"}
+          ]
+        },
+        "production": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "source", "as_of", "remaining_minutes", "reported_blockers", "due_at", "due_status", "capacity_status", "planning_blockers"],
+          "properties": {
+            "state": {"enum": ["not_started", "in_progress", "blocked", "complete", "unknown"]},
+            "source": {"enum": ["creator_confirmed", "workflow_system", "unavailable"]},
+            "as_of": {"type": ["string", "null"], "format": "date-time"},
+            "remaining_minutes": {"type": ["integer", "null"], "minimum": 1},
+            "reported_blockers": {"type": "array", "items": {"type": "string"}},
+            "due_at": {"type": ["string", "null"], "format": "date-time"},
+            "due_status": {"enum": ["on_time", "past_due", "unknown", "not_applicable"]},
+            "capacity_status": {"enum": ["within", "exceeded", "unknown"]},
+            "planning_blockers": {"type": "array", "items": {"type": "string"}}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"source": {"const": "unavailable"}}},
+              "then": {"properties": {"state": {"const": "unknown"}, "as_of": {"type": "null"}, "remaining_minutes": {"type": "null"}, "reported_blockers": {"maxItems": 0}}}
+            },
+            {
+              "if": {"properties": {"state": {"const": "complete"}}},
+              "then": {"properties": {"remaining_minutes": {"type": "null"}, "reported_blockers": {"maxItems": 0}, "due_at": {"type": "null"}, "due_status": {"const": "not_applicable"}}}
+            },
+            {
+              "if": {"properties": {"state": {"const": "blocked"}}},
+              "then": {"properties": {"reported_blockers": {"minItems": 1}}}
+            }
+          ]
+        },
+        "timing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "publish_request_ref", "publish_history_ref", "recommendation_ref", "recommendation_outcome", "recommendation_confidence", "publish_now", "schedule_ref", "schedule_state", "confidence"],
+          "properties": {
+            "source": {
+              "enum": [
+                "engine_recommended",
+                "creator_choice_not_recommended",
+                "creator_choice_within_recommendation",
+                "creator_override_of_recommendation",
+                "unassigned"
+              ]
+            },
+            "publish_request_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/artifactRef"}]},
+            "publish_history_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/artifactRef"}]},
+            "recommendation_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/artifactRef"}]},
+            "recommendation_outcome": {"enum": ["recommended", "no_clear_window", "abstain_no_history", "abstain_no_publish_time", null]},
+            "recommendation_confidence": {"enum": ["high", "medium", "low", null]},
+            "publish_now": {"type": ["boolean", "null"]},
+            "schedule_ref": {
+              "description": "Hash-pinned reference to the complete PublishSchedule, including its SelectedIdea draft_ref, recommendation_ref, source, confidence, timezone, append-only state_history and published_result_ref.",
+              "oneOf": [{"type": "null"}, {"$ref": "#/$defs/artifactRef"}]
+            },
+            "schedule_state": {"enum": ["proposed", "accepted", "scheduled", null]},
+            "confidence": {"enum": ["high", "medium", "low", null]}
+          }
+        },
+        "publish_prep": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "headline",
+            "caption_or_description",
+            "hashtags_or_tags",
+            "cover_brief_ref",
+            "media_refs",
+            "cover_asset_ref"
+          ],
+          "properties": {
+            "status": {"description": "Structural readiness only: approved Package fields plus hash-verified declared assets. Connector-specific codec, dimension, duration and upload preflight remain downstream.", "enum": ["complete", "partial", "unavailable"]},
+            "headline": {"type": ["string", "null"]},
+            "caption_or_description": {"type": ["string", "null"]},
+            "hashtags_or_tags": {"type": "array", "items": {"type": "string"}},
+            "cover_brief_ref": {"type": ["string", "null"]},
+            "media_refs": {"type": "array", "items": {"$ref": "#/$defs/assetRef"}},
+            "cover_asset_ref": {
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/assetRef"}
+              ]
+            }
+          }
+        },
+        "reminders": {
+          "description": "Proposed reminder handoffs. The Skill does not create them.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "anchor", "offset_minutes", "at", "state"],
+            "properties": {
+              "type": {"enum": ["pre_publish", "post_publish_attention"]},
+              "anchor": {"enum": ["planned_publish_at", "connector_published_at"]},
+              "offset_minutes": {"type": "integer", "minimum": -10080, "maximum": 120},
+              "at": {"type": ["string", "null"], "format": "date-time"},
+              "state": {"const": "proposed"}
+            },
+            "allOf": [
+              {"if": {"properties": {"type": {"const": "pre_publish"}}}, "then": {"properties": {"anchor": {"const": "planned_publish_at"}, "at": {"type": "string", "format": "date-time"}}}},
+              {"if": {"properties": {"type": {"const": "post_publish_attention"}}}, "then": {"properties": {"anchor": {"const": "connector_published_at"}, "at": {"type": "null"}}}}
+            ]
+          }
+        },
+        "required_actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "unscheduled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry_id", "item_id", "candidate_idea_set_ref", "existing_commitment_at", "existing_schedule_ref", "existing_schedule_state", "reason", "next_action"],
+      "properties": {
+        "entry_id": {"type": "string", "minLength": 1},
+        "item_id": {"type": ["string", "null"]},
+        "candidate_idea_set_ref": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/artifactRef"}
+          ]
+        },
+        "existing_commitment_at": {"type": ["string", "null"], "format": "date-time"},
+        "existing_schedule_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/artifactRef"}]},
+        "existing_schedule_state": {"enum": ["proposed", "accepted", "scheduled", null]},
+        "reason": {
+          "enum": [
+            "candidate_requires_selection",
+            "no_matching_cadence",
+            "no_available_slot",
+            "locked_time_outside_window",
+            "locked_time_conflict",
+            "blackout_date",
+            "capacity_exceeded"
+          ]
+        },
+        "next_action": {"type": "string", "minLength": 1}
+      }
+    },
+    "unfilledSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot_id", "week_index", "planned_date", "target", "reason"],
+      "properties": {
+        "slot_id": {"type": "string", "minLength": 1},
+        "week_index": {"type": "integer", "minimum": 1, "maximum": 13},
+        "planned_date": {"type": "string", "format": "date"},
+        "target": {"$ref": "#/$defs/cadenceTarget"},
+        "reason": {"enum": ["blackout_date", "no_assigned_content", "single_slot_choice_required"]}
+      }
+    },
+    "gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gap_type", "count", "affected_refs", "detail"],
+      "properties": {
+        "gap_type": {
+          "enum": [
+            "selection_shortfall",
+            "publish_prep_incomplete",
+            "timing_unavailable",
+            "capacity_unknown",
+            "capacity_exceeded",
+            "timezone_assumed",
+            "constraint_conflict",
+            "blackout_slots",
+            "production_overdue",
+            "production_progress_unavailable",
+            "production_incomplete",
+            "near_duplicate_selected_ideas",
+            "single_slot_choice_required",
+            "single_slot_confirmation_required"
+          ]
+        },
+        "count": {"type": "integer", "minimum": 1},
+        "affected_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "detail": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

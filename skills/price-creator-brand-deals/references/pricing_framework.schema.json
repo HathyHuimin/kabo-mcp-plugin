@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pricing-framework.v1",
+  "title": "Creator brand-deal pricing framework",
+  "description": "The versioned benchmark library this Skill prices against. Every figure names the source it came from and the evidence class that source belongs to, so a market measurement is never confused with a trade convention, and a convention is never confused with an internal decision. Every public source names its publisher and the page it was read from, so a reader can check the figure against the original; an internal source carries neither.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "framework_id",
+    "version",
+    "compiled_at",
+    "currency",
+    "staleness_budget_days",
+    "cpm_divergence_threshold",
+    "sources",
+    "posted_rate_bands",
+    "levers",
+    "negotiation_rules"
+  ],
+  "properties": {
+    "schema_version": { "const": "pricing-framework.v1" },
+    "framework_id": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "compiled_at": { "type": "string", "format": "date" },
+    "currency": { "const": "USD" },
+    "staleness_budget_days": { "type": "integer", "minimum": 1 },
+    "cpm_divergence_threshold": {
+      "type": "number",
+      "minimum": 1,
+      "description": "The reach-based route is only surfaced when it disagrees with the follower-tier route by at least this ratio. Two routes that agree tell the creator nothing they did not already have."
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "posted_rate_bands": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/posted_rate_band" }
+    },
+    "transacted_reference": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/transacted_reference" }
+    },
+    "levers": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/lever" }
+    },
+    "cpm_model": { "$ref": "#/$defs/cpm_model" },
+    "negotiation_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/negotiation_rule" }
+    },
+    "divergences": {
+      "type": "array",
+      "description": "Places where an external measurement contradicts the internal framework this Skill was told to carry, with which one was adopted and why. Recorded rather than resolved silently, so the disagreement stays reviewable.",
+      "items": { "$ref": "#/$defs/divergence" }
+    },
+    "corroborations": {
+      "type": "array",
+      "description": "The mirror of divergences: internal positions that external evidence supports. Kept for the same reason - a framework that only records its failures reads as worse than it is.",
+      "items": { "$ref": "#/$defs/corroboration" }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "class", "method", "verification", "retrieved_at"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "class": {
+          "enum": ["industry_benchmark", "marketplace_transaction", "marketplace_listing", "convention", "reach_model", "internal_framework"],
+          "description": "What kind of claim this source can support. A transacted average and an editorial rate card are not interchangeable evidence even when they carry similar numbers."
+        },
+        "method": { "type": "string" },
+        "verification": {
+          "enum": ["page_fetch", "search_snippet", "repository_read"],
+          "description": "How the figures were captured. A snippet-derived entry has not been checked against the published page line by line and is due for re-verification first."
+        },
+        "publisher": {
+          "type": ["string", "null"],
+          "description": "Who published the source. Required for every class except internal_framework, which has no public publisher."
+        },
+        "url": {
+          "type": ["string", "null"],
+          "pattern": "^https://",
+          "description": "The page the figures were read from, so a reader can check them. Null only for internal_framework."
+        },
+        "published": { "type": ["string", "null"] },
+        "retrieved_at": { "type": "string", "format": "date" },
+        "covers_platforms": { "type": "array", "items": { "enum": ["instagram", "tiktok", "youtube"] } },
+        "population_bias": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "posted_rate_band": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "platform", "tier", "followers_min", "followers_max", "low", "high", "open_ended"],
+      "description": "One source's published band for one platform and one follower range. Sources disagree on where the tiers break, so bands carry their own boundaries and are matched by follower count rather than by tier name.",
+      "properties": {
+        "source": { "type": "string" },
+        "platform": { "enum": ["instagram", "tiktok", "youtube"] },
+        "tier": { "enum": ["nano", "micro", "mid", "macro", "mega"] },
+        "followers_min": { "type": "integer", "minimum": 0 },
+        "followers_max": { "type": ["integer", "null"] },
+        "low": { "type": "number", "minimum": 0 },
+        "high": { "type": ["number", "null"] },
+        "open_ended": { "type": "boolean" }
+      }
+    },
+    "transacted_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "platform", "metric", "value", "tier_scope"],
+      "properties": {
+        "source": { "type": "string" },
+        "platform": { "enum": ["instagram", "tiktok", "youtube"] },
+        "metric": { "type": "string" },
+        "value": { "type": "number", "minimum": 0 },
+        "tier_scope": { "type": "string" }
+      }
+    },
+    "lever": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "group", "condition"],
+      "description": "A percentage adjustment on top of a base band. Two sources pricing the same condition differently both appear, as separate levers; nothing averages them.",
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "enum": ["usage_rights", "exclusivity", "rush", "format", "engagement", "niche", "geography", "revisions"] },
+        "group": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Levers sharing a group price the same term. Within a group the ranges widen to cover every source; only across groups do adjustments add up. Without this, two sources pricing one 6-month licence would stack into a double charge."
+        },
+        "condition": { "type": "string" },
+        "low_pct": { "type": ["number", "null"] },
+        "high_pct": { "type": ["number", "null"] },
+        "open_ended": { "type": "boolean" },
+        "source": { "type": ["string", "null"] },
+        "variant": { "type": ["string", "null"] },
+        "unsourced": {
+          "type": "boolean",
+          "description": "True when the trade agrees the term matters but nobody publishes a number for it. Such a lever is surfaced as a term to settle and never multiplies anything."
+        },
+        "note": { "type": ["string", "null"] },
+        "i18n": {
+          "type": "object",
+          "description": "Translations of the condition text. The condition is what a creator reads to decide whether a lever applies to their deal, so it travels with the library rather than being restated in the renderer.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "condition": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "cpm_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "formula", "basis", "niches", "format_multipliers"],
+      "properties": {
+        "source": { "type": "string" },
+        "formula": { "type": "string" },
+        "basis": { "const": "average_views" },
+        "rationale": { "type": ["string", "null"] },
+        "niches": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["niche", "cpm_low", "cpm_high"],
+            "properties": {
+              "niche": { "type": "string" },
+              "cpm_low": { "type": "number", "exclusiveMinimum": 0 },
+              "cpm_high": { "type": "number", "exclusiveMinimum": 0 }
+            }
+          }
+        },
+        "format_multipliers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["format", "low", "high"],
+            "properties": {
+              "format": { "type": "string" },
+              "low": { "type": "number", "exclusiveMinimum": 0 },
+              "high": { "type": "number", "exclusiveMinimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "negotiation_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "rule", "sources"],
+      "properties": {
+        "id": { "type": "string" },
+        "rule": { "type": "string" },
+        "sources": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "low_pct": { "type": ["number", "null"] },
+        "high_pct": { "type": ["number", "null"] },
+        "why": { "type": ["string", "null"] },
+        "note": { "type": ["string", "null"] }
+      }
+    },
+    "divergence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topic", "internal_position", "adopted_position", "adopted_sources", "decision", "decided_on", "rationale"],
+      "properties": {
+        "topic": { "type": "string" },
+        "internal_position": { "type": "string" },
+        "adopted_position": { "type": "string" },
+        "adopted_sources": { "type": "array", "items": { "type": "string" } },
+        "decision": { "enum": ["external", "internal", "unresolved"] },
+        "decided_on": { "type": "string", "format": "date" },
+        "rationale": { "type": "string" }
+      }
+    },
+    "corroboration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topic", "internal_position", "evidence", "evidence_sources", "status"],
+      "properties": {
+        "topic": { "type": "string" },
+        "internal_position": { "type": "string" },
+        "evidence": { "type": "string" },
+        "evidence_sources": { "type": "array", "items": { "type": "string" } },
+        "status": { "enum": ["supported", "contradicted"] }
+      }
+    }
+  }
+}
