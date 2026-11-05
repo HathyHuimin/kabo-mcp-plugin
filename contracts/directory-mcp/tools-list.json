@@ -14997,7 +14997,7 @@
         "openWorldHint": true,
         "readOnlyHint": false
       },
-      "description": "Start a Kabo remake of a public talking-head video (YouTube, Instagram or TikTok, 90 s max) with the creator's own footage. Call only after the user confirms. Top-level. Fetching the videos uses daily quota. Uses one daily remake (shared with Kabo web) whatever the outcome; one runs at a time. On fetching_inputs, repeat the same call after retry_after_s. Next: poll get_remake_video.",
+      "description": "Remake a public talking-head video (YouTube, Instagram or TikTok, 90 s max) with the creator's videos or photos. Only after the user confirms. Top-level. Fetching uses daily quota. Uses one daily remake (shared with web) either way; one at a time. On fetching_inputs, repeat after retry_after_s. Next: poll get_remake_video.",
       "execution": {
         "taskSupport": "forbidden"
       },
@@ -15007,16 +15007,26 @@
         "properties": {
           "creator": {
             "additionalProperties": false,
-            "description": "Exactly one of instagram_handle or video_urls.",
+            "description": "instagram_handle, or video_urls and/or photo_urls (face JPEG/PNG); max 4.",
             "properties": {
               "instagram_handle": {
-                "description": "Handle or profile link; Kabo picks their reels.",
+                "description": "Handle or profile link; Kabo picks reels.",
                 "maxLength": 256,
                 "minLength": 1,
                 "type": "string"
               },
+              "photo_urls": {
+                "items": {
+                  "maxLength": 2048,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 4,
+                "minItems": 1,
+                "type": "array"
+              },
               "video_urls": {
-                "description": "1-4 links of the creator talking.",
+                "description": "Links of them talking.",
                 "items": {
                   "maxLength": 2048,
                   "minLength": 1,
@@ -15030,7 +15040,7 @@
             "type": "object"
           },
           "creator_name": {
-            "description": "Short ASCII name; defaults to the handle, required with video_urls.",
+            "description": "ASCII; defaults to handle, else required.",
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
             "type": "string"
           },
@@ -15053,8 +15063,13 @@
             "type": "string"
           },
           "script": {
-            "description": "Instead of reference_url: approved words, said verbatim.",
+            "description": "Or approved words, verbatim.",
             "maxLength": 12000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "voice_preset": {
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           }

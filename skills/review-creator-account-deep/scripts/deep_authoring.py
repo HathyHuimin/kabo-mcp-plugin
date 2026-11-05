@@ -73,11 +73,13 @@ def make_basis(payload: dict[str, Any], output: Path, paths: dict[str, Path]) ->
         actual = path.resolve(strict=True)
         if name != "account_analysis" and not _inside(actual, directory):
             raise ValueError(f"{name} must belong to the current run")
-        sources[name] = {"path": str(actual), "sha256": _digest(actual)}
+        # 本 run 内的来源记相对路径：Web 每条命令挂在不同的绝对目录下，同一个 run 的绝对路径会变。
+        stored = str(actual.relative_to(directory)) if _inside(actual, directory) else str(actual)
+        sources[name] = {"path": stored, "sha256": _digest(actual)}
         originals[name] = load_strict(actual)
     validate_source_identity(originals, payload)
     point_index(originals["evidence"])
-    return {"schema_version": BASIS_VERSION, "run_dir": str(directory),
+    return {"schema_version": BASIS_VERSION, "run_dir": directory.name,
             "projection_sha256": _projection_digest(payload), "sources": sources}
 
 
@@ -108,7 +110,8 @@ def bound_sources(source_path: Path, source: dict[str, Any], *, evidence_path: P
     if not isinstance(basis, dict) or set(basis) != {"schema_version", "run_dir", "projection_sha256", "sources"}:
         raise ValueError("new authoring requires a complete generated authoring_basis")
     directory = require_open_current_run()
-    if basis["schema_version"] != BASIS_VERSION or basis["run_dir"] != str(directory):
+    # run 按名字认（新写法）或按旧的绝对路径认；字节与投影仍逐项核对。
+    if basis["schema_version"] != BASIS_VERSION or basis["run_dir"] not in (directory.name, str(directory)):
         raise ValueError("authoring_basis is not bound to this current run")
     if not _inside(source_path.resolve(strict=True), directory):
         raise ValueError("synthesis input must belong to the current run")
@@ -123,8 +126,10 @@ def bound_sources(source_path: Path, source: dict[str, Any], *, evidence_path: P
         row = sources[name]
         if not isinstance(row, dict) or set(row) != {"path", "sha256"} or not isinstance(row["path"], str):
             raise ValueError("invalid authoring source binding")
-        actual = Path(row["path"]).resolve(strict=True)
-        if str(actual) != row["path"] or (name != "account_analysis" and not _inside(actual, directory)):
+        relative = not Path(row["path"]).is_absolute()
+        actual = (directory / row["path"] if relative else Path(row["path"])).resolve(strict=True)
+        if (not relative and str(actual) != row["path"]) or (relative and not _inside(actual, directory)) or \
+                (name != "account_analysis" and not _inside(actual, directory)):
             raise ValueError("authoring source path left its original run")
         if _digest(actual) != row["sha256"]:
             raise ValueError(f"original {name} bytes changed")

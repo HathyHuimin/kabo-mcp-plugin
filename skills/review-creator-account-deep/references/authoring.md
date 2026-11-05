@@ -1,13 +1,14 @@
 # Authoring the deep review
 
-Read this whole before workflow step 6. Commands use `<skill directory>` (the folder holding
+Read this whole before workflow step 4. Commands use `<skill directory>` (the folder holding
 `SKILL.md`) and run from this request's run directory; keep the same run directory for every
 command below.
 
 ## Reading the packet
 
-Use the delivery language for `--output-language` (`en` by default, or `zh-CN` for Chinese). Read the seed command's
-complete output before writing findings: it includes every watched content ID, every selected
+`watch_media.py` (workflow step 2) already built `deep_synthesis_input.json`, created the seed with the
+delivery language you passed as `--output-language` (`en` by default, or `zh-CN` for Chinese) and printed
+the authoring packet after the frame reads. Read that packet's complete output before writing findings: it includes every watched content ID, every selected
 opening and later cue with original seconds, metadata status, origin and limitations, baseline
 availability, and the fully expanded source-bound authoring schema. It omits raw metadata bulk
 while the full original JSON stays unchanged. Check `packet_end.included_content_ids` against
@@ -38,7 +39,7 @@ run. Never edit the generated basis to accommodate changed evidence.
 
 ## Writing `account_deep_authoring.json`
 
-The seed command exclusively creates `account_deep_authoring.json` from
+The watch resume exclusively creates `account_deep_authoring.json` from
 `references/account_deep_authoring.schema.json`. Fill only its judgment and display fields,
 `observations`, pattern and recommendation point refs and `other_limitations`. Do not repeat
 `analysis_id`, `data_gaps`, cue quotes or ends, or frame seconds.
@@ -50,14 +51,14 @@ The seed command exclusively creates `account_deep_authoring.json` from
   available frames into viewing claims. For every video with selected timed cues, read and select at
   least one real cue; leave frame observations empty if images were not viewed. Unknown refs and
   source points that collapse onto the same video, kind and second are refused.
-- Use point refs printed by the read command. In the seed invocation, add repeatable
-  `--frame-object-ref <original object_ref>` arguments for already viewed non-opening frames; this
-  maps their exact source IDs and nominal seconds without an extra per-video read. Follow the
+- Use point refs printed by the packet. Opening frames (up to 3 s) are already in it; for already
+  viewed non-opening frames, add repeatable `--frame-object-ref <original object_ref>` arguments to
+  the read-only command below; this maps their exact source IDs and nominal seconds without an extra
+  per-video read. Follow the
   original `object_ref` you read the frame with: a local image filename, hash or displayed image
   number is not a canonical frame ID. Unknown, duplicate or ambiguous object refs are refused. A
   printed ref does not prove viewing; inspect each cited frame.
-- `--authoring-seed` creates the author file only once; an existing seed causes an explicit
-  file-exists failure before output and stays unchanged. After it exists, include further already
+- The seed is created only once; an existing seed is never overwritten. Include further already
   viewed points with the read-only mode (omit the second argument when one point is enough):
 
   ```sh

@@ -3,7 +3,7 @@ name: review-creator-account-deep
 description: "Deep-review a named public Instagram, TikTok or YouTube account: walk the standard account-analysis steps and watch a bounded set of its videos (frames and transcript) to say which practices to keep or stop and what to change in the next shoot. Reuses a finished review-creator-account review, else fetches a one-page catalog itself. Use when the creator asks for a deep review that actually watches videos. Not for a catalog-only review, a single-video teardown, competitors or trends."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Viewing frames needs a host that can display images to the model. Kabo permission: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts instagram_resolve_profile instagram_list_posts instagram_list_reels youtube_get_channel youtube_list_channel_uploads tiktok_list_account_posts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream start_skill_run
+allowed-tools: get_research_capabilities collect_account_history collect_video_media get_research_data_job get_research_data_download read_research_data_artifacts instagram_resolve_profile instagram_list_posts instagram_list_reels youtube_get_channel youtube_list_channel_uploads tiktok_list_account_posts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream start_skill_run
 ---
 
 # Deep account review
@@ -34,12 +34,13 @@ never read credentials or ask for tokens in chat.
 ## Running commands
 
 `<skill directory>` is the folder holding this `SKILL.md`. Reserve exactly one run per request:
+without a finished standard review, step 1's `fetch_catalog.py --workspace` reserves it; with one,
 
 ```sh
 python3 '<skill directory>/scripts/static_host.py' init --workspace '<user-workspace>'
 ```
 
-It prints the run directory. Every later command carries it, because hosts keep neither environment
+prints the run directory. Every later command carries it, because hosts keep neither environment
 variables nor the working directory between commands:
 `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/…' …`.
 `<analysis>` is the catalog analysis step 1 settles on. Every command here is complete: do not probe
@@ -57,22 +58,17 @@ or display images, say which step is not possible here before claiming anything.
 All data comes from the Kabo MCP tools in `allowed-tools`. Call `get_research_capabilities` once per
 run and reuse its answer; an operation it marks unavailable is a capability gap to report.
 
-| Planned operation | Tool |
-|---|---|
-| `collect_public_metadata` | `public_video_collect_public_metadata` |
-| `fetch_transcript` | `public_video_fetch_transcript` |
-| `extract_keyframes` | `public_video_extract_keyframes` (its result may name `extract_keyframes_hosted_media` or `extract_keyframes_hosted_stream`) |
+- Without a standard review, the catalog is **one** backend call, `collect_account_history`, printed
+  by step 1's `fetch_catalog.py`.
+- Watching is **one** backend call, `collect_video_media`, printed by `watch_media.py` (step 2): the
+  backend queues every planned metadata, transcript and keyframe job and waits for them. Never call
+  the `public_video_*` tools or `get_research_data_job` yourself for the watch set.
+- Frame bytes come from `read_research_data_artifacts`, as step 3 prints them; they are viewed, never
+  persisted.
 
-The catalog tools are used only by step 1's `fetch_catalog.py`, which prints their calls.
-
-The catalog tools are used only by step 1's `fetch_catalog.py`, which prints their calls. Media
-calls are built by `static_host.py job-call`, polled with `get_research_data_job` (`wait_s` up to 30)
-and saved, fetched and persisted exactly as `references/watch-and-persist.md` says; frame bytes come
-from `read_research_data_artifacts` and are viewed, never persisted. Make each call as its own
-individual call, never in a batch, and never retype or paste returned data. A failed tool call is
-evidence: record it and continue (one retry per call). For a refused fetch, an expired link or a
-queued job, follow `references/data-calls.md`; never rebuild a result from host session or
-tool-result folders.
+Make each printed call with its arguments verbatim and never retype or paste returned data. For a
+refused fetch, an expired link or a failed call, follow `references/data-calls.md`; never rebuild a
+result from host session or tool-result folders.
 
 ## Caps
 
@@ -93,25 +89,23 @@ page per format, at most `CATALOG_CALL_CAP` (4) catalog calls per run.
 
    - **A finished standard review may exist:** read `references/standard-inputs.md` whole and reuse
      it as it says; `<analysis>` is `<standard run>/account_analysis.json`.
-   - **Otherwise** fetch a one-page catalog sample in this run (YouTube may pass
-     `--channel-id "<UC…>"` instead of `--account`):
+   - **Otherwise** reserve the run and fetch a one-page catalog sample with one backend call
+     (YouTube may pass `--channel-id "<UC…>"` instead of `--account`):
 
      ```sh
-     cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/fetch_catalog.py' --platform <instagram|youtube|tiktok> --account "<named account>"
+     python3 '<skill directory>/scripts/fetch_catalog.py' --workspace '<user-workspace>' --platform <instagram|youtube|tiktok> --account "<named account>" --output-language <en|zh-CN> [--cap 10] [--named-content-id "<id>"]
      ```
 
-     Each run prints one JSON. `needs_calls`: follow its `next_action` exactly, then run its
-     `rerun`. Never write or edit `catalog/` files. `ok`: `<analysis>` is this run's
-     `account_analysis.json`; this path has no standard report and a smaller sample, so quote only
-     the scripted catalog numbers and put its `sample_note` verbatim in `other_limitations`.
-     `stopped`: tell the user its `message` and stop; never review another account in its place.
+     It prints one JSON. `needs_calls`: its `run_directory` is this run's; make its one call, then run
+     its `rerun` with that result's id, as its `next_action` says. Never write or edit
+     `catalog/` files. The rerun prints `ok` and continues straight into step 2 (its output ends
+     with the watch hand-over). On `ok`, `<analysis>` is this run's `account_analysis.json`; this
+     path has no standard report and a smaller sample, so quote only the scripted catalog numbers
+     and put its `sample_note` verbatim in `other_limitations`. `stopped`: tell the user its
+     `message` and stop; never review another account in its place.
 
-   Then compute the catalog-only numbers, which watch nothing and do not change the standard
-   review (a later step run before step 1 exits 2 and names both entries):
-
-   ```sh
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/build_catalog_stability.py' '<analysis>' --output catalog_stability.json
-   ```
+   Step 2's command also computes the catalog-only numbers (`catalog_stability.json`), which watch
+   nothing and do not change the standard review.
 
    Quote only these scripted numbers for public scale (`median_views / followers`), concentration
    (`p90 / p10`, top-10% view share), hidden likes (`likes == -1`), other-handle URLs and format
@@ -122,55 +116,41 @@ page per format, at most `CATALOG_CALL_CAP` (4) catalog calls per run.
    with fewer than three items in either half stays `thin`. If likes are hidden, compare
    comment-over-views only.
 
-2. **Catalog memo.** Labels come from title, cover, first sentence, duration and whether the URL
-   sits on another handle; they are provisional. Do not lock a hook, first frame or payoff second
-   here. Short items: class from hook × lens × scene × duration; long items: class from skeleton ×
-   shooting. Class-level do-more or stop may be written; it stays class-level until a video is
-   watched.
+2. **Watch.** One command builds the catalog memo (`catalog_plus.md`), sizes the watch set
+   (`watch_set.json`; named `content_id`s take seats first), plans the media requests and hands over
+   the single `collect_video_media` call. After a fetched catalog, step 1's rerun has already run it;
+   after a standard review, run it yourself:
 
    ```sh
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/compose_catalog_plus.py' '<analysis>' --stability catalog_stability.json --markdown catalog_plus.md
+   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/watch_media.py' '<analysis>' --output-language <en|zh-CN> [--cap 10] [--named-content-id "<id>"]
    ```
 
-3. **Select and plan.** Named `content_id`s take seats first:
+   Make the printed call, repeat the same call while its result still reports running jobs
+   (`coverage.pending` above 0), then run the printed resume command with the last result's id. The resume
+   may hand the same call over again while jobs are running; do as it says. `status: stopped` means
+   no selected video can be watched: say so and describe no hooks or cuts. Catalog labels in
+   `catalog_plus.md` come from title, cover, first sentence, duration and whether the URL sits on
+   another handle; they are provisional, class-level until a video is watched. Watchable formats:
+   `reel`, `tiktok_video`, `youtube_short`, `youtube_long`; Instagram `feed` rows are not watchable.
 
-   ```sh
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/select_watch_set.py' '<analysis>' --output watch_set.json --cap 10 [--named-content-id "<id>"]
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/plan_media_jobs.py' watch_set.json --output media_job_plan.json
-   ```
+3. **View the frames.** When every job is in, the resume writes `watch_outcomes.json`,
+   `watched_evidence.json`, `deep_synthesis_input.json` and the authoring seed
+   `account_deep_authoring.json`, then prints one `read:` line per watched video (its opening
+   frames) followed by the authoring packet. Make every `read_research_data_artifacts` call in one
+   response, display each image, and write one short card per watched item, as *View the frames and
+   write the cards* in `references/watch-and-persist.md` says. A title, caption or view multiple is
+   not proof of a hook, a cut or on-screen text. Do not emit the single-video Skill's diagnosis cards
+   or 17-dimension funnel, and do not run that Skill.
 
-   Watchable formats: `reel`, `tiktok_video`, `youtube_short`, `youtube_long`; Instagram `feed`
-   rows are not watchable. An empty `selected` list means stop: say no video could be watched, and
-   describe no hooks or cuts.
-
-4. **Watch.** Read `references/watch-and-persist.md` whole before the first media call, then make
-   every planned call, keep the issued-job mapping, poll every job to a terminal state, fetch and
-   persist each terminal result, and classify the outcomes into `watch_outcomes.json` and
-   `watched_evidence.json` with the commands there.
-
-5. **View the frames.** Display the actual frame images before any visual claim and write one short
-   card per watched item, as *View the frames and write the cards* in
-   `references/watch-and-persist.md` says. A title, caption or view multiple is not proof of a hook,
-   a cut or on-screen text. Do not emit the single-video Skill's diagnosis cards or 17-dimension
-   funnel, and do not run that Skill.
-
-6. **Author.** Read `references/authoring.md` whole, then compact the evidence and create the
-   authoring seed (`--output-language` defaults to `en`; use `zh-CN` for a Chinese report; on this first seed creation include any
-   already viewed `--frame-object-ref` values):
-
-   ```sh
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/build_deep_synthesis_input.py' watched_evidence.json --watch-set watch_set.json --account-analysis '<analysis>' --authoring-basis --stability catalog_stability.json --output deep_synthesis_input.json
-   cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/read_deep_synthesis_packet.py' deep_synthesis_input.json --schema --authoring-seed account_deep_authoring.json --output-language <en|zh-CN> --stability catalog_stability.json [--frame-object-ref "<original-object-ref>"]
-   ```
-
-   Fill `account_deep_authoring.json`, then run the read-only check as a non-final step and act on
-   it as the reference says:
+4. **Author.** Read `references/authoring.md` whole, fill `account_deep_authoring.json` from the
+   printed packet, then run the read-only check as a non-final step and act on it as the reference
+   says:
 
    ```sh
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/compose_deep_review.py' account_deep_authoring.json --evidence watched_evidence.json --stability catalog_stability.json --synthesis-input deep_synthesis_input.json --check-only
    ```
 
-7. **Compose.** Only after a `valid` check and the grounding review:
+5. **Compose.** Only after a `valid` check and the grounding review:
 
    ```sh
    cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill directory>/scripts/compose_deep_review.py' account_deep_authoring.json --evidence watched_evidence.json --stability catalog_stability.json --synthesis-input deep_synthesis_input.json --output account_deep_report.json --markdown account_deep_report.md
