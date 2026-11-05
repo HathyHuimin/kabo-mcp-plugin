@@ -163,6 +163,15 @@ def main() -> int:
             args.output,
             json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         )
+        # 实测（gpt-5.6）：这一步静默成功时，模型常把它当成终点、直接在回复里写脚本，
+        # 后面的 package、校验与渲染都没跑。打印一行状态与下一步，让它接着走流程。
+        print(json.dumps({
+            "status": "ok",
+            "selected_idea": str(args.output),
+            "next_action": "This only records the selected direction. Continue with Workflow step 2: "
+                           "write script_package.json, project its input snapshot, then validate and "
+                           "render; the deliverable is the rendered SCRIPT_PACKAGE.md.",
+        }, ensure_ascii=False))
         return 0
     except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
         print(
