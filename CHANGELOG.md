@@ -2,6 +2,13 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.20（2026-11-06；GitHub Release）
+
+- `analyze-content-video`：最终数字校验接受按有效数字取整或截断的大计数（如 18,067,177 写成「1800 万」「1.8千万」，2,689,000 写成「2.6M+」），并认「千 / 百万 / 千万」量级；小数字与只剩一位有效数字的写法仍按原规则拦。生产 Web 上视频分析曾因此在最后一步被拒（#120）。
+- `analyze-content-video`：本地度量作为独立命令运行并有时限（#115）。
+- `diagnose-reach-drop`：只有公开快照时给出按发布时长近似的下降判断（#119）。
+- 发布到 Web：发到 pre 测试账号（`target=test`）不再套用生产暂扣名单 `PLUGIN_WEB_HOLD`，可另设 `PLUGIN_WEB_TEST_HOLD`（#121）。
+
 ## 1.0.19（2026-11-06；GitHub Release）
 
 - 发布到 Web 的流程：SKILL.md 声明了 `metadata.version` 时用它作为 Web 版本（须高于线上版本），探测打包不再比对版本；三个新 Skill 的声明版本升到线上之上（品牌 0.3.23、日历 0.1.25、报价 0.4.13），1.0.18 因此没能发到 Web（#117）。Skill 内容与 1.0.18 相同。
