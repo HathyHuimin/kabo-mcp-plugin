@@ -2,6 +2,10 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.19（2026-11-06；GitHub Release）
+
+- 发布到 Web 的流程：SKILL.md 声明了 `metadata.version` 时用它作为 Web 版本（须高于线上版本），探测打包不再比对版本；三个新 Skill 的声明版本升到线上之上（品牌 0.3.23、日历 0.1.25、报价 0.4.13），1.0.18 因此没能发到 Web（#117）。Skill 内容与 1.0.18 相同。
+
 ## 1.0.18（2026-11-06；GitHub Release）
 
 - 新增三个 Skill：`optimize-creator-brand`（品牌命名、简介、品牌包）、`plan-content-calendar`（可审阅的内容日历）、`price-creator-brand-deals`（商单报价），由 creator-skills 移植（#97）。
