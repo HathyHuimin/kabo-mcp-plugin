@@ -2,6 +2,10 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.22（2026-11-06；GitHub Release）
+
+- `analyze-content-video`：只有 `collect_media.py` 能写 `collect_video_media` 的参数；模型不再自己拼这次调用，失败时也不改成逐项取媒体或查 job（#125）。生产 Web 上 0.14.31 的 12 次运行里，多数先自己拼调用、被 schema 拒，再绕开脚本逐项取数、自由作答，没有走到 `finish_diagnosis.py`。
+
 ## 1.0.21（2026-11-06；GitHub Release）
 
 - `remake-viral-video`：旁白类（voice-over）参考不再因为创作者视频没有正脸而被当成不支持、先问用户要正脸照——旁白只用创作者的声音（本地插件闸门 C4/C5 发现，历史措辞）。正文等量压缩，20,999 字符。
