@@ -100,6 +100,24 @@
       "derivedFromVersion": "0.18.23",
       "sourcePath": "creator-skills/runtime/verify-platform-rule",
       "derivedFromCommit": "8fc3371e6950478a724740bb4c5cf7a03e7e655c"
+    },
+    {
+      "id": "optimize-creator-brand",
+      "derivedFromVersion": "0.3.22",
+      "sourcePath": "creator-skills/runtime/optimize-creator-brand",
+      "derivedFromCommit": "d48a88d5e80623e6c174f297947b61295ae089ed"
+    },
+    {
+      "id": "plan-content-calendar",
+      "derivedFromVersion": "0.1.24",
+      "sourcePath": "creator-skills/runtime/plan-content-calendar",
+      "derivedFromCommit": "681330dd79b2d7d71f4fce69cbd1d33504357599"
+    },
+    {
+      "id": "price-creator-brand-deals",
+      "derivedFromVersion": "0.4.12",
+      "sourcePath": "creator-skills/runtime/price-creator-brand-deals",
+      "derivedFromCommit": "b6a65d4201d60d999075d2c5fe1038643cf724c7"
     }
   ]
 }

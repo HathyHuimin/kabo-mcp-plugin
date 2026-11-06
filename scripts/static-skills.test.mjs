@@ -7,7 +7,7 @@ import test from "node:test";
 import { packageFiles, checkPackage } from "./package-check.mjs";
 import { deterministicZip, validatePackage } from "./openai-plugin-package.mjs";
 
-const ids = ["analyze-content-video", "review-creator-account", "review-creator-account-deep", "create-script-and-packaging", "develop-content-ideas", "research-instagram-trends", "research-tiktok-trends", "research-youtube-trends", "analyze-creator-competitors", "analyze-tiktok-competitors", "remake-viral-video", "diagnose-reach-drop", "recommend-publish-timing", "plan-platform-monetization", "verify-platform-rule"];
+const ids = ["analyze-content-video", "review-creator-account", "review-creator-account-deep", "create-script-and-packaging", "develop-content-ideas", "research-instagram-trends", "research-tiktok-trends", "research-youtube-trends", "analyze-creator-competitors", "analyze-tiktok-competitors", "remake-viral-video", "diagnose-reach-drop", "recommend-publish-timing", "plan-platform-monetization", "verify-platform-rule", "optimize-creator-brand", "plan-content-calendar", "price-creator-brand-deals"];
 
 async function installed(t) {
   const temp = await mkdtemp(path.join(os.tmpdir(), "kabo-static-installed-"));
@@ -21,7 +21,7 @@ async function installed(t) {
   return { temp, root, files };
 }
 
-test("十五个固定 Skills 完整解包；根目录、宿主身份与唯一 MCP 一致", async t => {
+test("十八个固定 Skills 完整解包；根目录、宿主身份与唯一 MCP 一致", async t => {
   const { root, files } = await installed(t);
   const result = await checkPackage(root);
   assert.equal(result.version, JSON.parse(await readFile(new URL("../plugin.json", import.meta.url))).version);

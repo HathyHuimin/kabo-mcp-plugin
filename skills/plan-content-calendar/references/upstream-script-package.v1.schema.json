@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creator-ai.local/schemas/script-package.v1.json",
+  "title": "ScriptPackage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "package_id", "request_id", "created_at", "revision", "mode",
+    "status", "approval_status", "input_snapshot", "overview", "hook_options",
+    "script", "packaging", "production_plan", "claim_ledger", "quality_checks",
+    "interaction", "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": "script-package.v1"},
+    "package_id": {"type": "string", "minLength": 1},
+    "request_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "revision": {"type": "integer", "minimum": 1},
+    "mode": {"enum": ["script_only", "packaging_only", "full_package"]},
+    "status": {"enum": ["draft_needs_user_input", "ready_for_review", "approved_for_production", "blocked"]},
+    "approval_status": {"enum": ["pending", "approved", "revise"]},
+    "publishable_claim_links": {"type": "array", "items": {"type": "object", "additionalProperties": false,
+      "required": ["path", "claim_ids", "evidence_refs"], "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "claim_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }}},
+    "input_snapshot": {
+      "type": "object", "additionalProperties": false,
+      "required": ["selected_idea_id", "source_candidate_id", "working_title", "content_promise", "audience", "desired_audience_action", "platform", "format", "language", "evidence_basis", "source_context_refs", "evidence_refs", "must_differ", "required_assets", "risks"],
+      "properties": {
+        "duration_plan": {"$ref": "#/$defs/durationPlan"},
+        "supplemental_evidence": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/localArtifact"}]},
+        "selected_idea_id": {"type": "string"}, "source_candidate_id": {"type": "string"},
+        "working_title": {"type": "string"}, "content_promise": {"type": "string"},
+        "audience": {"type": "string"}, "desired_audience_action": {"type": "string"},
+        "platform": {"type": "string"}, "format": {"type": "string"}, "language": {"type": "string"},
+        "evidence_basis": {"enum": ["source_backed", "brief_based", "hypothesis"]},
+        "source_context_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "must_differ": {"type": "array", "items": {"type": "string"}},
+        "required_assets": {"type": "array", "items": {"type": "string"}},
+        "risks": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "overview": {
+      "type": "object", "additionalProperties": false,
+      "required": ["headline", "creative_strategy", "key_gap", "next_action"],
+      "properties": {"headline": {"type": "string"}, "creative_strategy": {"type": "string"}, "key_gap": {"type": ["string", "null"]}, "next_action": {"type": "string"}}
+    },
+    "hook_options": {"type": "array", "minItems": 0, "maxItems": 5, "items": {"$ref": "#/$defs/hook"}},
+    "script": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/script"}]},
+    "packaging": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/packaging"}]},
+    "production_plan": {
+      "type": "object", "additionalProperties": false,
+      "required": ["shot_list", "edit_notes", "available_assets", "missing_assets"],
+      "properties": {
+        "shot_list": {"type": "array", "items": {"type": "string"}},
+        "edit_notes": {"type": "array", "items": {"type": "string"}},
+        "available_assets": {"type": "array", "items": {"type": "string"}},
+        "missing_assets": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "claim_ledger": {"type": "array", "items": {"$ref": "#/$defs/claim"}},
+    "quality_checks": {"type": "array", "minItems": 6, "items": {"$ref": "#/$defs/check"}},
+    "interaction": {
+      "type": "object", "additionalProperties": false,
+      "required": ["next_action", "required_questions"],
+      "properties": {
+        "next_action": {"enum": ["ask_user_once", "review_and_approve", "revise", "stop"]},
+        "required_questions": {"type": "array", "items": {"$ref": "#/$defs/question"}}
+      }
+    },
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_skill", "connector_or_provider", "decision_rationales", "human_input", "fallback"],
+      "properties": {
+        "candidate_skill": {"type": "array", "items": {"type": "string"}},
+        "connector_or_provider": {"type": "array", "items": {"type": "string"}},
+        "decision_rationales": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "human_input": {"type": "array", "items": {"type": "string"}},
+        "fallback": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"mode": {"const": "script_only"}}}, "then": {"properties": {"script": {"type": "object"}, "packaging": {"type": "null"}}}},
+    {"if": {"properties": {"mode": {"const": "packaging_only"}}}, "then": {"properties": {"script": {"type": "null"}, "packaging": {"type": "object"}, "hook_options": {"maxItems": 0}}}},
+    {"if": {"properties": {"mode": {"const": "full_package"}}}, "then": {"properties": {"script": {"type": "object"}, "packaging": {"type": "object"}}}},
+    {"if": {"properties": {"input_snapshot": {"properties": {"evidence_basis": {"const": "source_backed"}}}}}, "then": {"properties": {"input_snapshot": {"properties": {"source_context_refs": {"minItems": 1}, "evidence_refs": {"minItems": 1}}}}}}
+  ],
+  "$defs": {
+    "durationPlan": {"type": "object", "additionalProperties": false, "required": ["requested_target_seconds", "context", "decision"], "properties": {"requested_target_seconds": {"type": ["integer", "null"], "minimum": 5, "maximum": 7200}, "context": {"type": "object"}, "decision": {"type": "object"}}},
+    "localArtifact": {"type": "object", "additionalProperties": false, "required": ["path", "artifact_id", "schema_version"], "properties": {"path": {"type": "string", "minLength": 1}, "artifact_id": {"type": "string", "minLength": 1}, "schema_version": {"type": "string", "minLength": 1}, "sha256": {"type": ["string", "null"]}}},
+    "evidenceSignal": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "signal_id", "evidence_ref", "entity_type", "entity_ref", "creator_ref", "content_title", "source_url",
+        "metric", "value", "unit", "baseline", "outlier_multiple",
+        "calculation_ref", "observed_at", "confidence"
+      ],
+      "properties": {
+        "signal_id": {"type": "string", "minLength": 1},
+        "evidence_ref": {"type": "string", "minLength": 1},
+        "entity_type": {"enum": ["content", "account", "pattern", "keyword", "comment"]},
+        "entity_ref": {"type": "string", "minLength": 1},
+        "creator_ref": {"type": ["string", "null"]},
+        "content_title": {"type": ["string", "null"]},
+        "source_url": {"type": ["string", "null"]},
+        "metric": {"type": "string", "minLength": 1},
+        "value": {"type": "number"},
+        "unit": {"enum": ["count", "ratio", "percent", "seconds", "currency", "score"]},
+        "baseline": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["statistic", "value", "sample_size", "cohort"],
+              "properties": {
+                "statistic": {"enum": ["median", "mean", "percentile", "other"]},
+                "value": {"type": "number"},
+                "sample_size": {"type": "integer", "minimum": 1},
+                "cohort": {"type": "string", "minLength": 1}
+              }
+            }
+          ]
+        },
+        "outlier_multiple": {"type": ["number", "null"], "minimum": 0},
+        "calculation_ref": {"type": ["string", "null"]},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "confidence": {"enum": ["high", "medium", "low"]}
+      }
+    },
+    "hook": {
+      "type": "object", "additionalProperties": false,
+      "required": ["hook_id", "recommended", "mechanism", "spoken_line", "on_screen_text", "first_visual", "promised_payoff", "evidence_refs", "proof_required", "risk", "originality_note"],
+      "properties": {
+        "hook_id": {"type": "string"}, "recommended": {"type": "boolean"}, "mechanism": {"type": "string"},
+        "spoken_line": {"type": "string"}, "on_screen_text": {"type": "string"}, "first_visual": {"type": "string"},
+        "promised_payoff": {"type": "string"}, "evidence_refs": {"type": "array", "items": {"type": "string"}},
+        "proof_required": {"type": "array", "items": {"type": "string"}}, "risk": {"type": "string"}, "originality_note": {"type": "string"}
+      }
+    },
+    "script": {
+      "type": "object", "additionalProperties": false,
+      "required": ["format", "estimated_duration_seconds", "language", "selected_hook_id", "scenes", "cta"],
+      "properties": {
+        "timing": {"type": "object", "additionalProperties": false, "required": ["pace", "non_speaking_segments"], "properties": {"pace": {"enum": ["normal", "deliberate", "brisk"]}, "non_speaking_segments": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["scene_order", "seconds", "purpose"], "properties": {"scene_order": {"type": "integer", "minimum": 1}, "seconds": {"type": "number", "minimum": 0, "maximum": 7200}, "purpose": {"type": "string", "minLength": 1}}}}}},
+        "format": {"enum": ["short_form", "long_form"]}, "estimated_duration_seconds": {"type": "integer"}, "language": {"type": "string"}, "selected_hook_id": {"type": "string"},
+        "scenes": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/scene"}},
+        "cta": {"type": "object", "additionalProperties": false, "required": ["goal", "spoken_text", "on_screen_text"], "properties": {"goal": {"type": "string"}, "spoken_text": {"type": "string"}, "on_screen_text": {"type": "string"}}}
+      }
+    },
+    "scene": {
+      "type": "object", "additionalProperties": false,
+      "required": ["order", "timecode", "purpose", "spoken_text", "visual_direction", "on_screen_text", "evidence_refs", "asset_status", "claim_ids"],
+      "properties": {
+        "order": {"type": "integer"}, "timecode": {"type": "string"}, "purpose": {"type": "string"}, "spoken_text": {"type": "string"}, "visual_direction": {"type": "string"}, "on_screen_text": {"type": "string"},
+        "evidence_refs": {"type": "array", "items": {"type": "string"}}, "asset_status": {"enum": ["available", "placeholder", "not_required"]}, "claim_ids": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "packaging": {
+      "type": "object", "additionalProperties": false,
+      "required": ["headline_options", "recommended_headline_id", "caption_or_description", "hashtags_or_tags", "keyword_research_status", "cover_or_thumbnail", "chapters"],
+      "properties": {
+        "headline_options": {"type": "array", "minItems": 3, "maxItems": 5, "items": {"$ref": "#/$defs/headline"}},
+        "recommended_headline_id": {"type": "string"}, "caption_or_description": {"type": "string"},
+        "hashtags_or_tags": {"type": "array", "items": {"type": "string"}},
+        "keyword_research_status": {"enum": ["not_requested", "heuristic_only", "provider_validated"]},
+        "cover_or_thumbnail": {"$ref": "#/$defs/visualBrief"},
+        "chapters": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "headline": {"type": "object", "additionalProperties": false, "required": ["headline_id", "text", "strategy", "evidence_status"], "properties": {"headline_id": {"type": "string"}, "text": {"type": "string"}, "strategy": {"type": "string"}, "evidence_status": {"enum": ["source_grounded", "heuristic", "provider_validated"]}}},
+    "visualBrief": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "information_split", "primary_concept", "variants", "generation_status"],
+      "properties": {
+        "kind": {"enum": ["first_frame", "cover", "thumbnail"]}, "information_split": {"type": "string"}, "primary_concept": {"type": "string"},
+        "variants": {"type": "array", "minItems": 2, "maxItems": 3, "items": {"type": "string"}}, "generation_status": {"const": "brief_only"}
+      }
+    },
+    "claim": {
+      "type": "object", "additionalProperties": false,
+      "required": ["claim_id", "text", "status", "evidence_refs", "required_action"],
+      "properties": {"claim_id": {"type": "string"}, "text": {"type": "string"}, "status": {"enum": ["verified", "hypothesis", "placeholder", "prohibited"]}, "evidence_refs": {"type": "array", "items": {"type": "string"}}, "required_action": {"type": ["string", "null"]}, "qualifier": {"description": "The wording the creator-facing copy uses to mark this claim as not yet proven, copied from that copy. Set it on a hypothesis or placeholder claim whose surface carries a number; it is checked by being found in the copy, so it holds in whatever language the copy is written in.", "type": ["string", "null"], "minLength": 2}}
+    },
+    "check": {"type": "object", "additionalProperties": false, "required": ["check", "status", "detail"], "properties": {"check": {"enum": ["idea_alignment", "hook_payoff", "single_cta", "evidence_and_claims", "originality", "duration", "production_feasibility", "packaging_consistency"]}, "status": {"enum": ["pass", "fail", "needs_input"]}, "detail": {"type": "string", "minLength": 1}}},
+    "question": {"type": "object", "additionalProperties": false, "required": ["question_id", "question", "field_paths", "blocks"], "properties": {"question_id": {"type": "string"}, "question": {"type": "string"}, "field_paths": {"type": "array", "items": {"type": "string"}}, "blocks": {"type": "array", "items": {"type": "string"}}}}
+  }
+}

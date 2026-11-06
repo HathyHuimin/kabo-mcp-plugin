@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "creator-brand-visual-spec.v1",
+  "description": "A visual identity spec for one platform profile. Every measurement carries where it came from. A platform that does not publish a size is recorded as not publishing it, so the next run stops looking and nobody fills the hole with a number that reads official.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task", "platform", "delivery_language", "palette", "typography", "surfaces", "measurements", "not_published"],
+  "properties": {
+    "schema_version": {"const": "creator-brand-visual-spec.v1"},
+    "task": {"const": "visual_identity_spec"},
+    "platform": {"enum": ["instagram", "tiktok", "youtube"]},
+    "delivery_language": {"anyOf": [{"enum": ["English", "中文"]}, {"type": "string", "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"}], "description": "BCP-47 tag of the language the Creator-facing strings are written in, such as en, zh-CN or pt-BR. The v1 values English and 中文 remain valid. Fixed labels in the rendered result are English."},
+    "palette": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "hex", "role"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "hex": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+          "role": {"type": "string", "minLength": 1, "description": "What this colour is for. A palette without roles is a swatch, not a spec."}
+        }
+      }
+    },
+    "typography": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "family", "availability"],
+        "properties": {
+          "role": {"type": "string", "minLength": 1},
+          "family": {"type": "string", "minLength": 1},
+          "availability": {"type": "string", "minLength": 1, "description": "Where the creator can actually get this face. A spec naming a font nobody can install is not executable."}
+        }
+      }
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["surface", "direction"],
+        "properties": {
+          "surface": {"type": "string", "minLength": 1},
+          "direction": {"type": "string", "minLength": 1, "description": "How the palette and type land on this surface, in words the creator can act on."}
+        }
+      }
+    },
+    "measurements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["surface", "claim", "authority"],
+        "properties": {
+          "surface": {"type": "string", "minLength": 1},
+          "claim": {"type": "string", "minLength": 1},
+          "authority": {"enum": ["official_help_page", "official_secondary", "creator_reported", "unofficial", "derived_working_size"]},
+          "source_id": {"type": ["string", "null"]},
+          "source_url": {"type": ["string", "null"]},
+          "retrieved_at": {"type": ["string", "null"]},
+          "quote": {"type": ["string", "null"], "description": "The platform's own sentence, verbatim. Required whenever authority is official_help_page or official_secondary."},
+          "basis": {"type": ["string", "null"], "description": "How a non-official figure was arrived at, and whose figure it is. Required whenever authority is not official."}
+        }
+      }
+    },
+    "not_published": {
+      "type": "array",
+      "description": "Surfaces the platform is measured not to publish a size for. Recording the absence is what stops the next run from inventing one.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["surface", "checked_source_id", "checked_url"],
+        "properties": {
+          "surface": {"type": "string", "minLength": 1},
+          "checked_source_id": {"type": "string", "minLength": 1},
+          "checked_url": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

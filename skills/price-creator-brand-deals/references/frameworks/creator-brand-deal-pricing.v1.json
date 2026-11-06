@@ -1,0 +1,231 @@
+{
+  "schema_version": "pricing-framework.v1",
+  "framework_id": "creator-brand-deal-pricing",
+  "version": "1.1.0",
+  "compiled_at": "2026-08-28",
+  "currency": "USD",
+  "staleness_budget_days": 180,
+  "cpm_divergence_threshold": 2.0,
+  "sources": [
+    {
+      "id": "bench.a1",
+      "class": "industry_benchmark",
+      "publisher": "Hootsuite",
+      "url": "https://blog.hootsuite.com/influencer-pricing/",
+      "method": "editorial_compilation",
+      "verification": "page_fetch",
+      "published": "2026-03",
+      "retrieved_at": "2026-10-27",
+      "covers_platforms": ["instagram", "tiktok", "youtube"],
+      "notes": "Every platform and every tier carries a figure. No primary survey methodology is published."
+    },
+    {
+      "id": "bench.a2",
+      "class": "industry_benchmark",
+      "publisher": "ContentGrip",
+      "url": "https://www.contentgrip.com/influencer-marketing-rate-card/",
+      "method": "secondary_aggregation",
+      "verification": "page_fetch",
+      "published": "2026-05",
+      "retrieved_at": "2026-10-27",
+      "covers_platforms": ["instagram", "tiktok", "youtube"],
+      "notes": "Aggregates five upstream compilations. Uses different tier boundaries from bench.a1; the disagreement is kept rather than reconciled."
+    },
+    {
+      "id": "txn.b1",
+      "class": "marketplace_transaction",
+      "publisher": "Collabstr",
+      "url": "https://collabstr.com/blog/instagram-influencer-marketing",
+      "method": "platform_reported_bookings",
+      "verification": "search_snippet",
+      "published": "2026",
+      "retrieved_at": "2026-08-28",
+      "covers_platforms": ["instagram", "tiktok", "youtube"],
+      "population_bias": "skews_smaller_creators_and_ugc",
+      "notes": "The only source built on money that actually changed hands. Averages are not split by tier, so they never compare directly against a single band."
+    },
+    {
+      "id": "conv.c1",
+      "class": "convention",
+      "publisher": "Influee",
+      "url": "https://influee.co/blog/instagram-influencer-pricing",
+      "method": "pricing_guide",
+      "verification": "page_fetch",
+      "published": "2026",
+      "retrieved_at": "2026-10-27"
+    },
+    {
+      "id": "conv.c2",
+      "class": "convention",
+      "publisher": "InfluencerFee",
+      "url": "https://influencerfee.com/blog/influencer-exclusivity-pricing-guide/",
+      "method": "pricing_guide",
+      "verification": "page_fetch",
+      "published": "2026",
+      "retrieved_at": "2026-10-27"
+    },
+    {
+      "id": "cpm.d1",
+      "class": "reach_model",
+      "publisher": "OutlierKit",
+      "url": "https://outlierkit.com/resources/youtube-sponsorship-rates/",
+      "method": "pricing_guide",
+      "verification": "page_fetch",
+      "published": "2026",
+      "retrieved_at": "2026-10-27"
+    },
+    {
+      "id": "negotiate.e1",
+      "class": "convention",
+      "publisher": "Toptal Creator",
+      "url": "https://www.toptal.com/creator/post/how-to-negotiate-with-brands-as-an-influencer",
+      "method": "practitioner_guide",
+      "verification": "page_fetch",
+      "published": "2026",
+      "retrieved_at": "2026-10-27"
+    },
+    {
+      "id": "negotiate.e2",
+      "class": "convention",
+      "publisher": "Creators Agency",
+      "url": "https://creatorsagency.co/blog/how-to-negotiate-brand-deals",
+      "method": "practitioner_guide",
+      "verification": "page_fetch",
+      "published": "2026",
+      "retrieved_at": "2026-10-27"
+    },
+    {
+      "id": "internal.leo_v2",
+      "class": "internal_framework",
+      "publisher": null,
+      "url": null,
+      "method": "internal_specification",
+      "verification": "repository_read",
+      "published": "2026-08-24",
+      "retrieved_at": "2026-08-27",
+      "notes": "The framework this Skill was told to carry. Where an external measurement contradicts it, the divergence is recorded rather than silently resolved."
+    }
+  ],
+  "posted_rate_bands": [
+    { "source": "bench.a1", "platform": "instagram", "tier": "nano", "followers_min": 1000, "followers_max": 10000, "low": 20, "high": 200, "open_ended": false },
+    { "source": "bench.a1", "platform": "instagram", "tier": "micro", "followers_min": 10000, "followers_max": 50000, "low": 200, "high": 2000, "open_ended": false },
+    { "source": "bench.a1", "platform": "instagram", "tier": "mid", "followers_min": 50000, "followers_max": 500000, "low": 2000, "high": 5000, "open_ended": false },
+    { "source": "bench.a1", "platform": "instagram", "tier": "macro", "followers_min": 500000, "followers_max": 1000000, "low": 5000, "high": 15000, "open_ended": false },
+    { "source": "bench.a1", "platform": "instagram", "tier": "mega", "followers_min": 1000000, "followers_max": null, "low": 15000, "high": 50000, "open_ended": true },
+
+    { "source": "bench.a1", "platform": "tiktok", "tier": "nano", "followers_min": 1000, "followers_max": 10000, "low": 20, "high": 500, "open_ended": false },
+    { "source": "bench.a1", "platform": "tiktok", "tier": "micro", "followers_min": 10000, "followers_max": 50000, "low": 500, "high": 2000, "open_ended": false },
+    { "source": "bench.a1", "platform": "tiktok", "tier": "mid", "followers_min": 50000, "followers_max": 500000, "low": 2000, "high": 5000, "open_ended": false },
+    { "source": "bench.a1", "platform": "tiktok", "tier": "macro", "followers_min": 500000, "followers_max": 1000000, "low": 5000, "high": 20000, "open_ended": false },
+    { "source": "bench.a1", "platform": "tiktok", "tier": "mega", "followers_min": 1000000, "followers_max": null, "low": 20000, "high": null, "open_ended": true },
+
+    { "source": "bench.a1", "platform": "youtube", "tier": "nano", "followers_min": 1000, "followers_max": 10000, "low": 100, "high": 500, "open_ended": false },
+    { "source": "bench.a1", "platform": "youtube", "tier": "micro", "followers_min": 10000, "followers_max": 50000, "low": 500, "high": 5000, "open_ended": false },
+    { "source": "bench.a1", "platform": "youtube", "tier": "mid", "followers_min": 50000, "followers_max": 500000, "low": 5000, "high": 15000, "open_ended": false },
+    { "source": "bench.a1", "platform": "youtube", "tier": "macro", "followers_min": 500000, "followers_max": 1000000, "low": 15000, "high": 25000, "open_ended": false },
+    { "source": "bench.a1", "platform": "youtube", "tier": "mega", "followers_min": 1000000, "followers_max": null, "low": 25000, "high": null, "open_ended": true },
+
+    { "source": "bench.a2", "platform": "instagram", "tier": "nano", "followers_min": 1000, "followers_max": 10000, "low": 50, "high": 500, "open_ended": false },
+    { "source": "bench.a2", "platform": "instagram", "tier": "micro", "followers_min": 10000, "followers_max": 100000, "low": 500, "high": 5000, "open_ended": false },
+    { "source": "bench.a2", "platform": "instagram", "tier": "mid", "followers_min": 100000, "followers_max": 500000, "low": 5000, "high": 20000, "open_ended": false },
+    { "source": "bench.a2", "platform": "instagram", "tier": "macro", "followers_min": 500000, "followers_max": 1000000, "low": 10000, "high": 50000, "open_ended": true },
+    { "source": "bench.a2", "platform": "instagram", "tier": "mega", "followers_min": 1000000, "followers_max": null, "low": 100000, "high": null, "open_ended": true },
+
+    { "source": "bench.a2", "platform": "tiktok", "tier": "micro", "followers_min": 10000, "followers_max": 100000, "low": 200, "high": 2000, "open_ended": false },
+
+    { "source": "bench.a2", "platform": "youtube", "tier": "micro", "followers_min": 10000, "followers_max": 100000, "low": 500, "high": 5000, "open_ended": false },
+    { "source": "bench.a2", "platform": "youtube", "tier": "mid", "followers_min": 100000, "followers_max": 500000, "low": 5000, "high": 20000, "open_ended": false }
+  ],
+  "transacted_reference": [
+    { "source": "txn.b1", "platform": "instagram", "metric": "average_amount_paid_per_collaboration", "value": 193, "tier_scope": "all_tiers_mixed" },
+    { "source": "txn.b1", "platform": "youtube", "metric": "average_amount_paid_per_collaboration", "value": 255, "tier_scope": "all_tiers_mixed" },
+    { "source": "txn.b1", "platform": "tiktok", "metric": "average_amount_paid_per_collaboration", "value": 186, "tier_scope": "all_tiers_mixed" },
+    { "source": "txn.b1", "platform": "instagram", "metric": "average_amount_creators_ask", "value": 214, "tier_scope": "all_tiers_mixed" },
+    { "source": "txn.b1", "platform": "instagram", "metric": "average_amount_paid_reels", "value": 288, "tier_scope": "all_tiers_mixed" },
+    { "source": "txn.b1", "platform": "tiktok", "metric": "average_amount_paid_video", "value": 217, "tier_scope": "all_tiers_mixed" }
+  ],
+  "levers": [
+    { "id": "usage_rights.licence.up_to_90d", "kind": "usage_rights", "group": "usage_rights.licence", "i18n": { "zh-CN": { "condition": "90 天以内的复用授权（自然复用或投广告）" } }, "condition": "licence to reuse the content, organically or as a paid ad, for up to 90 days", "low_pct": 20, "high_pct": 50, "source": "conv.c1", "note": "The source prices duration (30, 60 or 90 days) and placement together as one 20-50% fee; it does not split them into tiers." },
+    { "id": "usage_rights.licence.180d", "kind": "usage_rights", "group": "usage_rights.licence", "i18n": { "zh-CN": { "condition": "6 个月复用授权（单一地区）" } }, "condition": "6-month reuse licence, single geography", "low_pct": 20, "high_pct": 30, "source": "bench.a2" },
+    { "id": "usage_rights.paid_amplification", "kind": "usage_rights", "group": "usage_rights.licence", "i18n": { "zh-CN": { "condition": "品牌把内容拿去投付费广告" } }, "condition": "brand runs the content as a paid ad", "low_pct": 20, "high_pct": 50, "source": "conv.c1", "note": "The same published fee as the licence itself, so it widens the licence range rather than adding to it." },
+    { "id": "usage_rights.beyond_published", "kind": "usage_rights", "group": "usage_rights.unpriced", "i18n": { "zh-CN": { "condition": "超过 6 个月、永久或买断的授权" } }, "condition": "licence longer than six months, perpetual, or a full buyout", "low_pct": null, "high_pct": null, "source": null, "note": "No source read for this framework publishes a figure for these; they are surfaced as a term to price separately, never as a number.", "unsourced": true },
+
+    { "id": "exclusivity.30d", "kind": "exclusivity", "group": "exclusivity", "i18n": { "zh-CN": { "condition": "30 天内不接任何品牌" } }, "condition": "no competing brand at all for 30 days", "low_pct": 50, "high_pct": 80, "source": "conv.c2" },
+    { "id": "exclusivity.90d", "kind": "exclusivity", "group": "exclusivity", "i18n": { "zh-CN": { "condition": "90 天内不接任何品牌" } }, "condition": "no competing brand at all for 90 days", "low_pct": 100, "high_pct": 175, "source": "conv.c2" },
+    { "id": "exclusivity.category.30d", "kind": "exclusivity", "group": "exclusivity", "i18n": { "zh-CN": { "condition": "同品类独家 30 天" } }, "condition": "category lock-out for 30 days", "low_pct": 20, "high_pct": 35, "source": "conv.c2" },
+    { "id": "exclusivity.category.30d.alt", "kind": "exclusivity", "group": "exclusivity", "i18n": { "zh-CN": { "condition": "同品类独家 30 天" } }, "condition": "category lock-out for 30 days", "low_pct": 15, "high_pct": 25, "source": "bench.a2", "note": "Second source for the same condition; reported alongside, never merged." },
+    { "id": "exclusivity.category.60d", "kind": "exclusivity", "group": "exclusivity", "i18n": { "zh-CN": { "condition": "同品类独家 60 天" } }, "condition": "category lock-out for 60 days", "low_pct": 35, "high_pct": 55, "source": "conv.c2" },
+    { "id": "exclusivity.category.90d", "kind": "exclusivity", "group": "exclusivity", "i18n": { "zh-CN": { "condition": "同品类独家 90 天" } }, "condition": "category lock-out for 90 days", "low_pct": 50, "high_pct": 75, "source": "conv.c2" },
+    { "id": "exclusivity.category.180d", "kind": "exclusivity", "group": "exclusivity", "i18n": { "zh-CN": { "condition": "同品类独家 6 个月" } }, "condition": "category lock-out for 6 months", "low_pct": 75, "high_pct": 100, "source": "conv.c2" },
+    { "id": "exclusivity.category.365d", "kind": "exclusivity", "group": "exclusivity", "i18n": { "zh-CN": { "condition": "同品类独家 12 个月" } }, "condition": "category lock-out for 12 months", "low_pct": 100, "high_pct": 150, "source": "conv.c2" },
+
+    { "id": "rush.under_72h", "kind": "rush", "group": "rush", "i18n": { "zh-CN": { "condition": "72 小时内交付" } }, "condition": "delivery required inside 72 hours", "low_pct": 20, "high_pct": 50, "source": "bench.a2" },
+    { "id": "format.video_over_static", "kind": "format", "group": "format", "i18n": { "zh-CN": { "condition": "交付物是视频而不是图文" } }, "condition": "video deliverable rather than a static post", "low_pct": 30, "high_pct": null, "open_ended": true, "source": "internal.leo_v2" },
+    { "id": "engagement.above_5pct", "kind": "engagement", "group": "engagement", "i18n": { "zh-CN": { "condition": "互动率高于 5%" } }, "condition": "engagement rate above 5%", "low_pct": 50, "high_pct": 100, "source": "internal.leo_v2" },
+    { "id": "niche.premium", "kind": "niche", "group": "niche", "i18n": { "zh-CN": { "condition": "金融、科技、软件或 B2B 领域" } }, "condition": "finance, technology, software or B2B niche", "low_pct": 50, "high_pct": 200, "source": "internal.leo_v2" },
+    { "id": "geography.western_audience", "kind": "geography", "group": "geography", "i18n": { "zh-CN": { "condition": "受众主要在欧美而非新兴市场" } }, "condition": "audience mostly US or Western Europe rather than emerging markets", "low_pct": 20, "high_pct": 40, "source": "internal.leo_v2" },
+
+    { "id": "revisions.additional_round", "kind": "revisions", "group": "revisions", "i18n": { "zh-CN": { "condition": "超出约定轮次的修改" } }, "condition": "revision rounds beyond the agreed cap", "low_pct": null, "high_pct": null, "source": null, "unsourced": true, "note": "Every guide says to cap revisions in writing; none of them prices an extra round. Surfaced as a term to settle, never as a number." }
+  ],
+  "cpm_model": {
+    "source": "cpm.d1",
+    "formula": "(average_views / 1000) * niche_cpm * format_multiplier",
+    "basis": "average_views",
+    "rationale": "Follower count and delivered reach diverge often enough that a follower tier alone misprices both directions.",
+    "niches": [
+      { "niche": "gaming", "cpm_low": 15, "cpm_high": 30 },
+      { "niche": "technology", "cpm_low": 25, "cpm_high": 45 },
+      { "niche": "finance", "cpm_low": 30, "cpm_high": 60 }
+    ],
+    "format_multipliers": [
+      { "format": "dedicated_video", "low": 1.3, "high": 1.5 },
+      { "format": "integration", "low": 1.0, "high": 1.0 },
+      { "format": "short_video", "low": 0.4, "high": 0.6 }
+    ]
+  },
+  "negotiation_rules": [
+    { "id": "no_number_before_terms", "rule": "Do not name a figure until usage rights, exclusivity and the deliverable list are settled.", "sources": ["negotiate.e1", "negotiate.e2", "internal.leo_v2"], "why": "The first number spoken anchors the deal, and the terms that are still undefined are most of the price." },
+    { "id": "open_above_target", "rule": "Open above the number you would accept.", "low_pct": 20, "high_pct": 30, "sources": ["internal.leo_v2"], "note": "The internal framework's figure. The practitioner guides read for this framework give no percentage; one says outright there is no set percent." },
+    { "id": "counter_every_offer", "rule": "Counter an offer that comes in below your floor; walk away if the brand will not move on rate or terms.", "sources": ["negotiate.e1"], "why": "A low first offer is an opening, not a verdict, but a deal under your floor is not worth keeping." },
+    { "id": "reprice_on_schedule", "rule": "Raise rates on a schedule rather than on a feeling.", "low_pct": 10, "high_pct": 20, "sources": ["internal.leo_v2"], "note": "The internal framework's annual figure; no practitioner guide read for this framework gives a schedule." },
+    { "id": "discount_requires_scope_cut", "rule": "Never discount the same deliverable. Trade a lower price for explicitly less scope.", "sources": ["negotiate.e2"] }
+  ],
+  "divergences": [
+    {
+      "topic": "exclusivity",
+      "internal_position": "base fee multiplied by the number of exclusive months, so three months prices at three times base",
+      "adopted_position": "duration bands: category lock-out from +20-35% for 30 days to +100-150% for 12 months; full exclusivity +50-80% for 30 days, +100-175% for 90 days",
+      "adopted_sources": ["conv.c2"],
+      "decision": "external",
+      "decided_on": "2026-08-28",
+      "rationale": "Every external source prices exclusivity below the internal multiplier. Quoting three times base for a three-month lock-out would read as unfamiliar with the market."
+    },
+    {
+      "topic": "usage_rights_structure",
+      "internal_position": "20-100% of the content fee per 30-day window",
+      "adopted_position": "a licence fee by duration (up to 90 days +20-50%, six months +20-30%), with paid use inside that fee; longer, perpetual and buyout licences priced separately",
+      "adopted_sources": ["conv.c1", "bench.a2"],
+      "decision": "external",
+      "decided_on": "2026-08-28",
+      "rationale": "The published sources price a licence by duration and count paid use as part of that fee; none publishes a perpetual or buyout figure, so those are left to be priced separately rather than guessed."
+    },
+    {
+      "topic": "tier_table_shape",
+      "internal_position": "one platform-agnostic tier table plus a flat platform premium",
+      "adopted_position": "per-platform bands; platform is never applied again as a lever",
+      "adopted_sources": ["bench.a1", "bench.a2", "txn.b1"],
+      "decision": "external",
+      "decided_on": "2026-08-28",
+      "rationale": "No external source prices platforms as one table, and transacted averages differ by platform. Applying a platform premium on top of per-platform bands would count it twice."
+    }
+  ],
+  "corroborations": [
+    {
+      "topic": "instagram_over_tiktok",
+      "internal_position": "Instagram runs about 30% above TikTok",
+      "evidence": "transacted averages of 288 against 217, a 32.7% gap",
+      "evidence_sources": ["txn.b1"],
+      "status": "supported"
+    }
+  ]
+}

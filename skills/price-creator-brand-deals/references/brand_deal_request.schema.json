@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "brand-deal-request.v1",
+  "title": "Brand deal pricing request",
+  "description": "What one pricing run is given. Two separations are load-bearing. First, a term the brief never mentioned is 'unspecified', never a default: the omissions are the product, because a fee quoted before usage rights and exclusivity are settled is quoting for a scope nobody has agreed. Second, every account figure carries how it was obtained, so a number the creator typed can be told apart from one that was retrieved.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_version", "assessed_at", "mode", "brief", "account_facts"],
+  "properties": {
+    "request_version": { "const": "brand-deal-request.v1" },
+    "assessed_at": {
+      "type": "string",
+      "format": "date",
+      "description": "The date the run is made. Framework staleness is measured against this, not against the machine clock."
+    },
+    "framework_version": {
+      "type": ["string", "null"],
+      "description": "Pin a specific pricing framework version. Null takes whatever version the package ships."
+    },
+    "mode": {
+      "enum": ["quote", "review", "counter"],
+      "description": "quote: the creator needs a number to send. review: a brief arrived and needs decomposing. counter: an offer is on the table and needs answering."
+    },
+    "language": { "enum": ["en", "zh-CN"], "default": "en" },
+    "brief": { "$ref": "#/$defs/brief" },
+    "account_facts": { "$ref": "#/$defs/account_facts" },
+    "marketplace_comparables": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/marketplace_comparables" }
+      ],
+      "description": "Optional. Asking prices observed on public creator-marketplace profiles for accounts comparable to this one. No connector supplies these; they are gathered only where a caller can browse the public web and the site permits it, and a run without them is complete."
+    },
+    "brand_ad_evidence": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/brand_ad_evidence" }
+      ],
+      "description": "Optional. What advertising this brand is currently running. It is context for the negotiation - a brand with a standing ad budget is a different conversation from one running nothing - and it is never evidence of what they will pay a creator. It must not move a price, and the pricing engine is built so that it cannot."
+    },
+    "income_breakdown": {
+      "type": "boolean",
+      "description": "True when the ask is what the creator's income adds up to. The quote then also prints its income rows as the brand-deal part of that breakdown; platform payouts stay with the platform-monetization Skill."
+    }
+  },
+  "$defs": {
+    "brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deliverables", "terms"],
+      "properties": {
+        "brand_name": { "type": ["string", "null"] },
+        "brand_category": { "type": ["string", "null"] },
+        "stated_budget": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["amount", "currency", "basis"],
+              "properties": {
+                "amount": { "type": "number", "exclusiveMinimum": 0 },
+                "currency": { "const": "USD" },
+                "basis": { "enum": ["total_package", "per_deliverable"] }
+              }
+            }
+          ],
+          "description": "What the brand said they would pay, if they said anything. Recorded to be compared against, never used as the answer."
+        },
+        "deliverables": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/deliverable" }
+        },
+        "terms": { "$ref": "#/$defs/terms" }
+      }
+    },
+    "deliverable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "platform", "format", "quantity"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "platform": { "enum": ["instagram", "tiktok", "youtube"] },
+        "format": {
+          "enum": ["short_video", "long_video", "dedicated_video", "integration", "static_post", "story_frame", "carousel"],
+          "description": "Production cost and shelf life both follow the format, so it prices separately from the platform."
+        },
+        "quantity": { "type": "integer", "minimum": 1 },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "terms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["usage_rights", "exclusivity", "campaign_term", "geography", "revisions", "rush"],
+      "description": "Six terms decide most of the final number. Each one is either specified in the brief or is not; 'unspecified' is the honest default and becomes a question rather than an assumption.",
+      "properties": {
+        "usage_rights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "enum": ["specified", "unspecified", "none_granted"],
+              "description": "none_granted when the brief explicitly grants no reuse, no paid use and no buyout. It is a settled term, not a zero-day licence; leave the licence fields empty or false."
+            },
+            "licence_days": {
+              "type": ["integer", "null"],
+              "minimum": 0,
+              "description": "Null with status 'specified' means perpetual."
+            },
+            "perpetual": { "type": "boolean", "default": false },
+            "paid_amplification": {
+              "type": ["boolean", "null"],
+              "description": "Whether the brand will run the content as a paid ad. Priced apart from the licence duration because it is a different question."
+            },
+            "full_buyout": { "type": "boolean", "default": false },
+            "territories": { "type": ["array", "null"], "items": { "type": "string" } }
+          }
+        },
+        "exclusivity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["specified", "unspecified"] },
+            "days": { "type": ["integer", "null"], "minimum": 0 },
+            "scope": { "enum": ["category", "full", null] }
+          }
+        },
+        "campaign_term": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["specified", "unspecified"] },
+            "days": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        },
+        "geography": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["specified", "unspecified"] },
+            "markets": { "type": ["array", "null"], "items": { "type": "string" } }
+          }
+        },
+        "revisions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["specified", "unspecified"] },
+            "rounds": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        },
+        "rush": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["specified", "unspecified"] },
+            "delivery_within_hours": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        }
+      }
+    },
+    "account_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "followers"],
+      "description": "Account evidence, used to place a tier and to decide two premiums. Precision matters far less here than in an eligibility check: a few percent either way does not change which band applies.",
+      "properties": {
+        "platform": { "enum": ["instagram", "tiktok", "youtube"] },
+        "handle": { "type": ["string", "null"] },
+        "followers": { "$ref": "#/$defs/measured_value" },
+        "engagement_rate_pct": { "$ref": "#/$defs/optional_measured_value" },
+        "average_views": { "$ref": "#/$defs/optional_measured_value" },
+        "niche": {
+          "type": ["string", "null"],
+          "description": "Free text. Only matches against the niche premium and the reach model when it names one of the niches those carry."
+        },
+        "audience_geography": {
+          "enum": ["mostly_us_western_europe", "mostly_emerging_markets", "mixed", "unknown", null],
+          "description": "Unknown leaves the geography premium out rather than guessing which way it would move."
+        }
+      }
+    },
+    "brand_ad_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed_at", "active_ads", "scale", "coverage_complete"],
+      "description": "A projection of one advertising-activity lookup. Deliberately carries no budget figure: the source can show what a brand advertises, and nothing in it supports a claim about what that brand will spend on a creator.",
+      "properties": {
+        "observed_at": { "type": "string", "format": "date-time" },
+        "brand_query": { "type": ["string", "null"] },
+        "matched_name": {
+          "type": ["string", "null"],
+          "description": "Null means nothing matched the name searched, which may only be a spelling difference. That is not the same as a brand that was found and is running nothing."
+        },
+        "active_ads": { "type": "integer", "minimum": 0 },
+        "country_count": { "type": "integer", "minimum": 0 },
+        "months_running": { "type": ["number", "null"], "minimum": 0 },
+        "scale": { "enum": ["none", "testing", "steady", "large"] },
+        "coverage_complete": {
+          "type": "boolean",
+          "description": "False when the ad list did not end within the pages the lookup could read, which makes the count a floor rather than a total."
+        }
+      }
+    },
+    "marketplace_comparables": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed_at", "platform", "deliverable_format", "observations"],
+      "description": "Raw observations only. The distribution is computed downstream so that the same listings always produce the same band, and so that a caller cannot hand in a conclusion dressed as evidence.",
+      "properties": {
+        "observed_at": { "type": "string", "format": "date" },
+        "platform": { "enum": ["instagram", "tiktok", "youtube"] },
+        "deliverable_format": {
+          "type": "string",
+          "description": "The deliverable these prices are for. A price for a static post is not evidence about a video."
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["followers", "price"],
+            "properties": {
+              "followers": { "type": "number", "minimum": 0 },
+              "price": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "The asking price shown on the profile. A listing without a visible price is not an observation."
+              },
+              "engagement_rate_pct": { "type": ["number", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "measured_value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "basis"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0 },
+        "basis": {
+          "enum": ["retrieved", "user_supplied"],
+          "description": "Retrieved means it came back from a lookup. A figure the creator recalled is usable but stays labelled all the way to the report."
+        },
+        "retrieved_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "optional_measured_value": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/measured_value" }
+      ]
+    }
+  }
+}

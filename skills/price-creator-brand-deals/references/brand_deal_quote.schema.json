@@ -1,0 +1,383 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "brand-deal-quote.v1",
+  "title": "BrandDealQuote",
+  "description": "The native product contract. Downstream consumers read this object; nothing is parsed back out of the Creator-facing text. Three shapes here exist to stop a familiar failure: sources that disagree are carried side by side instead of averaged, a price is never emitted while the terms that decide it are still open, and every figure names the evidence class it came from.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "quote_version",
+    "assessed_at",
+    "currency",
+    "framework",
+    "mode",
+    "determinacy",
+    "usage_rights_grant",
+    "line_items",
+    "package_totals",
+    "open_terms",
+    "negotiation_reply",
+    "data_gaps",
+    "boundaries",
+    "income_rows",
+    "income_totals",
+    "income_breakdown_requested",
+    "sources"
+  ],
+  "properties": {
+    "quote_version": { "const": "brand-deal-quote.v1" },
+    "assessed_at": { "type": "string", "format": "date" },
+    "currency": {
+      "const": "USD",
+      "description": "This version prices in USD only. A local-currency band would need local benchmarks, and converting a US band at today's rate would dress a US number up as a local one."
+    },
+    "mode": { "enum": ["quote", "review", "counter"] },
+    "framework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "compiled_at", "age_days", "stale"],
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": "string" },
+        "compiled_at": { "type": "string", "format": "date" },
+        "age_days": { "type": "integer", "minimum": 0 },
+        "stale": {
+          "type": "boolean",
+          "description": "True once the framework is older than its staleness budget. Rates move; a stale table still describes the levers correctly but its numbers stop being current."
+        }
+      }
+    },
+    "determinacy": {
+      "enum": ["terms_settled", "terms_incomplete"],
+      "description": "terms_incomplete whenever usage rights or exclusivity are unspecified. It is the normal state of an opening brief, and it forbids a headline number rather than degrading one."
+    },
+    "usage_rights_grant": {
+      "enum": ["unspecified", "none", "licensed"],
+      "description": "Whether the brief licenses the content at all. none is a settled term - no reuse, no paid use, no buyout - and carries no usage-rights lever; it is never priced as a short licence."
+    },
+    "line_items": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/line_item" }
+    },
+    "package_totals": {
+      "type": "array",
+      "description": "One total per benchmark source. There is deliberately no combined figure: two sources that disagree by 10x do not have a meaningful midpoint.",
+      "items": { "$ref": "#/$defs/sourced_band" }
+    },
+    "transacted_reference": {
+      "type": "array",
+      "description": "What money actually changed hands for comparable work, where such a source exists. It answers a question the rate tables cannot: how far published asking ranges sit from settled amounts.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "source_class", "platform", "metric", "value", "tier_scope", "caveat"],
+        "properties": {
+          "source": { "type": "string" },
+          "source_class": { "const": "marketplace_transaction" },
+          "platform": { "enum": ["instagram", "tiktok", "youtube"] },
+          "metric": { "type": "string" },
+          "value": { "type": "number" },
+          "tier_scope": { "type": "string" },
+          "caveat": {
+            "type": "string",
+            "description": "Travels with the number, because an average across all tiers compared against one tier's band is a false comparison."
+          }
+        }
+      }
+    },
+    "reach_estimate": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/reach_estimate" }
+      ],
+      "description": "A second pricing route, from delivered views rather than follower count. Present only when it can be computed and only when it disagrees with the follower-tier route by more than the framework's threshold, because agreement between the two carries no information the creator needs."
+    },
+    "brand_ad_context": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/brand_ad_context" }
+      ],
+      "description": "Present only when an advertising-activity lookup ran. It sits outside every priced structure on purpose: it changes how the creator talks to this brand, never what the work is worth."
+    },
+    "open_terms": {
+      "type": "array",
+      "description": "Terms the brief left unsettled, each with what it costs to leave open and the question that settles it. In review mode this is the deliverable, not a footnote.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["term", "why_it_matters", "question_to_ask", "price_impact"],
+        "properties": {
+          "term": { "enum": ["usage_rights", "exclusivity", "campaign_term", "geography", "revisions", "rush"] },
+          "why_it_matters": { "type": "string" },
+          "question_to_ask": { "type": "string" },
+          "price_impact": {
+            "enum": ["large", "moderate", "unpriced"],
+            "description": "unpriced means no source prices this term; it still has to be settled in writing."
+          }
+        }
+      }
+    },
+    "negotiation_reply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["should_state_a_number", "reason", "draft"],
+      "properties": {
+        "should_state_a_number": {
+          "type": "boolean",
+          "description": "False whenever determinacy is terms_incomplete. Naming a figure first anchors the deal, and the unsettled terms are most of the price."
+        },
+        "reason": { "type": "string" },
+        "opening_ask": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/sourced_band" }
+          ],
+          "description": "Only ever populated when the terms are settled. Carries the opening premium over the target, so the creator has somewhere to move."
+        },
+        "draft": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["opening", "questions", "closing"],
+          "properties": {
+            "opening": { "type": "string" },
+            "questions": { "type": "array", "items": { "type": "string" } },
+            "closing": { "type": "string" }
+          }
+        }
+      }
+    },
+    "negotiation_rules_applied": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "rule", "sources"],
+        "properties": {
+          "id": { "type": "string" },
+          "rule": { "type": "string" },
+          "sources": { "type": "array", "items": { "type": "string" } },
+          "low_pct": { "type": ["number", "null"] },
+          "high_pct": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "data_gaps": {
+      "type": "array",
+      "description": "Account figures that could not be obtained, and what each one would have decided. A gap is 'could not tell', never 'does not apply'.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "field", "effect"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable identifier for the gap, so the Creator-facing layer can say it in the reader's language instead of restating the English."
+          },
+          "field": { "type": "string" },
+          "effect": { "type": "string" }
+        }
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legal_review", "not_a_platform_payout", "brand_budget_not_inferred"],
+      "properties": {
+        "legal_review": {
+          "const": "This prices a scope. It is not a legal review of the contract, and it does not approve any term.",
+          "description": "Fixed text, because a pricing tool that drifts into approving terms is the failure this boundary exists to prevent."
+        },
+        "not_a_platform_payout": { "const": "Sponsorship fees and platform payouts have different units and different evidence. Nothing here estimates platform ad revenue." },
+        "brand_budget_not_inferred": { "const": "Nothing here estimates what the brand can afford. Observable advertising activity is not a budget." }
+      }
+    },
+    "income_rows": {
+      "type": "array",
+      "description": "The brand-deal part of an income breakdown: one row per deliverable per published reading. A second reading of the same line is marked as already inside the first, never added to it; while the price-deciding terms are open a row carries no amount. See income-row.v1.schema.json.",
+      "items": {
+        "$ref": "income-row.v1.schema.json#/$defs/row"
+      }
+    },
+    "income_totals": {
+      "type": "array",
+      "description": "Sums over rows sharing one rate origin, period and currency. Empty by default.",
+      "items": {
+        "$ref": "income-row.v1.schema.json#/$defs/total"
+      }
+    },
+    "income_breakdown_requested": {
+      "type": "boolean",
+      "description": "True when the request asked for an income breakdown; the report then prints the rows as a table."
+    },
+    "sources": {
+      "type": "array",
+      "description": "Every public source this quote cites, with the page a reader can check it against. Observed listings and the internal framework have no public page and are not listed.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "publisher", "url", "class", "verification", "published", "retrieved_at"],
+        "properties": {
+          "id": { "type": "string" },
+          "publisher": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "pattern": "^https://" },
+          "class": { "type": "string" },
+          "verification": { "enum": ["page_fetch", "search_snippet"] },
+          "published": { "type": ["string", "null"] },
+          "retrieved_at": { "type": "string", "format": "date" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "line_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deliverable_id", "platform", "format", "quantity", "base_bands", "applied_levers", "adjusted_bands", "line_totals"],
+      "properties": {
+        "deliverable_id": { "type": "string" },
+        "platform": { "enum": ["instagram", "tiktok", "youtube"] },
+        "format": { "type": "string" },
+        "quantity": { "type": "integer", "minimum": 1 },
+        "base_bands": {
+          "type": "array",
+          "description": "Every benchmark band whose follower range contains this account, one entry per source. Sources draw their tier boundaries differently, so the same account can be mid-tier in one and micro in another; both are shown.",
+          "items": { "$ref": "#/$defs/base_band" }
+        },
+        "applied_levers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/applied_lever" }
+        },
+        "adjusted_bands": {
+          "type": "array",
+          "description": "Base band with the levers applied, still one entry per source and still never merged.",
+          "items": { "$ref": "#/$defs/sourced_band" }
+        },
+        "line_totals": {
+          "type": "array",
+          "description": "Each adjusted band times the line's quantity, one entry per source. A package total is the sum of these, so the lines the report prints add up to it.",
+          "items": { "$ref": "#/$defs/sourced_band" }
+        },
+        "unpriced_terms": {
+          "type": "array",
+          "description": "Terms that apply to this line but that no source prices. They are listed, not silently valued at zero.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "base_band": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "source_class", "tier", "followers_min", "followers_max", "low", "high", "open_ended"],
+      "properties": {
+        "source": { "type": "string" },
+        "source_class": { "enum": ["industry_benchmark", "marketplace_listing"] },
+        "tier": { "type": "string" },
+        "followers_min": { "type": "integer" },
+        "followers_max": { "type": ["integer", "null"] },
+        "low": { "type": "number" },
+        "high": { "type": ["number", "null"] },
+        "open_ended": { "type": "boolean" },
+        "sample_size": {
+          "type": ["integer", "null"],
+          "description": "How many listings the band was computed from, for an observed band. A compiled band has none, because the compilation does not publish its sample."
+        },
+        "observed_at": { "type": ["string", "null"] }
+      }
+    },
+    "applied_lever": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "condition", "low_pct", "high_pct", "source"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "enum": ["usage_rights", "exclusivity", "rush", "format", "engagement", "niche", "geography", "revisions"] },
+        "condition": { "type": "string" },
+        "low_pct": { "type": ["number", "null"] },
+        "high_pct": { "type": ["number", "null"] },
+        "source": { "type": "string" },
+        "variant": { "type": ["string", "null"] },
+        "note": { "type": ["string", "null"] },
+        "i18n": { "type": ["object", "null"] }
+      },
+      "$comment": "'platform' is deliberately absent from the kind enum. Platform differences already sit inside the per-platform base bands; re-applying them as a lever would charge for the same difference twice."
+    },
+    "sourced_band": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "low", "high", "open_ended"],
+      "properties": {
+        "source": { "type": "string" },
+        "low": { "type": "number" },
+        "high": { "type": ["number", "null"] },
+        "open_ended": { "type": "boolean" }
+      }
+    },
+    "brand_ad_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed_at", "active_ads", "scale", "price_impact", "posture", "posture_note", "caveats"],
+      "properties": {
+        "observed_at": { "type": "string" },
+        "brand_query": { "type": ["string", "null"] },
+        "matched_name": { "type": ["string", "null"] },
+        "active_ads": { "type": "integer", "minimum": 0 },
+        "country_count": { "type": "integer", "minimum": 0 },
+        "months_running": { "type": ["number", "null"] },
+        "scale": { "enum": ["none", "testing", "steady", "large"] },
+        "coverage_complete": { "type": "boolean" },
+        "price_impact": {
+          "const": "none",
+          "description": "Fixed, and checked. Advertising spend and creator budget are different lines in a brand's plan; a heavy advertiser can hold a small creator budget and often does. The moment this evidence is allowed to move a number, the Skill is inferring a budget it cannot see."
+        },
+        "posture": {
+          "enum": ["name_not_matched", "none", "testing", "steady", "large"],
+          "description": "What the reading amounts to for the conversation. A name that did not match is its own outcome, not a quiet advertiser: collapsing the two would turn a spelling difference into a claim about the brand."
+        },
+        "posture_note": {
+          "type": "string",
+          "description": "What this changes about the conversation rather than the price."
+        },
+        "caveats": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "enum": ["single_ecosystem_only", "not_a_creator_budget", "count_is_a_floor", "name_not_matched"] },
+          "description": "The first two always travel: coverage is one ecosystem, and ad activity is not a creator budget."
+        }
+      }
+    },
+    "reach_estimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "low", "high", "inputs", "divergence_ratio", "threshold", "interpretation"],
+      "properties": {
+        "source": { "type": "string" },
+        "low": { "type": "number" },
+        "high": { "type": "number" },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["average_views", "average_views_basis", "niche", "cpm_low", "cpm_high", "format_multiplier_low", "format_multiplier_high"],
+          "properties": {
+            "average_views": { "type": "number" },
+            "average_views_basis": { "enum": ["retrieved", "user_supplied"] },
+            "niche": { "type": "string" },
+            "cpm_low": { "type": "number" },
+            "cpm_high": { "type": "number" },
+            "format_multiplier_low": { "type": "number" },
+            "format_multiplier_high": { "type": "number" }
+          }
+        },
+        "divergence_ratio": {
+          "type": "number",
+          "description": "How far this route sits from the follower-tier route, as a ratio of midpoints, always at least 1."
+        },
+        "threshold": { "type": "number" },
+        "interpretation": {
+          "enum": ["reach_below_tier", "reach_above_tier"],
+          "description": "Which way the disagreement runs, which is the part that changes what the creator should do."
+        }
+      }
+    }
+  }
+}

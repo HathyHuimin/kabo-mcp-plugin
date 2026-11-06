@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "creator-brand-strategy-brief.v1",
+  "description": "A brand strategy brief, plus the machine handoff that lets a topic-generation Skill consume it. The brief is always deliverable, with or without an account. The handoff is not: it carries account handles, and a handle nobody supplied is a fabrication, so it is emitted only when every handle has a provenance and is otherwise reported blocked with what is missing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task", "delivery_language", "positioning", "audience", "content", "tone", "assumptions", "handoff"],
+  "properties": {
+    "schema_version": {"const": "creator-brand-strategy-brief.v1"},
+    "task": {"const": "brand_strategy_brief"},
+    "delivery_language": {"anyOf": [{"enum": ["English", "中文"]}, {"type": "string", "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"}], "description": "BCP-47 tag of the language the Creator-facing strings are written in, such as en, zh-CN or pt-BR. The v1 values English and 中文 remain valid. Fixed labels in the rendered result are English."},
+    "positioning": {"type": "string", "minLength": 1, "description": "The one-sentence position. Downstream this becomes creator-profile.v3 positioning."},
+    "audience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "needs"],
+      "properties": {
+        "summary": {"type": "string", "minLength": 1},
+        "needs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pillars", "formats", "exclusions"],
+      "properties": {
+        "pillars": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "formats": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "exclusions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "description": "What this account does not make. A brief without a boundary is a wish list."}
+      }
+    },
+    "tone": {"type": "string", "minLength": 1},
+    "assumptions": {
+      "type": "array",
+      "description": "Everything the brief had to assume because the creator did not state it. These travel to creator-profile.v3 key_missing_info so the topic Skill knows which inputs are unconfirmed rather than reading them as account facts.",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "blocked_reason", "accounts_provenance", "creator_profile"],
+      "properties": {
+        "status": {"enum": ["ready", "blocked"]},
+        "blocked_reason": {"type": ["string", "null"]},
+        "accounts_provenance": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["platform", "handle", "source"],
+            "properties": {
+              "platform": {"type": "string", "minLength": 1},
+              "handle": {"type": "string", "minLength": 1},
+              "source": {"enum": ["user_supplied", "resolved_public"]}
+            }
+          }
+        },
+        "creator_profile": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["schema_version", "profile_id", "accounts"],
+              "description": "Emitted byte-valid against the topic Skill's creatorContext contract. Provenance deliberately lives outside this object, because that contract forbids extra properties.",
+              "properties": {
+                "schema_version": {"const": "creator-profile.v3"},
+                "profile_id": {"type": "string", "minLength": 1},
+                "accounts": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["platform", "handle"],
+                    "properties": {
+                      "platform": {"type": "string", "minLength": 1},
+                      "handle": {"type": "string", "minLength": 1}
+                    }
+                  }
+                },
+                "markets": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+                "audience": {"type": "object"},
+                "positioning": {"type": "string", "minLength": 1},
+                "content_profile": {"type": "object"},
+                "key_missing_info": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+                "extensions": {"type": "object"}
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,443 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creator-ai.local/schemas/content-calendar-request.v1.json",
+  "title": "ContentCalendarRequestV1",
+  "description": "Four-week calendar input. Upstream artifacts remain immutable references; this contract contains only information needed to orchestrate them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "created_at",
+    "language",
+    "intent",
+    "single_slot_decision",
+    "planning_window",
+    "items",
+    "candidate_idea_set_refs",
+    "cadence_rules",
+    "capacity",
+    "constraints",
+    "reminder_preferences"
+  ],
+  "properties": {
+    "schema_version": {"const": "content-calendar-request.v1"},
+    "request_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "language": {"type": "string", "minLength": 1},
+    "intent": {"enum": ["four_week_plan", "date_range_plan", "choose_for_slot"]},
+    "single_slot_decision": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["decision_id", "idempotency_key", "target_publish_at", "target", "candidate_item_ids", "creator_preferred_item_id", "confirmation_status", "confirmed_item_id", "confirmed_at", "pending_request_ref", "proposal_ref"],
+          "properties": {
+            "decision_id": {"type": "string", "minLength": 1},
+            "idempotency_key": {"type": "string", "minLength": 1},
+            "target_publish_at": {"type": "string", "format": "date-time"},
+            "target": {"$ref": "#/$defs/target"},
+            "candidate_item_ids": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1}
+            },
+            "creator_preferred_item_id": {"type": ["string", "null"]},
+            "confirmation_status": {"enum": ["pending", "confirmed"]},
+            "confirmed_item_id": {"type": ["string", "null"]},
+            "confirmed_at": {"type": ["string", "null"], "format": "date-time"},
+            "pending_request_ref": {
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/contentCalendarRequestRef"}
+              ]
+            },
+            "proposal_ref": {
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/contentCalendarRef"}
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"confirmation_status": {"const": "confirmed"}}},
+              "then": {
+                "properties": {
+                  "confirmed_item_id": {"type": "string", "minLength": 1},
+                  "confirmed_at": {"type": "string", "format": "date-time"},
+                  "pending_request_ref": {"$ref": "#/$defs/contentCalendarRequestRef"},
+                  "proposal_ref": {"$ref": "#/$defs/contentCalendarRef"}
+                }
+              },
+              "else": {
+                "properties": {
+                  "confirmed_item_id": {"type": "null"},
+                  "confirmed_at": {"type": "null"},
+                  "pending_request_ref": {"type": "null"},
+                  "proposal_ref": {"type": "null"}
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "planning_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_date", "weeks", "timezone", "timezone_source"],
+      "properties": {
+        "start_date": {"type": "string", "format": "date"},
+        "weeks": {"type": "integer", "minimum": 1, "maximum": 13},
+        "end_date": {"type": "string", "format": "date"},
+        "timezone": {"type": "string", "minLength": 1},
+        "timezone_source": {
+          "enum": ["creator_confirmed", "profile_confirmed", "assumed"]
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/calendarItem"}
+    },
+    "candidate_idea_set_refs": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/ideaSetRef"}
+    },
+    "cadence_rules": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/cadenceRule"}
+    },
+    "capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "weekly_minutes", "week_overrides", "blackout_dates"],
+      "properties": {
+        "status": {"enum": ["provided", "unavailable"]},
+        "weekly_minutes": {"type": ["integer", "null"], "minimum": 1},
+        "week_overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["week_index", "minutes"],
+            "properties": {
+              "week_index": {"type": "integer", "minimum": 1, "maximum": 13},
+              "minutes": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "blackout_dates": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "format": "date"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "provided"}}},
+          "then": {"properties": {"weekly_minutes": {"type": "integer", "minimum": 1}}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "unavailable"}}},
+          "then": {"properties": {"weekly_minutes": {"type": "null"}, "week_overrides": {"maxItems": 0}}}
+        }
+      ]
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_posts_per_day", "min_publish_gap_hours", "production_lead_hours"],
+      "properties": {
+        "max_posts_per_day": {"type": "integer", "minimum": 1, "maximum": 20},
+        "min_publish_gap_hours": {"type": "integer", "minimum": 0, "maximum": 168},
+        "production_lead_hours": {"type": "integer", "minimum": 0, "maximum": 720}
+      }
+    },
+    "reminder_preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pre_publish_minutes", "post_publish_attention_minutes"],
+      "properties": {
+        "pre_publish_minutes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 0, "maximum": 10080}
+        },
+        "post_publish_attention_minutes": {
+          "description": "Optional engagement reminders during the first two hours. These are reminder handoffs, not performance analysis or an R02 experiment.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 0, "maximum": 120}
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"intent": {"const": "choose_for_slot"}}},
+      "then": {"properties": {"single_slot_decision": {"type": "object"}}},
+      "else": {"properties": {"single_slot_decision": {"type": "null"}, "cadence_rules": {"minItems": 1}}}
+    }
+  ],
+  "$defs": {
+    "localArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "artifact_id", "schema_version", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "artifact_id": {"type": "string", "minLength": 1},
+        "schema_version": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "selectedIdeaRef": {
+      "allOf": [
+        {"$ref": "#/$defs/localArtifact"},
+        {"properties": {"schema_version": {"const": "selected-idea.v2"}}}
+      ]
+    },
+    "ideaSetRef": {
+      "allOf": [
+        {"$ref": "#/$defs/localArtifact"},
+        {"properties": {"schema_version": {"const": "idea-set.v3-candidate1"}}}
+      ]
+    },
+    "contentCalendarRef": {
+      "allOf": [
+        {"$ref": "#/$defs/localArtifact"},
+        {"properties": {"schema_version": {"const": "content-calendar.v1"}}}
+      ]
+    },
+    "contentCalendarRequestRef": {
+      "allOf": [
+        {"$ref": "#/$defs/localArtifact"},
+        {"properties": {"schema_version": {"const": "content-calendar-request.v1"}}}
+      ]
+    },
+    "scriptPackageRef": {
+      "allOf": [
+        {"$ref": "#/$defs/localArtifact"},
+        {"properties": {"schema_version": {"const": "script-package.v1"}}}
+      ]
+    },
+    "scriptPackageRequestRef": {
+      "allOf": [
+        {"$ref": "#/$defs/localArtifact"},
+        {"properties": {"schema_version": {"const": "script-package-request.v1"}}}
+      ]
+    },
+    "publishRequestRef": {
+      "allOf": [
+        {"$ref": "#/$defs/localArtifact"},
+        {"properties": {"schema_version": {"const": "publish-request.v1"}}}
+      ]
+    },
+    "publishHistoryRef": {
+      "allOf": [
+        {"$ref": "#/$defs/localArtifact"},
+        {"properties": {"schema_version": {"const": "publish-history.v2"}}}
+      ]
+    },
+    "publishRecommendationRef": {
+      "allOf": [
+        {"$ref": "#/$defs/localArtifact"},
+        {"properties": {"schema_version": {"const": "publish-recommendation.v2"}}}
+      ]
+    },
+    "publishScheduleRef": {
+      "description": "Hash-pinned PublishSchedule v1. In Calendar-managed flows its draft_ref is the stable bound SelectedIdea id; ScriptPackage lineage remains in PublishRequest.content.source_script_ref.",
+      "allOf": [
+        {"$ref": "#/$defs/localArtifact"},
+        {"properties": {"schema_version": {"const": "publish-schedule.v1"}}}
+      ]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["account_ref", "platform", "idea_format", "production_format", "publish_format"],
+      "properties": {
+        "account_ref": {"type": "string", "minLength": 1},
+        "platform": {"enum": ["instagram", "youtube", "tiktok"]},
+        "idea_format": {"type": "string", "minLength": 1},
+        "production_format": {"enum": ["short_form", "long_form"]},
+        "publish_format": {"type": "string", "minLength": 1}
+      }
+    },
+    "assetRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "path", "sha256", "media_type"],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "media_type": {"enum": ["image", "video", "audio"]}
+      }
+    },
+    "publicationAssets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "media_refs", "cover_ref"],
+      "properties": {
+        "status": {
+          "description": "Completeness of the final publication media_refs only. Platform cover/thumbnail readiness is represented independently by cover_ref.",
+          "enum": ["missing", "partial", "confirmed"]
+        },
+        "media_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/assetRef"}
+        },
+        "cover_ref": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/assetRef"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "confirmed"}}},
+          "then": {
+            "properties": {
+              "media_refs": {"minItems": 1}
+            }
+          }
+        }
+      ]
+    },
+    "calendarItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "priority",
+        "priority_source",
+        "selected_idea_ref",
+        "script_package_request_ref",
+        "script_package_ref",
+        "target",
+        "production_progress",
+        "publication_assets",
+        "timing"
+      ],
+      "properties": {
+        "item_id": {"type": "string", "minLength": 1},
+        "priority": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "priority_source": {"enum": ["creator", "upstream_order"]},
+        "selected_idea_ref": {"$ref": "#/$defs/selectedIdeaRef"},
+        "script_package_request_ref": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/scriptPackageRequestRef"}
+          ]
+        },
+        "script_package_ref": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/scriptPackageRef"}
+          ]
+        },
+        "target": {"$ref": "#/$defs/target"},
+        "production_progress": {
+          "description": "Observed production progress supplied by the Creator or a workflow system. This is distinct from structural ScriptPackage/publication-asset readiness.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "source", "as_of", "remaining_minutes", "blockers"],
+          "properties": {
+            "state": {"enum": ["not_started", "in_progress", "blocked", "complete", "unknown"]},
+            "source": {"enum": ["creator_confirmed", "workflow_system", "unavailable"]},
+            "as_of": {"type": ["string", "null"], "format": "date-time"},
+            "remaining_minutes": {"type": ["integer", "null"], "minimum": 1, "maximum": 10080},
+            "blockers": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"source": {"const": "unavailable"}}},
+              "then": {"properties": {"state": {"const": "unknown"}, "as_of": {"type": "null"}, "remaining_minutes": {"type": "null"}, "blockers": {"maxItems": 0}}},
+              "else": {"properties": {"state": {"not": {"const": "unknown"}}, "as_of": {"type": "string", "format": "date-time"}}}
+            },
+            {
+              "if": {"properties": {"state": {"const": "complete"}}},
+              "then": {"properties": {"remaining_minutes": {"type": "null"}, "blockers": {"maxItems": 0}}}
+            },
+            {
+              "if": {"properties": {"state": {"const": "blocked"}}},
+              "then": {"properties": {"blockers": {"minItems": 1}}}
+            }
+          ]
+        },
+        "publication_assets": {"$ref": "#/$defs/publicationAssets"},
+        "timing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["publish_request_ref", "publish_history_ref", "publish_recommendation_ref", "publish_schedule_ref", "creator_locked_at"],
+          "properties": {
+            "publish_request_ref": {
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/publishRequestRef"}
+              ]
+            },
+            "publish_recommendation_ref": {
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/publishRecommendationRef"}
+              ]
+            },
+            "publish_history_ref": {
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/publishHistoryRef"}
+              ]
+            },
+            "publish_schedule_ref": {
+              "description": "Reference to the complete immutable PublishSchedule. Calendar validates and preserves its recommendation_ref, SelectedIdea draft_ref, source, confidence, timezone, state_history and published_result_ref rather than duplicating them as a second mutable truth.",
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/publishScheduleRef"}
+              ]
+            },
+            "creator_locked_at": {"type": ["string", "null"], "format": "date-time"}
+          }
+        }
+      }
+    },
+    "cadenceRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "account_ref",
+        "platform",
+        "publish_format",
+        "production_format",
+        "posts_per_week",
+        "preferred_weekdays",
+        "preferred_local_times"
+      ],
+      "properties": {
+        "account_ref": {"type": "string", "minLength": 1},
+        "platform": {"enum": ["instagram", "youtube", "tiktok"]},
+        "publish_format": {"type": ["string", "null"]},
+        "production_format": {"enum": ["short_form", "long_form", null]},
+        "posts_per_week": {"type": "integer", "minimum": 1, "maximum": 7},
+        "preferred_weekdays": {
+          "description": "ISO weekday numbers: Monday=1 through Sunday=7. They are creator-supplied cadence preferences, not generic platform advice.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 1, "maximum": 7}
+        },
+        "preferred_local_times": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"}
+        }
+      }
+    }
+  }
+}
