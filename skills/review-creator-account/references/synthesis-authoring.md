@@ -46,10 +46,12 @@ the report or profile schemas once the compact input exists. `scope.user_questio
 ## Evidence boundary
 
 - Write the cited patterns first, and the headline and diagnosis last. Build each summary claim
-  only from those checked patterns: preserve the same content examples, maturity limits and
-  claim type. Do not add another post category while shortening the answer, or merge a wording
-  observation about young posts into a performance comparison about mature posts. If the cited
-  patterns do not support a comparison, omit that comparison from the summary as well.
+  about post patterns only from those checked patterns: preserve the same content examples,
+  maturity limits and claim type. Do not add another post category while shortening the answer,
+  or merge a wording observation about young posts into a performance comparison about mature
+  posts. If the cited patterns do not support a comparison, omit it from the summary as well.
+  Separately supplied owner figures may support measured sales or funnel outcomes; identify their
+  source and scope, and apply [sales-evidence.md](sales-evidence.md) to those claims.
 - For sales or conversion questions, apply [sales-evidence.md](sales-evidence.md). Public content
   can reveal wording and observed reach, not which content sells. Put the unresolved sales premise
   in the headline/diagnosis themselves when it is central to the question; do not title the report
