@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,7 @@ sys.dont_write_bytecode = True
 from json_io import load_complete_envelope, load_complete_object
 from public_identity import apply_identity, identity_from_envelope
 from prepare_hook_context import build_research_context_ref
+from account_analyzers import parse_time
 
 
 SCHEMA_VERSION = "account-review-synthesis-input.v1"
@@ -92,6 +94,34 @@ def durations_from_snapshot(snapshot: dict[str, Any], snapshot_id: Any) -> dict[
         if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
             durations[str(item.get("content_id"))] = value
     return durations
+
+
+def baseline_maturity_context(analysis: dict[str, Any]) -> dict[str, Any] | None:
+    """Expose the Analyzer's existing inclusive-day rule without changing its baselines."""
+    if not analysis["baselines"]:
+        return None
+    scope = analysis["scope"]
+    window_end = scope.get("window", {}).get("end")
+    anchor = parse_time(f"{window_end}T23:59:59+00:00") if window_end and "T" not in window_end else parse_time(window_end or scope["observed_at"])
+    by_format = []
+    for baseline in analysis["baselines"]:
+        days = baseline["maturity_days"]
+        if not isinstance(days, int) or isinstance(days, bool) or days < 1:
+            raise ValueError("baseline maturity_days must be a positive integer")
+        elapsed = days - 1
+        by_format.append({
+            "format": baseline["format"],
+            "maturity_days": days,
+            "cutoff_at": (anchor - timedelta(days=elapsed)).isoformat(),
+            "minimum_elapsed_days_at_anchor": elapsed,
+        })
+    return {
+        "convention": "publication_day_counts_as_day_one",
+        "anchor_source": "scope.window.end" if window_end else "scope.observed_at",
+        "anchor_at": anchor.isoformat(),
+        "comparison": "published_at <= cutoff_at",
+        "by_format": by_format,
+    }
 
 
 def build(
@@ -196,6 +226,9 @@ def build(
         "claim_boundary": compact(analysis["claim_boundary"]),
     }
     scope = dict(result.get("scope") or {})
+    maturity = baseline_maturity_context(analysis)
+    if maturity:
+        scope["baseline_maturity"] = maturity
     scope = apply_identity(scope, identity_from_envelope(profile_envelope or {}))
     if user_question and user_question.strip():
         scope["user_question"] = user_question.strip()

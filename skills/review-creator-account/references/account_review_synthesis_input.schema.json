@@ -13,7 +13,7 @@
     "platform": {"type": "string", "minLength": 1},
     "source_mode": {"type": "string", "minLength": 1},
     "hook_context": {"type": "object"},
-    "scope": {"type": "object"},
+    "scope": {"type": "object", "description": "Account and observation scope. baseline_maturity, when baselines exist, records the Analyzer anchor, per-format inclusive cutoff and publication-day-as-day-one convention. maturity_days is not a count of fully elapsed days."},
     "coverage": {"type": "object"},
     "baselines": {"type": "array", "items": {"type": "object"}},
     "content": {

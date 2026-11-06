@@ -53,18 +53,35 @@ Passing validation on step 3 means a single generation attempt is enough.
 
 ## Continuations
 
-For a follow-up such as “10 more in the same style”, preserve the current request verbatim in
-`user_brief` and leave `direct_topic=null` unless it also names a literal topic. Pass the earlier
-run's original `idea_set.json` (it stays in that run directory in the workspace) to prep with
-`--previous-ideas '<path>'`, and copy the current continuation request word for word into
-`generation_basis.continuation_quote`. Prep keeps the exact original as `previous_ideas.json` in
-this run and binds its IDs, file checksum and creative directions as `continuation_context`; never
-author that field or paste earlier assistant text into `user_brief`. History is unverified creative
-context, not account or trend evidence. Without the original file, ask for the missing topic or
-context; never recreate an earlier IdeaSet from memory or a Markdown summary.
+For a follow-up such as “more in the same style”, keep the current request verbatim in
+`user_brief` and leave `direct_topic=null` unless it also names a literal topic. Copy its referring
+words into `generation_basis.continuation_quote`. First resolve what the user refers to from the
+visible conversation: keep the specific earlier direction or list item, the style and the relevant
+user constraints; current corrections and exclusions take precedence. With several plausible
+referents, ask one focused question instead of choosing silently; do not ask the user to repeat
+context that is already available.
 
-When generating, compare against every previous title and making direction in
-`continuation_context`, keep the requested style, and propose new premises or outcomes rather than
-renaming the same ideas. Apply the current request's exclusions and count. A repeated previous
-title is rejected; semantic novelty still needs this comparison. A brief-only continuation needs
-either a literal `direct_topic` or this bound continuation context.
+Use exactly one source route:
+- **A native earlier IdeaSet:** pass its original complete `idea_set.json` with
+  `--previous-ideas '<path>'`. Prep keeps its exact bytes as `previous_ideas.json` and derives
+  `continuation_context`. Never rebuild an IdeaSet from Markdown or memory.
+- **Ordinary conversation text only:** pass `--conversation-context '<path>'` instead, a JSON object
+  `{"schema_version": "idea-conversation.v1", "messages": [{"role": "user"|"assistant", "text": <exact
+  full message>}, …], "reference": {"message_index": <zero-based>, "quote": <exact referenced
+  passage>}}`. Copy the real message text unchanged, include the earlier user constraints needed to
+  read the passage and enough of the actual list to resolve an ordinal, and no private reasoning.
+  Prep keeps the exact bytes as `conversation_context.json` and derives `conversation_context`; its
+  checksum proves binding to that file, not that you chose the right passage, so check that first.
+
+Never author `continuation_context` or `conversation_context`, and never paste earlier text into
+`user_brief`. Both routes are unverified creative context, never account, trend or comment
+evidence, approval, or proof that an idea was published; earlier factual claims stay unverified
+unless current artifacts back them. If the referenced text is genuinely unavailable, ask only for
+that context; never invent a topic or silently drop required research.
+
+When generating, read the bound `continuation_context` or `conversation_context` from
+`request.json` first. Compare against the actual previous directions, keep the referenced style,
+and propose new premises or outcomes rather than renaming the same ideas. Apply the current
+request's exclusions and count. Native IdeaSet title repeats are rejected mechanically; reference
+resolution, style and semantic novelty still need this comparison. A brief-only continuation needs
+either a literal `direct_topic` or one of these bound contexts.

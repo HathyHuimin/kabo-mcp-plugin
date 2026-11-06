@@ -22,6 +22,7 @@ from project_comments import has_comment_text, validate_projection, validate_tar
 COMMON_ROOT = Path(__file__).resolve().parent.parent
 REQUEST_SCHEMA = COMMON_ROOT / "references/idea-request.schema.json"
 IDEA_SET_SCHEMA = COMMON_ROOT / "references/idea-set.schema.json"
+DERIVED_FIELDS = ("upstream_sources", "idea_context", "continuation_context", "conversation_context")
 SUPPORTED_SCHEMA_KEYWORDS = {
     "$schema", "$id", "$defs", "$ref", "title", "description",
     "type", "const", "enum", "oneOf", "allOf", "if", "then", "else",
@@ -64,6 +65,30 @@ def previous_ideas_context(path: Path, base: Path) -> dict[str, Any]:
         "ideas": [{key: idea[key] for key in ("idea_id", "working_title", "making_direction")}
                   for idea in previous["ideas"]],
     }
+
+
+def bound_conversation_context(path: Path, base: Path) -> dict[str, Any]:
+    """Bind visible conversation text without treating it as research evidence.
+
+    This verifies the supplied text and its reference, not its origin in a real
+    conversation or the semantic correctness of the chosen reference.
+    """
+    source = load(path)
+    schema = load(REQUEST_SCHEMA)
+    errors = validate_schema_value(source, schema["$defs"]["conversationSource"], schema, "conversation_context")
+    if errors:
+        raise ValueError("; ".join(errors))
+    messages = source["messages"]
+    reference = source["reference"]
+    index = reference["message_index"]
+    if any(not message["text"].strip() for message in messages):
+        raise ValueError("conversation_context messages must contain visible text")
+    if index >= len(messages):
+        raise ValueError("conversation_context reference.message_index is outside messages")
+    quote = reference["quote"]
+    if not quote.strip() or quote not in messages[index]["text"]:
+        raise ValueError("conversation_context reference.quote must be copied verbatim from the referenced message")
+    return {"path": os.path.relpath(path.resolve(), base.resolve()), "sha256": file_sha256(path), **source}
 
 
 def schema_type_matches(value: Any, expected: str) -> bool:
@@ -541,7 +566,7 @@ def generation_decision(request: dict[str, Any]) -> dict[str, Any]:
     )
     if missing and not fallback_used:
         status = "blocked_missing_required_source"
-    elif not available and not has_direct_topic and not request.get("continuation_context"):
+    elif not available and not has_direct_topic and not (request.get("continuation_context") or request.get("conversation_context")):
         status = "needs_selection_context"
     else:
         status = "ready_for_generation"
@@ -726,14 +751,16 @@ def validate_authored_fields(request: dict[str, Any], errors: list[str]) -> None
         require(bool(present), f"{constraints.get('status')} production_constraints must contain at least one value", errors)
 
 
-def validate_authored_intent(intent: dict[str, Any], *, has_previous_ideas: bool = False) -> list[str]:
+def validate_authored_intent(intent: dict[str, Any], *, has_previous_ideas: bool = False,
+                             has_conversation_context: bool = False) -> list[str]:
     """Reuse request rules for input feedback before missing artifacts can mask errors.
 
-    Derived fields are neither invented nor validated here: build and full request
-    validation still own their provenance, source mode and evidence gates.
+    Reject authored derived fields without hiding independent input errors.
+    Build and full request validation still own their provenance and evidence gates.
     """
     schema = load(REQUEST_SCHEMA)
-    derived = {"upstream_sources", "idea_context", "continuation_context", "source_mode"}
+    # Legacy intents may still carry source_mode; build always recomputes it.
+    derived = {*DERIVED_FIELDS, "source_mode"}
     authored_schema = {**schema,
         "required": [key for key in schema["required"] if key not in derived],
         "properties": {key: value for key, value in schema["properties"].items() if key not in derived}}
@@ -742,10 +769,15 @@ def validate_authored_intent(intent: dict[str, Any], *, has_previous_ideas: bool
     if not errors:
         validate_authored_fields(authored, errors)
         quote = (authored.get("generation_basis") or {}).get("continuation_quote")
-        if has_previous_ideas:
-            require(has_text(quote), "--previous-ideas requires generation_basis.continuation_quote", errors)
+        require(not (has_previous_ideas and has_conversation_context),
+                "choose either --previous-ideas or --conversation-context for this continuation", errors)
+        if has_previous_ideas or has_conversation_context:
+            flag = "--previous-ideas" if has_previous_ideas else "--conversation-context"
+            require(has_text(quote), f"{flag} requires generation_basis.continuation_quote", errors)
         elif quote is not None:
-            errors.append("generation_basis.continuation_quote requires --previous-ideas with the original IdeaSet JSON")
+            errors.append("generation_basis.continuation_quote requires --previous-ideas with the original IdeaSet JSON or --conversation-context with exact earlier visible messages")
+    errors.extend(f"request.{field}: is derived from source artifacts; leave it out of intent and supply the original source file instead"
+                  for field in DERIVED_FIELDS if field in intent)
     return errors
 
 
@@ -763,7 +795,10 @@ def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
     basis = request.get("generation_basis") or {}
     has_direct_topic = has_text(basis.get("direct_topic"))
     continuation = request.get("continuation_context")
+    conversation = request.get("conversation_context")
     quote = basis.get("continuation_quote")
+    require(not (continuation is not None and conversation is not None),
+            "choose either continuation_context or conversation_context for this continuation", errors)
     if continuation is not None:
         require(has_brief and has_text(quote) and quote in brief.get("text", ""),
                 "continuation_context requires a verbatim generation_basis.continuation_quote from user_brief.text", errors)
@@ -774,8 +809,16 @@ def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
             require(continuation == expected, "continuation_context differs from the original previous IdeaSet or its checksum", errors)
         except (OSError, ValueError) as exc:
             errors.append(f"continuation_context: {exc}")
-    elif quote is not None:
-        errors.append("generation_basis.continuation_quote requires --previous-ideas with the original IdeaSet JSON")
+    if conversation is not None:
+        require(has_brief and has_text(quote) and quote in brief.get("text", ""),
+                "conversation_context requires a verbatim generation_basis.continuation_quote from user_brief.text", errors)
+        try:
+            expected = bound_conversation_context(resolve(request_path.parent, conversation["path"]), request_path.parent)
+            require(conversation == expected, "conversation_context differs from the supplied messages, reference or checksum", errors)
+        except (OSError, ValueError) as exc:
+            errors.append(f"conversation_context: {exc}")
+    if continuation is None and conversation is None and quote is not None:
+        errors.append("generation_basis.continuation_quote requires --previous-ideas with the original IdeaSet JSON or --conversation-context with exact earlier visible messages")
     context = request.get("idea_context") or {}
     has_evidence = bool(request.get("upstream_sources") or context.get("creator") or context.get("trend") or context.get("competitor") or context.get("account"))
     require(has_evidence or has_brief, "at least one evidence source or user brief is required", errors)
@@ -786,8 +829,8 @@ def validate_request(request: dict[str, Any], request_path: Path) -> list[str]:
     if intent == "rework_content":
         require(any(source.get("source_type") == "video_analysis" for source in request.get("upstream_sources") or []), "rework_content requires at least one VideoAnalysis source", errors)
     if intent == "brief_only":
-        require(has_direct_topic or continuation is not None,
-                "brief_only requires an explicit generation_basis.direct_topic or bound continuation_context", errors)
+        require(has_direct_topic or continuation is not None or conversation is not None,
+                "brief_only requires an explicit generation_basis.direct_topic or bound continuation_context/conversation_context", errors)
         require(not has_evidence, "brief_only must not include upstream artifacts or idea context", errors)
 
     validate_upstream_sources(request, request_path, errors)

@@ -70,6 +70,11 @@ the report or profile schemas once the compact input exists. `scope.user_questio
 - A `what_hurts` claim about weak performance must use below-baseline or bottom-ranked evidence.
   Above-baseline content may support a positioning-dilution observation only when the text labels it
   as strategic inconsistency rather than performance drag.
+- Describe baseline eligibility with `scope.baseline_maturity`: its anchor, per-format cutoff and
+  inclusive convention. `maturity_days: 14` means day 14 counting the publication day as day one,
+  so the cutoff is 13 elapsed days before the anchor, not 14 full days. Use the supplied cutoff or
+  say "comparable mature posts" in the delivery language; never change the sample or recompute a
+  stricter baseline to fit the wording.
 - When `scope.highest_view_multiple` is present, name that in-window post and say whether to adopt
   it — topic, presentation, distribution or one-off event; adopt or not, and why. Do not treat the
   highest multiple as a post that must be copied. Tests return to the most valuable current

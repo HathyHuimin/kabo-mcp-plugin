@@ -65,7 +65,7 @@ handle each prep decision. Also read the fields and definitions for this task in
 
 1. Copy each upstream JSON artifact into the run unchanged (`cp`); a trend or competitor report
    counts only with its `*_idea_context.json` projection. Never write a projection by hand.
-2. Write `intent.json` (no `upstream_sources`, `idea_context` or `continuation_context`), then run
+2. Write `intent.json` (no `upstream_sources`, `idea_context`, `continuation_context` or `conversation_context`), then run
    prep once with the artifact flags this run has:
 
    ```sh

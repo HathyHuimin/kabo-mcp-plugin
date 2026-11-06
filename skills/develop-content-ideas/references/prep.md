@@ -54,7 +54,7 @@ lineage validation still apply. Collection failure does not authorize brief fall
      paraphrase (“sourdough shaping techniques”, not “bread tutorials”). A handle, account/display
      name, URL, platform, format, or generic request for ideas is not a topic. Never derive it from
      another Skill's description, the environment, or model knowledge.
-   - For a follow-up such as “10 more in the same style”, read *Continuations* in
+   - For a follow-up such as “more in the same style”, read *Continuations* in
      `references/core-generation.md` whole before writing the intent.
    - `required_sources` lists evidence the user explicitly requires: `creator`, `account`,
      `trend`, `competitor`, `video`, or `comments`. A request about comments on a video requires
@@ -70,7 +70,8 @@ lineage validation still apply. Collection failure does not authorize brief fall
    `account-idea-context.v1`, `trend-research-report.v3`, `competitor-research-report.v3`, and
    optional VideoAnalysis. Consume only the deterministic `idea_context.creator/trend/competitor/account`
    projection the upstream Skills write.
-4. Write `intent.json` without `upstream_sources`, `idea_context` or `continuation_context`, not
+4. Write `intent.json` without `upstream_sources`, `idea_context`, `continuation_context` or
+   `conversation_context`, not
    even empty: prep derives them from the flags and rejects an intent that carries them. Include
    `schema_version="idea-request.v3-candidate2"`, a run-local unique `request_id`, ISO-8601
    `created_at`, `task_intent`, counts, goal, audience, desired action, platforms, languages,

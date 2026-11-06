@@ -77,10 +77,11 @@ draft with any remaining production conditions; never claim that it is a
 validated `ScriptPackage`, approved for production, a finished cover image or
 an uploaded/published artifact.
 
-When the user confirms the missing choices and requests the native package,
-reuse the draft and the confirmed choices, then run the ordinary builder,
-validators and renderer. If the original request already supplies those inputs
-or explicitly requires validated package artifacts, preserve that native path;
-do not replace it with prose to save time. A final review checks all requested
+When the required choices are confirmed, reuse the draft and those choices for
+the ordinary builder, validators and renderer. If the user explicitly requires
+validated package artifacts but their inputs are incomplete, ask only for the
+missing choices and keep any useful draft separate; the artifact request itself
+does not confirm proposed values. If the inputs are already available, preserve
+the native path rather than replacing it with prose to save time. A final review checks all requested
 sections, source constraints, factual gaps and production limits, not just the
 presence of a draft label.

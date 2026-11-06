@@ -13,7 +13,7 @@ Why this file exists, and where its line is:
   to the frozen analyzers, and computing them here would quietly replace them.
 
 `items[].format` is narrowed to youtube_short / youtube_long / unknown / instagram_reel /
-instagram_feed / tiktok_video even though the
+instagram_feed / tiktok_video / tiktok_photo even though the
 snapshot schema declares plain {"type": "string"} for it. The narrowing is deliberate and is
 Kabo's, not upstream's: it is exactly the content-format enum the Kabo server uses for creator
 observations, so the day these items are normalized into observations there is nothing left to
@@ -44,6 +44,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 
 SCHEMA_VERSION = "public-content-snapshot.v1"
@@ -425,6 +426,31 @@ def instagram_format_of(row: dict[str, Any]) -> str:
     return "instagram_feed"
 
 
+def tiktok_format_of(row: dict[str, Any]) -> tuple[str, bool, str, str]:
+    """Use an original post URL or declared media type; account listings mix photos/videos."""
+    given = first_text(row, (("source_url",), ("url",), ("permalink",), ("permalink_url",)))
+    if given is not None:
+        try:
+            parts = urlsplit(given)
+            host = (parts.hostname or "").lower()
+            match = re.fullmatch(r"/(?:@[^/]+/)?(photo|video)/(\d+)/?", parts.path)
+            if (parts.scheme == "https" and (host == "tiktok.com" or host.endswith(".tiktok.com"))
+                    and not parts.username and not parts.password and parts.port in (None, 443)
+                    and match and match[2] == content_id_of(row, "tiktok")):
+                return f"tiktok_{match[1]}", False, "explicit", "canonical_tiktok_url"
+        except ValueError:
+            pass  # Malformed URLs cannot establish a comparable format.
+    declarations = {
+        "tiktok_video": "tiktok_video", "video": "tiktok_video",
+        "tiktok_photo": "tiktok_photo", "image_carousel": "tiktok_photo",
+    }
+    signals = {declarations[value] for key in ("format", "content_format", "media_type")
+               if (value := as_text(row.get(key))) in declarations}
+    if len(signals) == 1:
+        return signals.pop(), False, "explicit", "provider_media_type"
+    return "unknown", True, "unknown", "unavailable"
+
+
 def url_of(row: dict[str, Any], platform: str, content_id: str) -> str:
     """The row's own URL, or the platform's canonical form of the id the provider returned.
 
@@ -439,9 +465,10 @@ def url_of(row: dict[str, Any], platform: str, content_id: str) -> str:
         return f"https://www.youtube.com/watch?v={content_id}"
     if platform == "tiktok":
         handle = first_text(row, (("username",), ("user", "username"), ("owner", "username")))
+        path = "photo" if tiktok_format_of(row)[0] == "tiktok_photo" else "video"
         if handle is None:
-            return f"https://www.tiktok.com/video/{content_id}"
-        return f"https://www.tiktok.com/@{handle}/video/{content_id}"
+            return f"https://www.tiktok.com/{path}/{content_id}"
+        return f"https://www.tiktok.com/@{handle}/{path}/{content_id}"
     path = "reel" if instagram_format_of(row) == "instagram_reel" else "p"
     return f"https://www.instagram.com/{path}/{content_id}/"
 
@@ -453,7 +480,7 @@ def format_of(
     if platform == "instagram":
         return instagram_format_of(row), False, "explicit", "provider_media_type"
     if platform == "tiktok":
-        return "tiktok_video", False, "explicit", "platform_operation"
+        return tiktok_format_of(row)
 
     # Prefer a provider's explicit boolean over every derived or URL-shaped signal. Only real
     # booleans count: accepting 0/1 or truthy strings here would turn an untyped provider quirk into
@@ -508,9 +535,9 @@ def format_of(
 
 
 def merge_format_evidence(
-    existing: dict[str, Any], candidate: dict[str, Any], content_id: str
+    existing: dict[str, Any], candidate: dict[str, Any], content_id: str, platform: str = "YouTube"
 ) -> None:
-    """Merge duplicate YouTube format evidence without making input order authoritative."""
+    """Merge duplicate format evidence without making input order authoritative."""
     existing_confidence = str(existing.get("format_confidence") or "unknown")
     candidate_confidence = str(candidate.get("format_confidence") or "unknown")
     existing_priority = FORMAT_CONFIDENCE_PRIORITY[existing_confidence]
@@ -524,7 +551,7 @@ def merge_format_evidence(
         and existing_format != candidate_format
     ):
         raise ValueError(
-            f"{content_id}: conflicting explicit YouTube format evidence: "
+            f"{content_id}: conflicting explicit {platform} format evidence: "
             f"{existing_format} versus {candidate_format}"
         )
 
@@ -794,7 +821,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             }
             if likes_hidden(row):
                 likes_hidden_items.add(content_id)
-            if args.platform == "youtube":
+            if args.platform in ("youtube", "tiktok"):
                 item["format_confidence"] = format_confidence
                 item["format_source"] = format_source
             if query:
@@ -805,11 +832,23 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
                 duplicate_rows_merged += 1
                 # The same content reached us through two connectors. The analyzer raises on
                 # duplicates that disagree, so they are merged here: first envelope wins, later
-                # ones fill missing metrics while YouTube format evidence follows an explicit >
+                # ones fill missing metrics while YouTube/TikTok format evidence follows an explicit >
                 # provisional > unknown priority independent of input order.
                 existing = items[content_id]
-                if args.platform == "youtube":
-                    merge_format_evidence(existing, item, content_id)
+                if args.platform in ("youtube", "tiktok"):
+                    previous_priority = FORMAT_CONFIDENCE_PRIORITY[existing["format_confidence"]]
+                    candidate_priority = FORMAT_CONFIDENCE_PRIORITY[format_confidence]
+                    prefer_tiktok_url = args.platform == "tiktok" and (
+                        candidate_priority > previous_priority
+                        or (candidate_priority == previous_priority
+                            and format_source == "canonical_tiktok_url"
+                            and existing.get("format_source") != "canonical_tiktok_url")
+                    )
+                    merge_format_evidence(existing, item, content_id,
+                                          "TikTok" if args.platform == "tiktok" else "YouTube")
+                    if prefer_tiktok_url:
+                        existing["url"] = item["url"]
+                        existing["format_source"] = format_source
                 for name, entry in item["metrics"].items():
                     if name == "likes" and content_id in likes_hidden_items:
                         # Any envelope flagging the post as hidden wins: a copy without the
@@ -829,8 +868,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
 
     # Count only final merged evidence. Incrementing while rows arrive leaves stale unknown or
     # duration-derived counts when a later duplicate supplies an explicit provider declaration.
-    format_unknown = sum(item.get("format") == "unknown" for item in items.values()) \
-        if args.platform == "youtube" else 0
+    format_unknown = sum(item.get("format") == "unknown" for item in items.values())
     format_duration_inferred = sum(
         item.get("format_source") == "duration_seconds_fallback" for item in items.values()
     ) if args.platform == "youtube" else 0
@@ -847,7 +885,12 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         )
     if skipped_non_reel:
         limitations.append(f"Skipped {skipped_non_reel} Instagram row(s) the provider marked as not a reel")
-    if format_unknown:
+    if format_unknown and args.platform == "tiktok":
+        limitations.append(
+            f"No decisive photo/video format signal for {format_unknown} TikTok item(s); "
+            "recorded as unknown and excluded from same-format cohort comparisons"
+        )
+    if format_unknown and args.platform == "youtube":
         limitations.append(
             f"No decisive format signal for {format_unknown} YouTube item(s): no usable duration "
             "or consistent provisional duration evidence was available, so they were recorded as "

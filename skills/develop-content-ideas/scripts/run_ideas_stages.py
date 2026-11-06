@@ -32,13 +32,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from build_idea_request import RequestInputError, build, load as load_json  # noqa: E402
 from render_idea_report import concise, full, validate_concise  # noqa: E402
-from validate_ideas import generation_decision, validate_authored_intent, validate_idea_set, validate_request  # noqa: E402
+from validate_ideas import bound_conversation_context, generation_decision, validate_authored_intent, validate_idea_set, validate_request  # noqa: E402
 
 STAGE_SCHEMA = "ideas-stage-timing.v1"
 MAX_GENERATION_ATTEMPTS = 2
 ARTIFACT_FLAGS = (
     "creator-profile", "account-review", "account-context", "trend-report", "trend-context",
-    "competitor-report", "competitor-context", "video-analysis", "comment-context", "previous-ideas",
+    "competitor-report", "competitor-context", "video-analysis", "comment-context", "previous-ideas", "conversation-context",
 )
 
 
@@ -46,7 +46,7 @@ def validation_issue(message):
     """Turn validator errors into bounded corrections while preserving source requirements."""
     if "direct_topic" in message:
         return RequestInputError(message, code="invalid_direct_topic", field="generation_basis.direct_topic",
-            next_action="Copy a literal substantive topic from user_brief.text. For a follow-up, keep direct_topic null and restore the previous IdeaSet with --previous-ideas plus a verbatim continuation_quote. Never rewrite the user's brief to make a topic pass.").issue
+            next_action="Copy a literal substantive topic from user_brief.text. For a follow-up, keep direct_topic null and bind the previous IdeaSet with --previous-ideas or exact earlier visible messages with --conversation-context, plus a verbatim continuation_quote. Never rewrite the user's brief to make a topic pass.").issue
     if "report_language" in message or "language variant" in message or "language extension" in message:
         return RequestInputError(message,
             code="invalid_report_language",
@@ -144,6 +144,11 @@ def missing_artifacts(args: argparse.Namespace) -> list[dict[str, Any]]:
     for name in ("intent", *ARTIFACT_FLAGS):
         path = getattr(args, name.replace("-", "_"))
         if path is not None and not path.is_file():
+            if name == "conversation-context":
+                rows.append(RequestInputError(
+                    f"{path} is not an available file", code="missing_conversation_context", field="conversation_context",
+                    next_action="Restore the exact earlier visible messages and referenced text from this conversation. Do not fabricate history or ask the user to repeat text that is already available.").issue)
+                continue
             if name == "previous-ideas":
                 # Keep the builder's specific error, including when another
                 # independently invalid field would otherwise prevent build.
@@ -191,15 +196,27 @@ def run_prep(args: argparse.Namespace) -> int:
         not_json = non_json_artifacts(args)
         if not_json:
             issues.extend(RequestInputError(f"{row['path']} is not JSON", code="not_json", field=row["flag"],
-                next_action="Use the original upstream JSON artifact, not its Markdown report. Do not hand-write a replacement.").issue
+                next_action=("Wrap the exact earlier visible messages in the conversation-source JSON contract; do not invent a native IdeaSet."
+                             if row["flag"] == "--conversation-context" else
+                             "Use the original upstream JSON artifact, not its Markdown report. Do not hand-write a replacement.")).issue
                 for row in not_json)
         files_available = not issues
+        # Check readable conversation input even when an independent upstream
+        # file is missing. Otherwise its reference error surfaces only after the
+        # one allowed correction has already been spent restoring that file.
+        if (args.conversation_context is not None and args.conversation_context.is_file()
+                and not any(row["flag"] == "--conversation-context" for row in not_json)):
+            try:
+                bound_conversation_context(args.conversation_context, run_dir)
+            except (OSError, ValueError) as error:
+                issues.append(RequestInputError(str(error), field="conversation_context").issue)
         intent = None
         if intent_path.is_file():
             try:
                 intent = load_json(intent_path)
                 issues.extend(validation_issue(error) for error in dict.fromkeys(
-                    validate_authored_intent(intent, has_previous_ideas=args.previous_ideas is not None)))
+                    validate_authored_intent(intent, has_previous_ideas=args.previous_ideas is not None,
+                                             has_conversation_context=args.conversation_context is not None)))
             except RequestInputError as error:
                 issues.append(error.issue)
             except (json.JSONDecodeError, UnicodeDecodeError) as error:
@@ -213,6 +230,7 @@ def run_prep(args: argparse.Namespace) -> int:
                     trend_context=args.trend_context, competitor_report=args.competitor_report,
                     competitor_context=args.competitor_context, video_analysis=args.video_analysis,
                     comment_context=args.comment_context, previous_ideas=args.previous_ideas,
+                    conversation_context=args.conversation_context,
                 )
                 issues.extend(validation_issue(error) for error in dict.fromkeys(validate_request(request, request_path)))
             except RequestInputError as error:
