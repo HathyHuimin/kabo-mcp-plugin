@@ -25,6 +25,8 @@ including optional totals. Copy the verified values; check percentage scaling an
 between linked transition rates and the overall rate. Keep undefined or unknown results explicit.
 Check counts and differences in prose too: the number that did not convert in one period is not
 the number of additional losses compared with the other period. State the denominator and unit.
+An aggregate difference does not identify particular customers or unpaid orders. Request the
+actual inquiry/order records for investigation; do not invent a list of missing transactions.
 
 Different period lengths, cohort ages or attribution windows require alignment before calling
 raw totals a decline. Dividing by days alone does not repair different attribution. Explain what
