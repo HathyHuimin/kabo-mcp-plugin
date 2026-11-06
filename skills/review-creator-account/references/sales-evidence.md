@@ -23,6 +23,8 @@ Still answer the supported transitions when one column is missing.
 Calculate every displayed derived rate and change with a local arithmetic tool before writing,
 including optional totals. Copy the verified values; check percentage scaling and consistency
 between linked transition rates and the overall rate. Keep undefined or unknown results explicit.
+Check counts and differences in prose too: the number that did not convert in one period is not
+the number of additional losses compared with the other period. State the denominator and unit.
 
 Different period lengths, cohort ages or attribution windows require alignment before calling
 raw totals a decline. Dividing by days alone does not repair different attribution. Explain what
@@ -40,6 +42,9 @@ A supplied narrow funnel question can be answered from that table without fetchi
 as a substitute for private metrics. Do not insert supplied private totals into a public snapshot
 or claim the public account report validated them. In a full public review, keep observations and
 proposed tests separate from any owner-provided figures and their scope.
+When the supplied table answers the requested funnel comparison, finish that comparison directly;
+do not append a public-content review unless the user also requested one. Unrelated public
+captions cannot resolve a missing private outcome or repair incompatible observation windows.
 
 Before delivery, read the title, first answer and every pattern as standalone claims: does each
 say only what its source measures? Remove unsupported sales conclusions there, rather than adding
