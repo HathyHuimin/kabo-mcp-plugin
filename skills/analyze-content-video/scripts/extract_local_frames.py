@@ -38,11 +38,25 @@ and the frame count and total bytes are capped. The id in the artifact is unchan
                                     [--hook-multiplier 2] [--budget 600] [--max-frames 90]
                                     [--max-total-bytes 12582912] [--jpeg-quality 3]
                                     [--measure-loudness] [--measure-signals] [--dry-run]
+                                    [--deadline-s 40]
+    python3 extract_local_frames.py --media FILE --artifact FILE --signals-only [--deadline-s 40]
 
 `--measure-signals` measures where the file cuts, where its audio drops below the speech floor and
 where its picture holds still, with the thresholds the connector uses on a published video, and
 writes them in that operation's shape under `media.signals`. Frames alone cannot answer pacing: a
 cut shorter than the sampling interval falls between two frames, and silence has no pixels.
+
+**A command that is stopped from outside delivers nothing, so this one stops itself first.** Some
+hosts end a command after a fixed time and keep nothing it wrote -- not the frames already on disk,
+not the artifact. Every step therefore runs against `--deadline-s`, counted from the moment the
+command started: frames are written opening first and the body thinned when time runs out, the
+artifact is written before any measurement starts, and a measurement still running at the deadline
+is stopped and kept as far as it got, with the stretch it never reached named as unread.
+
+**Measurement is its own command.** `--signals-only` measures the file and adds `media.signals` to
+the artifact an earlier frame command wrote for that same file, leaving its frames as they were.
+Run on its own it gets the whole deadline instead of whatever the frames left over, and a
+measurement that fails or runs out costs the frames nothing.
 """
 
 from __future__ import annotations
@@ -53,6 +67,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -95,6 +110,27 @@ SILENCE_FLOOR_DB = -40
 SILENCE_MIN_S = 0.5
 FREEZE_MIN_S = 1.0
 SIGNAL_TIMEOUT_S = 900
+# The measurement reads a reduced copy of the picture: ten frames a second, long edge 640. Decoding
+# the file is unavoidable, but running both detectors on every full-resolution frame was most of the
+# cost -- three separate full decodes of a 4K file did not fit in a minute. Both detectors compare
+# whole frames, so a cut or a held picture survives the reduction, and the thresholds above stay the
+# connector's: on a generated 4K test reel the reduced pass found the same held spans as full
+# resolution and every real cut (full resolution missed one and added one). Cut times are then on a
+# 0.1s grid, finer than any pacing call made from them.
+SIGNAL_FPS = 10
+SIGNAL_LONG_EDGE_PX = 640
+SIGNAL_SCALE_FILTER = (f"scale='if(gte(iw,ih),min({SIGNAL_LONG_EDGE_PX},iw),-2)'"
+                       f":'if(gte(iw,ih),-2,min({SIGNAL_LONG_EDGE_PX},ih))'")
+# Every step stops itself this many seconds after the command started unless told otherwise. A
+# host that ends a command after about a minute keeps nothing from one it had to kill, and fetching
+# the input can already have spent part of that minute.
+DEFAULT_DEADLINE_S = 40.0
+# A pass started with less time than this left reads too little to be worth a ledger entry.
+MIN_SIGNAL_PASS_S = 2.0
+SIGNAL_OPERATIONS = frozenset({"measure_shots", "measure_silence", "measure_freeze",
+                               "measure_shots_and_freeze"})
+BYTE_BUDGET_REASON = "the frame byte budget for this step was used up"
+TIME_BUDGET_REASON = "this command's time budget was used up"
 # Below this a single shot is an ordinary one-take clip; above it, "no cuts" is worth a second look.
 ONE_SHOT_SUSPECT_S = 15.0
 
@@ -369,7 +405,14 @@ def extraction_order(frame_count: int, hook_frames: int) -> list[int]:
 
 
 def extract(media: Path, out_dir: Path, plan: dict, content_id: str, quality: int,
-            max_total_bytes: int = DEFAULT_MAX_TOTAL_BYTES) -> tuple[dict, list, list]:
+            max_total_bytes: int = DEFAULT_MAX_TOTAL_BYTES,
+            deadline: float | None = None) -> tuple[dict, list, list]:
+    """Write the planned frames, in `extraction_order`, until the plan, the bytes or the time ends.
+
+    Running out of time is handled exactly like running out of bytes: the frames not yet written
+    are skipped with the reason, and because the opening and the close are written first, what is
+    left is the hook, the ending and an evenly thinner body rather than a missing final third.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     timestamps = plan["_timestamps"]
     items: list[dict] = []
@@ -388,8 +431,13 @@ def extract(media: Path, out_dir: Path, plan: dict, content_id: str, quality: in
         if written_bytes >= max_total_bytes:
             # Out of room. The rest are skipped rather than written and then refused with the whole
             # step: a thinner frame track is a reading, a refused step is nothing at all.
-            skipped.append({"ordinal": ordinal, "t_seconds": seconds,
-                            "reason": "the frame byte budget for this step was used up"})
+            skipped.append({"ordinal": ordinal, "t_seconds": seconds, "reason": BYTE_BUDGET_REASON})
+            continue
+        left = None if deadline is None else deadline - time.monotonic()
+        if left is not None and left <= 0:
+            # Out of time, for the same reason: a host that has to stop this command keeps none of
+            # the frames already written.
+            skipped.append({"ordinal": ordinal, "t_seconds": seconds, "reason": TIME_BUDGET_REASON})
             continue
 
         written = None
@@ -403,7 +451,13 @@ def extract(media: Path, out_dir: Path, plan: dict, content_id: str, quality: in
             if not sample_args:
                 sample_args = args
             try:
-                result = run_tool("ffmpeg", args, FRAME_TIMEOUT_S)
+                result = run_tool("ffmpeg", args, FRAME_TIMEOUT_S if left is None
+                                  else max(0.5, min(FRAME_TIMEOUT_S, left)))
+            except subprocess.TimeoutExpired as error:
+                reason = TIME_BUDGET_REASON if left is not None and left < FRAME_TIMEOUT_S else str(error)[:300]
+                skipped.append({"ordinal": ordinal, "t_seconds": seconds, "reason": reason})
+                target.unlink(missing_ok=True)  # a half-written frame is not a frame
+                break
             except (OSError, subprocess.SubprocessError) as error:
                 skipped.append({"ordinal": ordinal, "t_seconds": seconds, "reason": str(error)[:300]})
                 break
@@ -548,83 +602,213 @@ def parse_spans(stderr: str, start_key: str, end_pattern: str, duration_s: float
     return spans
 
 
-def measure_signals(media: Path, duration_s: float, has_audio: bool) -> tuple[dict, list, list]:
+def as_text(value) -> str:
+    """Output a timed-out child left behind arrives as bytes even when text was asked for."""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "replace")
+    return value or ""
+
+
+def progress_seconds(progress: str) -> float:
+    """How far into the file a pass got, from ffmpeg's `-progress` lines; 0 when none arrived."""
+    reached = 0.0
+    for hit in re.findall(r"^out_time_us=(\d+)\s*$", progress, flags=re.MULTILINE):
+        reached = max(reached, int(hit) / 1_000_000)
+    return reached
+
+
+def run_pass(args: list[str], deadline: float) -> tuple[str, str, float | None, str]:
+    """One measurement pass, stopped at the deadline and kept as far as it got.
+
+    Returns the pass's status, its log, how many seconds of the file it read (None for all of it)
+    and a note. Stopped early, the detectors have already printed everything they found up to the
+    point the decoder reached, and `-progress` says where that was, so the part that was read is a
+    measurement and only the rest is not. A last log line cut off mid-write is dropped rather than
+    read as a shorter number.
+    """
+    left = deadline - time.monotonic()
+    if left < MIN_SIGNAL_PASS_S:
+        return "failed", "", 0.0, "not started: this command's time budget was already used up"
+    try:
+        result = run_tool("ffmpeg", args, min(SIGNAL_TIMEOUT_S, left))
+    except subprocess.TimeoutExpired as error:
+        log = as_text(error.stderr)
+        log = log[:log.rfind("\n") + 1]
+        reached = progress_seconds(as_text(error.output))
+        if reached <= 0:
+            return "failed", "", 0.0, "stopped before reading any of the file: this command's time budget was used up"
+        return "completed_partial", log, reached, "stopped early: this command's time budget was used up"
+    except (OSError, subprocess.SubprocessError) as error:
+        return "failed", "", 0.0, str(error)[:300]
+    if result.returncode != 0:
+        return "failed", "", 0.0, (result.stderr or "").strip()[-300:]
+    return "completed", result.stderr or "", None, ""
+
+
+def measure_signals(media: Path, duration_s: float, has_audio: bool,
+                    deadline: float | None = None) -> tuple[dict, list, list]:
     """Cuts, silences and held frames, each group standing or falling on its own.
 
     One group failing leaves that group in `unavailable` and the others measured: a failed silence
-    pass is "the sound was not measured", never "there was no silence".
+    pass is "the sound was not measured", never "there was no silence". Two passes, not three: the
+    sound alone (no picture decoded), then cuts and held frames together over one reduced decode of
+    the picture (no sound decoded). The sound goes first because it costs a fraction of a second
+    and would otherwise be the part a deadline starves.
+
+    A pass the deadline stopped keeps what it read. Its group is measured up to that second and
+    named in `measured_until_s`; a span still open there is closed there, and a limitation says the
+    rest of the file was not read -- so a quiet stretch past it reads as unmeasured, not as speech.
     """
+    if deadline is None:
+        deadline = time.monotonic() + SIGNAL_TIMEOUT_S
     steps: list[dict] = []
     limitations: list[str] = []
     data: dict = {"duration_s": round(duration_s, 3), "measured": [], "unavailable": []}
+    until: dict[str, float] = {}
+    out_of_time: set[str] = set()
+    base = ["-nostdin", "-hide_banner", "-nostats", "-progress", "pipe:1"]
 
-    def detect(group: str, filter_flag: str, filter_value: str) -> str | None:
-        args = ["-nostdin", "-hide_banner", "-nostats", "-i", str(media),
-                filter_flag, filter_value, "-f", "null", "-"]
+    def detect(operation: str, args: list[str], covers: tuple[str, ...]) -> tuple[str | None, float]:
         started = now()
-        try:
-            result = run_tool("ffmpeg", args, SIGNAL_TIMEOUT_S)
-        except (OSError, subprocess.SubprocessError) as error:
-            result, note = None, str(error)[:300]
-        else:
-            note = "" if result.returncode == 0 else (result.stderr or "").strip()[-300:]
-        step = {"step": "local_extraction", "operation": f"measure_{group}", "tool": "ffmpeg",
+        status, log, reached, note = run_pass(args, deadline)
+        step = {"step": "local_extraction", "operation": operation, "tool": "ffmpeg",
                 "tool_version": tool_version("ffmpeg"), "invocation_sha256": invocation_digest(args, media),
-                "started_at": started, "status": "completed" if not note else "failed"}
+                "started_at": started, "status": status}
         if note:
             step["note"] = note
         steps.append(step)
-        return None if note or result is None else (result.stderr or "")
+        if status == "failed":
+            if "time budget" in note:
+                out_of_time.update(covers)
+            return None, 0.0
+        if reached is None:
+            return log, duration_s
+        return log, min(duration_s, reached)
+
+    def partial(groups: str, read_s: float) -> None:
+        # Named on the pass's own ledger entry as well, at the second the detectors reached --
+        # which can be later than the last progress line, never earlier.
+        steps[-1]["note"] = (f"stopped after the first {read_s:.1f}s of the file: this command's "
+                             "time budget was used up")
+        limitations.append(
+            f"{groups} were measured over the first {read_s:.1f}s of {duration_s:.1f}s only: the "
+            "measurement stopped there to stay inside this command's time. Past that second they "
+            "were not read -- treat the rest as unmeasured, not as found to have none.")
+
+    groups: dict[str, dict] = {}
+    if has_audio:
+        log, read_s = detect("measure_silence", [
+            *base, "-vn", "-sn", "-dn", "-i", str(media), "-map", "0:a:0",
+            "-af", f"silencedetect=n={SILENCE_FLOOR_DB}dB:d={SILENCE_MIN_S}", "-f", "null", "-"],
+            ("silence",))
+        if log is not None:
+            ends = [float(hit) for hit in re.findall(r"silence_(?:start|end):\s*(-?[\d.]+)", log)]
+            read_s = max([read_s, *[min(duration_s, end) for end in ends]])
+            groups["silence"] = {"floor_db": SILENCE_FLOOR_DB, "min_s": SILENCE_MIN_S,
+                                 "spans": parse_spans(log, "silence_start",
+                                                      r"silence_end:\s*([\d.]+)", read_s)}
+            if read_s < duration_s:
+                until["silence"] = round(read_s, 3)
+                partial("Speech pauses", read_s)
 
     score = max(1, min(99, round(SHOT_THRESHOLD * 100)))
-    log = detect("shots", "-vf", f"scdet=threshold={score}")
-    if log is None:
-        data["unavailable"].append("shots")
-    else:
+    chain = (f"fps={SIGNAL_FPS},{SIGNAL_SCALE_FILTER},scdet=threshold={score},"
+             f"freezedetect=n=-60dB:d={FREEZE_MIN_S:g}")
+    log, read_s = detect("measure_shots_and_freeze", [
+        *base, "-an", "-sn", "-dn", "-i", str(media), "-map", "0:v:0", "-vf", chain, "-f", "null", "-"],
+        ("shots", "freeze"))
+    if log is not None:
         cuts = [round(float(hit), 3) for hit in re.findall(r"lavfi\.scd\.time:\s*([\d.]+)", log)]
-        shots = shots_from_cuts(cuts, duration_s)
-        data["shots"] = {"count": len(shots), "cuts_at_s": cuts, "shots": shots}
-        data["measured"].append("shots")
-        if len(shots) == 1 and duration_s >= ONE_SHOT_SUSPECT_S:
+        held = [float(hit) for hit in re.findall(r"freezedetect\.freeze_(?:start|end):\s*([\d.]+)", log)]
+        read_s = max([read_s, *[min(duration_s, hit) for hit in cuts + held]])
+        shots = shots_from_cuts(cuts, read_s)
+        groups["shots"] = {"count": len(shots), "cuts_at_s": cuts, "shots": shots}
+        groups["freeze"] = {"min_s": FREEZE_MIN_S,
+                            "spans": parse_spans(log, r"freezedetect\.freeze_start",
+                                                 r"freezedetect\.freeze_end:\s*([\d.]+)", read_s)}
+        if read_s < duration_s:
+            until["shots"] = until["freeze"] = round(read_s, 3)
+            partial("Cuts and held frames", read_s)
+        if len(shots) == 1 and read_s >= ONE_SHOT_SUSPECT_S:
             limitations.append(
-                f"No cuts were detected across {duration_s:.1f}s at sensitivity {SHOT_THRESHOLD}. "
+                f"No cuts were detected across {read_s:.1f}s at sensitivity {SHOT_THRESHOLD}. "
                 "Cutting inside one location -- same room, same subject, same light -- often scores "
                 "below this, so a single shot here may mean the detector was too blunt rather than "
                 "that the video is one take. Check the frames before describing it as uncut.")
 
-    if not has_audio:
-        data["unavailable"].append("silence")
-        limitations.append("The file carries no audio track, so where speech pauses was not measured.")
-    else:
-        log = detect("silence", "-af", f"silencedetect=n={SILENCE_FLOOR_DB}dB:d={SILENCE_MIN_S}")
-        if log is None:
-            data["unavailable"].append("silence")
+    # The connector's order, whatever order the passes ran in.
+    for group in ("shots", "silence", "freeze"):
+        if group in groups:
+            data[group] = groups[group]
+            data["measured"].append(group)
         else:
-            data["silence"] = {"floor_db": SILENCE_FLOOR_DB, "min_s": SILENCE_MIN_S,
-                               "spans": parse_spans(log, "silence_start",
-                                                    r"silence_end:\s*([\d.]+)", duration_s)}
-            data["measured"].append("silence")
-
-    log = detect("freeze", "-vf", f"freezedetect=n=-60dB:d={FREEZE_MIN_S:g}")
-    if log is None:
-        data["unavailable"].append("freeze")
-    else:
-        data["freeze"] = {"min_s": FREEZE_MIN_S,
-                          "spans": parse_spans(log, r"freezedetect\.freeze_start",
-                                               r"freezedetect\.freeze_end:\s*([\d.]+)", duration_s)}
-        data["measured"].append("freeze")
-
-    if data["unavailable"]:
+            data["unavailable"].append(group)
+    if until:
+        data["measured_until_s"] = until
+    if not has_audio:
+        limitations.append("The file carries no audio track, so where speech pauses was not measured.")
+    late = [group for group in data["unavailable"] if group in out_of_time]
+    if late:
+        limitations.append("These measurements were not taken because this command's time ran out "
+                           f"before they could read any of the file: {', '.join(late)}. Treat each as "
+                           "unread rather than as measured-and-found-nothing.")
+    missing = [group for group in data["unavailable"]
+               if group not in out_of_time and (has_audio or group != "silence")]
+    if missing:
         limitations.append("These measurements could not be taken on this machine: "
-                           f"{', '.join(data['unavailable'])}. Treat each as unread rather than as "
+                           f"{', '.join(missing)}. Treat each as unread rather than as "
                            "measured-and-found-nothing.")
     return data, steps, limitations
 
 
+def earlier_artifact(path: Path, input_sha256: str) -> tuple[dict | None, str]:
+    """The artifact a frame command wrote for this same file, for `--signals-only` to add to.
+
+    None with no message when there is none yet: measuring first and sampling later is allowed.
+    A file that is there but is not this script's artifact, or was written for a different video,
+    is refused rather than overwritten -- its frames belong to something else.
+    """
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None, ""
+    except (OSError, json.JSONDecodeError) as error:
+        return None, f"{path.name} exists but could not be read as an artifact ({error}); name a new --artifact path"
+    if not isinstance(document, dict) or document.get("schema_version") != "local-media-extraction.v1":
+        return None, f"{path.name} is not an artifact this script wrote; name a new --artifact path"
+    if document.get("input_sha256") != input_sha256:
+        return None, (f"{path.name} was written for a different file than --media; measure into the "
+                      "artifact of the same file, or name a new --artifact path")
+    return document, ""
+
+
+def write_artifact(path: Path, artifact: dict) -> None:
+    artifact["tools"] = {step["tool"]: step["tool_version"] for step in artifact["steps"]}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def add_signals(artifact: dict, signals: dict, steps: list, notes: list) -> None:
+    """Put one measurement into the artifact, replacing any earlier one rather than stacking it.
+
+    The notes a measurement adds are kept beside it, so measuring again removes exactly those and
+    leaves every limitation the frames wrote.
+    """
+    media = artifact["media"]
+    earlier = media.get("signals") if isinstance(media.get("signals"), dict) else {}
+    stale = set(earlier.get("notes") or [])
+    artifact["steps"] = [step for step in artifact["steps"]
+                         if step.get("operation") not in SIGNAL_OPERATIONS] + steps
+    artifact["limitations"] = [text for text in artifact["limitations"] if text not in stale] + notes
+    media["signals"] = {**signals, "notes": notes}
+    artifact["generated_at"] = now()
+
+
 def main() -> int:
+    started_at = time.monotonic()
     parser = argparse.ArgumentParser(description="Sample frames from a video on this machine.")
     parser.add_argument("--media", type=Path, required=True)
-    parser.add_argument("--out-dir", type=Path, required=True)
+    parser.add_argument("--out-dir", type=Path)
     parser.add_argument("--artifact", type=Path, required=True)
     parser.add_argument("--hook-window-s", type=float, default=3.0,
                         help="How far in the hook is judged: about 3s for a Short, 15-30 for long-form.")
@@ -638,9 +822,16 @@ def main() -> int:
     parser.add_argument("--jpeg-quality", type=int, default=3)
     parser.add_argument("--measure-loudness", action="store_true")
     parser.add_argument("--measure-signals", action="store_true",
-                        help="Measure cuts, speech pauses and held frames.")
+                        help="Measure cuts, speech pauses and held frames after the frames are written.")
+    parser.add_argument("--signals-only", action="store_true",
+                        help="Write no frames; measure, and add the result to the artifact an earlier "
+                             "frame command wrote for this file.")
+    parser.add_argument("--deadline-s", type=float, default=DEFAULT_DEADLINE_S,
+                        help="Stop every step this many seconds after the command started and write "
+                             "what it has.")
     parser.add_argument("--dry-run", action="store_true", help="Probe and plan, write no frames.")
     args = parser.parse_args()
+    deadline = started_at + args.deadline_s
 
     media = args.media.expanduser()
     if not media.is_absolute():
@@ -654,9 +845,13 @@ def main() -> int:
         # whatever else the run has.
         return 4 if state == "denied" else 2
     if (args.hook_multiplier < 1 or args.base_interval_s <= 0 or args.budget < 2
-            or args.max_frames < 2 or args.max_total_bytes < 1):
+            or args.max_frames < 2 or args.max_total_bytes < 1 or not args.deadline_s > 0):
         print("ERROR: --hook-multiplier must be at least 1, --base-interval-s positive, "
-              "--budget and --max-frames at least 2, --max-total-bytes positive", file=sys.stderr)
+              "--budget and --max-frames at least 2, --max-total-bytes and --deadline-s positive",
+              file=sys.stderr)
+        return 2
+    if args.out_dir is None and not args.signals_only:
+        print("ERROR: --out-dir is required unless --signals-only is given", file=sys.stderr)
         return 2
 
     probe_step, payload = probe(media)
@@ -673,101 +868,117 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
-    content_id = media.stem
-    plan = plan_frames(duration, args.hook_window_s, args.base_interval_s,
-                       args.hook_multiplier, min(args.budget, args.max_frames))
-    timestamps = plan.pop("_timestamps")
+    input_sha256 = file_digest(media)
+    artifact = None
+    if args.signals_only:
+        artifact, problem = earlier_artifact(args.artifact, input_sha256)
+        if problem:
+            print(f"ERROR: {problem}", file=sys.stderr)
+            return 2
 
-    items: list[dict] = []
-    skipped: list[dict] = []
-    if args.dry_run:
-        frames_status = "not_attempted"
-    else:
-        plan["_timestamps"] = timestamps
-        extract_step, items, skipped = extract(media, args.out_dir, plan, content_id, args.jpeg_quality,
-                                               args.max_total_bytes)
-        plan.pop("_timestamps")
-        steps.append(extract_step)
-        frames_status = "available" if items else "unavailable"
-        artifact_parent = args.artifact.expanduser().resolve().parent
-        for item in items:
-            # Relative to the artifact, never absolute: this file travels into the evidence object
-            # and an operator's home directory has no business travelling with it.
-            file_name = item.pop("_file")
-            try:
-                item["path"] = str((args.out_dir.resolve() / file_name).relative_to(artifact_parent))
-            except ValueError:
-                item["path"] = str(Path(args.out_dir.name) / file_name)
-        over_budget = [entry for entry in skipped if "byte budget" in entry["reason"]]
-        unreadable = len(skipped) - len(over_budget)
-        if unreadable:
-            limitations.append(f"{unreadable} of {len(timestamps)} planned frames could not be "
-                               "read from the file, so those seconds were not seen.")
-        if over_budget and items:
-            seen = [item["t_seconds"] for item in items]
-            widest = max((later - earlier for earlier, later in zip(seen, seen[1:])), default=0.0)
-            # Only claim what was actually written: a budget used up inside the opening leaves
-            # part of the hook, and the closing frame, unseen.
-            missing = {entry["ordinal"] for entry in skipped}
-            whole = (not any(ordinal <= plan["hook_frames"] for ordinal in missing)
-                     and len(timestamps) not in missing)
-            coverage = ("The opening and the closing frame are whole; the body is thinner"
-                        if whole else
-                        "Not all of the opening and closing frames were written, so do not describe "
-                        "the whole hook or the ending as seen")
-            limitations.append(f"{len(over_budget)} of {len(timestamps)} planned frames were not "
-                               f"written because this step's frame byte budget was used up. {coverage}, "
-                               f"with up to {widest:.3g}s between written frames, so a cut shorter "
-                               "than that may fall between them.")
+    if artifact is None:
+        content_id = media.stem
+        plan = plan_frames(duration, args.hook_window_s, args.base_interval_s,
+                           args.hook_multiplier, min(args.budget, args.max_frames))
+        timestamps = plan.pop("_timestamps")
 
-    if args.measure_loudness and facts["has_audio"] and not args.dry_run:
-        loudness, step, notes = measure_loudness(media, duration)
-        if step:
-            steps.append(step)
-        limitations.extend(notes)
-        if loudness:
-            facts["encoding"].update(loudness)
-    elif args.measure_loudness and not facts["has_audio"]:
-        limitations.append("The file carries no audio track, so nothing about its sound was measured.")
+        items: list[dict] = []
+        skipped: list[dict] = []
+        if args.dry_run or args.signals_only:
+            frames_status = "not_attempted"
+        else:
+            plan["_timestamps"] = timestamps
+            extract_step, items, skipped = extract(media, args.out_dir, plan, content_id, args.jpeg_quality,
+                                                   args.max_total_bytes, deadline)
+            plan.pop("_timestamps")
+            steps.append(extract_step)
+            frames_status = "available" if items else "unavailable"
+            artifact_parent = args.artifact.expanduser().resolve().parent
+            for item in items:
+                # Relative to the artifact, never absolute: this file travels into the evidence object
+                # and an operator's home directory has no business travelling with it.
+                file_name = item.pop("_file")
+                try:
+                    item["path"] = str((args.out_dir.resolve() / file_name).relative_to(artifact_parent))
+                except ValueError:
+                    item["path"] = str(Path(args.out_dir.name) / file_name)
+            out_of_room = [entry for entry in skipped
+                           if entry["reason"] in (BYTE_BUDGET_REASON, TIME_BUDGET_REASON)]
+            unreadable = len(skipped) - len(out_of_room)
+            if unreadable:
+                limitations.append(f"{unreadable} of {len(timestamps)} planned frames could not be "
+                                   "read from the file, so those seconds were not seen.")
+            if out_of_room and items:
+                seen = [item["t_seconds"] for item in items]
+                widest = max((later - earlier for earlier, later in zip(seen, seen[1:])), default=0.0)
+                # Only claim what was actually written: a budget used up inside the opening leaves
+                # part of the hook, and the closing frame, unseen.
+                missing = {entry["ordinal"] for entry in skipped}
+                whole = (not any(ordinal <= plan["hook_frames"] for ordinal in missing)
+                         and len(timestamps) not in missing)
+                coverage = ("The opening and the closing frame are whole; the body is thinner"
+                            if whole else
+                            "Not all of the opening and closing frames were written, so do not describe "
+                            "the whole hook or the ending as seen")
+                causes = sorted({"this step's frame byte budget was used up"
+                                 if entry["reason"] == BYTE_BUDGET_REASON
+                                 else "this command's time budget was used up" for entry in out_of_room})
+                limitations.append(f"{len(out_of_room)} of {len(timestamps)} planned frames were not "
+                                   f"written because {' and '.join(causes)}. {coverage}, "
+                                   f"with up to {widest:.3g}s between written frames, so a cut shorter "
+                                   "than that may fall between them.")
 
-    if args.measure_signals and not args.dry_run:
-        signals, signal_steps, notes = measure_signals(media, duration, facts["has_audio"])
-        steps.extend(signal_steps)
-        limitations.extend(notes)
-        facts["signals"] = signals
+        if args.measure_loudness and facts["has_audio"] and not args.dry_run and not args.signals_only:
+            loudness, step, notes = measure_loudness(media, duration)
+            if step:
+                steps.append(step)
+            limitations.extend(notes)
+            if loudness:
+                facts["encoding"].update(loudness)
+        elif args.measure_loudness and not facts["has_audio"]:
+            limitations.append("The file carries no audio track, so nothing about its sound was measured.")
 
-    artifact = {
-        "schema_version": "local-media-extraction.v1",
-        "generated_at": now(),
-        "media_path": media.name,
-        "content_id": content_id,
-        "input_sha256": file_digest(media),
-        "tools": {step["tool"]: step["tool_version"] for step in steps},
-        "steps": steps,
-        "media": facts,
-        "frames": {
-            "status": frames_status,
-            "selection": "duration_scaled_v1",
-            "sampling_plan": plan,
-            "requested_timestamps": timestamps,
-            "items": items,
-            "skipped": skipped,
-        },
-        "limitations": limitations,
-    }
+        artifact = {
+            "schema_version": "local-media-extraction.v1",
+            "generated_at": now(),
+            "media_path": media.name,
+            "content_id": content_id,
+            "input_sha256": input_sha256,
+            "tools": {},
+            "steps": steps,
+            "media": facts,
+            "frames": {
+                "status": frames_status,
+                "selection": "duration_scaled_v1",
+                "sampling_plan": plan,
+                "requested_timestamps": timestamps,
+                "items": items,
+                "skipped": skipped,
+            },
+            "limitations": limitations,
+        }
+        # On disk before any measurement starts: whatever happens to the measurement, the frames
+        # are already delivered.
+        write_artifact(args.artifact, artifact)
 
-    args.artifact.parent.mkdir(parents=True, exist_ok=True)
-    args.artifact.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    measured = None
+    if (args.measure_signals or args.signals_only) and not args.dry_run:
+        signals, signal_steps, notes = measure_signals(media, duration, facts["has_audio"], deadline)
+        add_signals(artifact, signals, signal_steps, notes)
+        write_artifact(args.artifact, artifact)
+        measured = bool(signals["measured"])
+
+    frames = artifact["frames"]
     summary = {
         "artifact": str(args.artifact),
-        "duration_s": facts["duration_s"],
-        "planned": len(timestamps),
-        "written": len(items),
-        "skipped": len(skipped),
-        "frames_status": frames_status,
+        "duration_s": artifact["media"]["duration_s"],
+        "planned": len(frames["requested_timestamps"]),
+        "written": len(frames["items"]),
+        "skipped": len(frames["skipped"]),
+        "frames_status": frames["status"],
     }
-    if "signals" in facts:
-        signals = facts["signals"]
+    if "signals" in artifact["media"]:
+        signals = artifact["media"]["signals"]
         summary["signals"] = {
             "measured": signals["measured"],
             "unavailable": signals["unavailable"],
@@ -775,8 +986,12 @@ def main() -> int:
             "silences": len(signals.get("silence", {}).get("spans", [])) if "silence" in signals else None,
             "held_frames": len(signals.get("freeze", {}).get("spans", [])) if "freeze" in signals else None,
         }
+        if signals.get("measured_until_s"):
+            summary["signals"]["measured_until_s"] = signals["measured_until_s"]
     print(json.dumps(summary, ensure_ascii=False, indent=2))
-    return 0 if (args.dry_run or items) else 1
+    if args.signals_only:
+        return 0 if measured else 1
+    return 0 if (args.dry_run or frames["items"]) else 1
 
 
 if __name__ == "__main__":

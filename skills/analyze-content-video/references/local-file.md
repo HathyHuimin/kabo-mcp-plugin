@@ -17,17 +17,37 @@ package reads it.
 2. **Read the file.**
    `cd '<run directory>' && python3 <skill directory>/scripts/extract_local_frames.py --media <absolute path> --out-dir analysis/frames
    --artifact analysis/local-media.json --hook-window-s <3 for a Short, 15–30 for long-form>`,
-   adding `--measure-loudness` when the question is about sound, and `--measure-signals` whenever it
-   touches pacing, cuts, pauses or the ending: frames place no cut shorter than their spacing and
-   hear no pause, and the measurement does both with the connector's own thresholds, landing in
-   `media.probed` exactly as a published video's would. It writes the same frame shape the
+   adding `--measure-loudness` when the question is about sound. It writes the same frame shape the
    connector writes, so everything in *Frame sampling* in `references/evidence-reading.md` applies unchanged — `frames.origin`
    included. **Locally sampled frames are real pixels and are read exactly like any other frame:
    open them, quote what is on them, cite them the same way.** Nothing in the analysis branches on
    where a frame came from; the ledger records that, and the ledger is not the report.
-3. **Get the words** — see the three tiers under *Getting the words* below.
-4. **Then build**, with `--local-media analysis/local-media.json` and, where there is one,
+3. **Measure, in a command of its own**, whenever the question touches pacing, cuts, pauses or the
+   ending: `cd '<run directory>' && python3 <skill directory>/scripts/extract_local_frames.py --media <the same absolute path>
+   --artifact analysis/local-media.json --signals-only`. Frames place no cut shorter than their
+   spacing and hear no pause; the measurement does both with the connector's own thresholds and adds
+   them to the artifact step 2 wrote, landing in `media.probed` exactly as a published video's would.
+   **Never fold it into the frame command.** Sharing a command means sharing its time, and a
+   measurement that runs out or fails on its own leaves the frames already written untouched.
+4. **Get the words** — see the three tiers under *Getting the words* below.
+5. **Then build**, with `--local-media analysis/local-media.json` and, where there is one,
    `--local-transcript analysis/local-transcript.json`.
+
+### When the file is long or heavy
+
+Some hosts end a command after about a minute and keep nothing it wrote, so every command above
+stops itself at `--deadline-s` (40 seconds after it started, by default) and writes what it has.
+A large or high-resolution file can need longer than that, and the output says what was left out:
+
+- **Frames** — the opening and the closing frame are written first, so running out of time thins
+  the body; the summary counts the skipped frames and a limitation gives the widest gap left.
+- **Measurement** — it reads the file from the start and stops at the deadline. `measured_until_s`
+  in its summary names the second it reached, and a limitation in the artifact says the rest was not
+  read. Pass that on: past that second, cuts and pauses are **unmeasured, not absent**. Place a
+  change there between the two frames that bracket it, as you would with no measurement at all.
+
+Raise `--deadline-s` only where the host lets a command run longer. Rerunning the same command
+with the same deadline gets no further.
 
 ### Where the file is allowed to be read
 
