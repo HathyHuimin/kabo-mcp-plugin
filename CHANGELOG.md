@@ -2,6 +2,12 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.18（2026-11-06；GitHub Release）
+
+- 新增三个 Skill：`optimize-creator-brand`（品牌命名、简介、品牌包）、`plan-content-calendar`（可审阅的内容日历）、`price-creator-brand-deals`（商单报价），由 creator-skills 移植（#97）。
+- 同步 creator-skills 在移植后、冻结点 `6f8ef681f` 之前的修复（#114）：竞品 / 流量下降 / 发布时间的 TikTok 图文与视频分开做基线、保留原始链接；账号复盘把「含当天」的成熟期截止交给报告撰写；选题可用普通对话原文做续写来源（`--conversation-context`）；脚本包装区分创作草稿与原生包、保留上游 SelectedIdea、成片交给宿主的媒体能力、助手建议的时长只算估计。
+- 生产回归：待补。
+
 ## 1.0.17（2026-11-06；GitHub Release）
 
 - `analyze-content-video`：转写、抽帧、度量（Instagram / TikTok 另加元数据）改为一次 `collect_video_media` 后台调用，由新脚本 `collect_media.py` 交接与续等，全部终态后逐项落成 `snapshot/envelope-NN.json` 并给出证据构建参数与一次读帧；模型不再逐个提交、轮询媒体 job（#112，需 kabo#2050）。Codex 生产回归同一条 YouTube 视频 3/3 出报告。

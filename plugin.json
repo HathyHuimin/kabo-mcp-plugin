@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "kabo",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "Public creator research with bundled workflows and Kabo MCP evidence.",
   "author": {
     "name": "Dealism",
@@ -36,7 +36,7 @@
         ]
       },
       "publication": {
-        "release_notes": "Kabo 1.0.17: video analysis now gets the transcript, frames and measurements with one backend call that waits for them, instead of submitting and polling each job, so a diagnosis no longer stops while media is still processing. Includes all fifteen Skills. OpenAI marketplace review remains separate."
+        "release_notes": "Kabo 1.0.18 adds three Skills: creator brand identity (names, bios, brand kit), a reviewable content calendar, and brand-deal pricing. It also brings over fixes for TikTok photo versus video baselines, inclusive maturity cutoffs in account reviews, conversation-based idea continuations, and script routing between creative drafts and native packages. Includes all eighteen Skills. OpenAI marketplace review remains separate."
       }
     }
   }
