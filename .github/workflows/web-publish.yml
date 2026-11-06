@@ -9,7 +9,9 @@ name: Publish a release to Kabo Web
 # - workflow_dispatch: publishes `tag` (default: the latest release) to `target`; ignores PLUGIN_WEB_AUTO.
 # Idempotent: the production target is skipped when Web is already on that commit (`force` overrides,
 # for instance after changing PLUGIN_WEB_HOLD). PLUGIN_WEB_HOLD
-# (comma-separated Skill ids) keeps those Skills on their Registry version.
+# (comma-separated Skill ids) keeps those Skills on their Registry version in the production overlay.
+# The test target (pre test accounts) ignores it, so a held Skill can be tested there before it is
+# released; PLUGIN_WEB_TEST_HOLD, when set, is the test target's own hold list.
 on:
   release:
     types: [published]
@@ -120,9 +122,11 @@ jobs:
           COMMIT: ${{ steps.target.outputs.commit }}
           TAG: ${{ steps.target.outputs.tag }}
           TARGET: ${{ steps.target.outputs.target }}
-          HOLD: ${{ vars.PLUGIN_WEB_HOLD }}
+          PROD_HOLD: ${{ vars.PLUGIN_WEB_HOLD }}
+          TEST_HOLD: ${{ vars.PLUGIN_WEB_TEST_HOLD }}
         run: |
           set -euo pipefail
+          if [[ "$TARGET" == "test" ]]; then HOLD="$TEST_HOLD"; else HOLD="$PROD_HOLD"; fi
           test "$(git -C release-source rev-parse HEAD)" = "$COMMIT"
           [[ -z "$HOLD" ]] || echo "holding back: $HOLD"
           node scripts/web-publish/plugin-web.mjs publish --plugin-root release-source --plugin-commit "$COMMIT" \
