@@ -2,6 +2,10 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.23（2026-11-06；GitHub Release）
+
+- `analyze-content-video`：`collect_media.py` 续跑时找不到这一轮的媒体结果，报错里补一句：结果以证据引用传入的宿主，先对最后一次 `collect_video_media` 结果跑 `static_host.py stage`，再跑同一条续跑命令。Web pre 复测（M3b）里模型取完媒体没有先暂存就续跑，报错只提到结果编号和存文件，模型随即放弃，没有交正式报告。
+
 ## 1.0.22（2026-11-06；GitHub Release）
 
 - `analyze-content-video`：只有 `collect_media.py` 能写 `collect_video_media` 的参数；模型不再自己拼这次调用，失败时也不改成逐项取媒体或查 job（#125）。生产 Web 上 0.14.31 的 12 次运行里，多数先自己拼调用、被 schema 拒，再绕开脚本逐项取数、自由作答，没有走到 `finish_diagnosis.py`。

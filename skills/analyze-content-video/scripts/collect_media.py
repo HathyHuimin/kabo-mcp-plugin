@@ -147,7 +147,9 @@ def take_saved(result_id: str | None) -> None:
                 continue
             raise ValueError(f"no result for this hand-over: run the same resume command again with --id <id>, the "
                              f"id from the last {TOOL} call's download url (only for a result with no download url, "
-                             f"save it whole at {path} and leave --id out)")
+                             f"save it whole at {path} and leave --id out). On a host that passes results as "
+                             f"evidence references, first run static_host.py stage --tool {TOOL} on the last "
+                             f"{TOOL} result, then this same resume command")
         raw = path.read_bytes()
         digest = hashlib.sha256(raw).hexdigest()
         if taken.get(name) == digest:

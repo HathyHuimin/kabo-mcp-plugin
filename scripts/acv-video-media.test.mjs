@@ -113,3 +113,15 @@ test("collect_media.py：未知操作与超出上限的帧数直接拒绝，不�
   assert.match(bad.out, /--operations takes/);
   assert.equal(calls(bad.out).length, 0);
 });
+
+test("collect_media.py：续跑时既没有结果编号、也没有暂存记录，报错说出先 stage 再续跑", async (t) => {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "kabo-acv-media-"));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  const run = python("static_host.py", ["init", "--workspace", workspace]).out.trim();
+  const first = python("collect_media.py", ["--url", URL_, "--operations", "transcript,keyframes,measure"], { cwd: run, run });
+  assert.equal(first.code, 0, first.out);
+  const resumed = shell(resumeOf(first.out));
+  assert.equal(resumed.code, 1, resumed.out);
+  assert.match(resumed.out, /no result for this hand-over/);
+  assert.match(resumed.out, /static_host\.py stage --tool collect_video_media/);
+});
