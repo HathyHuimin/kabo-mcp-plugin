@@ -40,10 +40,10 @@ renderer to look for.
 3. **Measure before you claim.** Put what can be counted on the page, each with the timecode it
    came from, before any judgement about why something works.
 
-   `public_video_measure_media_signals` measures in one call: shot boundaries and how long each
+   The media call's `measure` operation measures in one job: shot boundaries and how long each
    runs, per-shot brightness, where the track goes quiet, loudness every tenth of a second, held
    frames including a trailing still, and the real frame size with its bars and the share of a
-   phone screen actually filled. Ask for the groups the question needs.
+   phone screen actually filled.
 
    Measurement is its own readiness question, answered by the run's one
    `get_research_capabilities` check. When it is not available, say the numbers were unavailable

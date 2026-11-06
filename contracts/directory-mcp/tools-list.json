@@ -13951,7 +13951,8 @@
                   "enum": [
                     "collect_public_metadata",
                     "fetch_transcript",
-                    "extract_keyframes"
+                    "extract_keyframes",
+                    "measure_media_signals"
                   ],
                   "type": "string"
                 },

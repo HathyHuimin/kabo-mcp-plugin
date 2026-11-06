@@ -68,7 +68,7 @@ re-encode turns into audible distortion, so it is worth saying on the master.
 **A file on this machine has no platform captions to fetch, and three tiers in order:**
 
 1. **Platform captions** — only where the same cut is also published and the creator points at the
-   post. That is a `public_url` run and `public_video_fetch_transcript` is the whole path, as *Transcript* in `references/evidence-reading.md` says.
+   post. That is a `public_url` run and the media call's `transcript` operation is the whole path, as *Transcript* in `references/evidence-reading.md` says.
 2. **A subtitle file the creator supplies** — `.srt` or `.txt`, read by
    `cd '<run directory>' && python3 <skill directory>/scripts/read_subtitle_file.py --subtitle <file> --artifact analysis/local-transcript.json`.
    **Ask for one before giving up on the words.** A creator who cut with captions already has this

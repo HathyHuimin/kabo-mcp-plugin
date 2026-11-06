@@ -3,7 +3,7 @@ name: analyze-content-video
 description: "Diagnose one video or still-image post from its own timestamped evidence and say what to keep, recut or replace next; or break down how a video was made into steps one person can follow. Also exports a video's transcript as TXT or SRT and reports its cover and tags. Use for why a video flopped or took off, hook and retention review, a re-edit plan, an unpublished cut on this machine, how was this edited, or getting a video's subtitles."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Local video files also need ffmpeg and ffprobe. Kabo permission: data."
-allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts public_video_collect_public_metadata public_video_fetch_transcript public_video_extract_keyframes public_video_extract_keyframes_hosted_media public_video_extract_keyframes_hosted_stream public_video_measure_media_signals youtube_get_video youtube_get_channel youtube_list_channel_uploads lookup_instagram_post instagram_get_transcript instagram_resolve_profile instagram_list_posts instagram_list_reels tiktok_search_get_video tiktok_search_get_transcript tiktok_search_list_profile_videos start_skill_run
+allowed-tools: get_research_capabilities get_research_data_download read_research_data_artifacts collect_video_media youtube_get_video youtube_get_channel youtube_list_channel_uploads lookup_instagram_post instagram_get_transcript instagram_resolve_profile instagram_list_posts instagram_list_reels tiktok_search_get_video tiktok_search_get_transcript tiktok_search_list_profile_videos start_skill_run
 ---
 
 # Analyze Content Video
@@ -62,11 +62,11 @@ If this Skill cannot produce the report, say so.
 
 | Evidence | YouTube | Instagram | TikTok |
 |---|---|---|---|
-| Metadata, cover, tags | `youtube_get_video` | `public_video_collect_public_metadata` | `public_video_collect_public_metadata` |
+| Metadata, cover, tags | `youtube_get_video` | media call (`metadata`) | media call (`metadata`) |
 | Post row (still-image posts) | — | `lookup_instagram_post` | — |
-| Transcript | `public_video_fetch_transcript` | same | same |
-| Frames | `public_video_extract_keyframes` | same | same |
-| Measurements | `public_video_measure_media_signals` | same | same |
+| Transcript | media call (`transcript`) | same | same |
+| Frames | media call (`keyframes`) | same | same |
+| Measurements | media call (`measure`) | same | same |
 | Own baseline (own published only) | `youtube_list_channel_uploads` | `instagram_list_reels` / `instagram_list_posts` | `tiktok_search_list_profile_videos` |
 
 - **Readiness once per run.** Call `get_research_capabilities` once and reuse its answer; when the
@@ -75,28 +75,33 @@ If this Skill cannot produce the report, say so.
 - **One call per request.** The data tools in the table take
   `{"parameters": {…}, "delivery": "download"}` as their input schema says, except
   `lookup_instagram_post`, which takes `{"post": "<post or Reel link, or shortcode>", "delivery":
-  "download"}` with no `parameters` wrapper — never a username or profile link. `get_research_data_job`,
+  "download"}` with no `parameters` wrapper — never a username or profile link.
   `get_research_data_download`, `read_research_data_artifacts` and `get_research_capabilities` take
   their fields directly. Make
   each call individually, never in a batch: a batch that fails as a whole erases every route's
   evidence. Independent calls go out in the
   same turn: an own-published Instagram diagnosis needs the post row, metadata, transcript, frames,
   measurements **and** the baseline, and none waits on another.
-- **Media calls carry a retry key.** Build each `public_video_*` call's arguments with
-  `cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 <skill directory>/scripts/static_host.py job-call --tool <tool-name> --parameters '<parameters JSON>' [--attempt N]`
-  and send the printed arguments verbatim: they add an `idempotency_key` beside `parameters`. When
-  a call got no response at all (a timeout or lost connection), send exactly the same arguments
-  again — the key returns the original job instead of queueing and charging another. After an
-  error result, changed parameters, a tool message naming `idempotency_key`, or to run a finished
-  job again, rebuild with the next `--attempt`. Keyframes use `"sampling": "duration_scaled"`,
-  which already samples the opening densely; never pass `fps`, which applies only to
-  `evenly_spaced` and is capped at 2.
-- **Deferred jobs.** The `public_video_*` tools answer with a job id. Read it with
-  `get_research_data_job` and `wait_s` (an integer from 1 to 30); never restart a queued job. Read
-  transcript or frame bytes with `read_research_data_artifacts`. Read *When to stop waiting* in
-  `references/evidence-reading.md` before the first call.
+- **Media call: one backend call, run by a script.** Transcript, frames, measurements and (on
+  Instagram and TikTok) metadata are deferred jobs that take minutes. Never call them one by one and
+  never poll them yourself: the backend queues them all with one `collect_video_media` call and waits.
+  Start it with the operations this mode needs (diagnosis: `transcript,keyframes,measure`, plus
+  `metadata` on Instagram and TikTok; craft teardown: `transcript,keyframes,measure`; transcript
+  export: `transcript`):
+
+  ```sh
+  cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 <skill directory>/scripts/collect_media.py --url '<original video url>' --operations transcript,keyframes,measure
+  ```
+
+  It prints the call and one resume command; make the call, then run the resume command with the
+  result's id, and repeat while it prints the call again (jobs still running). The run is not over
+  while media jobs are running. When it prints `status: collected` it has persisted every media
+  envelope in `snapshot/`, names the `--envelope` / `--deferred-incomplete` arguments for the
+  evidence builder, and prints the one `read_research_data_artifacts` call that brings the frames
+  in. Make the other calls in the table (YouTube metadata, post row, baseline) in the same turn as
+  the media call: none waits on another.
 - **Save every complete result.** The displayed tool result may be abridged, so never retype or
-  paste data. Call the data tools, `get_research_data_job` and `read_research_data_artifacts` (text
+  paste data. Call the data tools and `read_research_data_artifacts` (text
   and frames alike) with `"delivery": "download"` (beside `parameters` for data tools): the result
   then carries a download link instead of the data: never download that link yourself with a shell
   command or a browser. Save the download result itself, complete and now small, link included, to
@@ -122,9 +127,8 @@ If this Skill cannot produce the report, say so.
   names (no allowance cost; nothing is re-run) and fetch that result with
   `--tool get_research_data_download` — the new link's sha256 and bytes can differ from the old
   one (if that call itself fails, call the original tool again with the same parameters and
-  `"delivery": "download"` — this re-runs it — and fetch that result right away); call `lookup_instagram_post`, `get_research_data_job` or `read_research_data_artifacts`
-  again with `"delivery": "download"`. Fetch or stage the terminal job result, not one
-  still queued. If the host cannot save a complete result, say that this step is not possible here;
+  `"delivery": "download"` — this re-runs it — and fetch that result right away); call `lookup_instagram_post` or `read_research_data_artifacts`
+  again with `"delivery": "download"`. If the host cannot save a complete result, say that this step is not possible here;
   never reconstruct data from what was displayed. When `fetch` or `stage` refuses a result because
   it is an error with no connector evidence (rate limit, invalid input, server error) or a job that
   never finished, that **tool call** failed — it is not a script failure. Do not persist it; pass
@@ -133,8 +137,8 @@ If this Skill cannot produce the report, say so.
   invalid-input or validation error is never retried unchanged (correct the input only if the
   request allows it, otherwise report that step with that message); a rate limit, server error or
   empty answer gets one retry. Never describe an invalid input as a network problem.
-- **Persist into the run** every fetched or staged tool response and terminal job result, failed
-  ones included. Artifact reads (`read_research_data_artifacts`) are fetched or staged only, never
+- **Persist into the run** every other fetched or staged tool response, failed ones included
+  (`collect_media.py` already persists the media envelopes). Artifact reads (`read_research_data_artifacts`) are fetched or staged only, never
   persisted: the builder finds those images under `snapshot/` by SHA256.
 
   ```sh
@@ -143,9 +147,8 @@ If this Skill cannot produce the report, say so.
 
   `connector_id` and `operation` are the fields inside the result: `youtube-public` / `get_video`
   for `youtube_get_video`; for `lookup_instagram_post` the route that answered (`instagram-discovery`
-  or `instagram-detail-proxy`, operation `get_post`); and for a job result the operation that
-  started it (for example `public-video-media` / `fetch_transcript`). Never persist a response
-  twice or write an envelope yourself.
+  or `instagram-detail-proxy`, operation `get_post`). Never persist a response twice or write an
+  envelope yourself.
 
 ## Which question is this
 

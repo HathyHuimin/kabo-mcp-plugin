@@ -7,7 +7,7 @@ the first data call of a run.
 
 The request asks for at most 60 frames with `"sampling": "duration_scaled"`: twice a second through
 the opening three seconds, then one a second, spread out evenly once a longer video would exceed the
-cap (`job-call` adds `max_frames`). That plan already samples the opening densely, so never pass
+cap (`collect_media.py` adds `max_frames`). That plan already samples the opening densely, so never pass
 `fps`: it applies only to `evenly_spaced`, is capped at 2, and a higher value is rejected as
 invalid input.
 `sampling_plan` records requested sampling, not verified decoded timestamps or viewing coverage; even `t_seconds` may be a nominal requested point. Without verified actual decode
@@ -63,8 +63,8 @@ When `transcript.status` is `available` but no cue text and no plain text reache
 object, treat the transcript as unavailable and say so beside the claims it weakens. A segment
 count is not a transcript.
 
-When the platform published no captions, `public_video_fetch_transcript` falls back to machine
-transcription inside the same call. There is no second tool to reach for: one call is the whole
+When the platform published no captions, the media call's `transcript` job falls back to machine
+transcription inside the same job. There is no second tool to reach for: one job is the whole
 path. **A file on this machine has no platform captions to fetch**; where its words come from is
 under *Getting the words* in `references/local-file.md`.
 
@@ -91,15 +91,11 @@ excerpt is not a complete export.
 address, and YouTube refuses those: it answers `service_unavailable` on every YouTube URL, and a run
 that used it lost title, tags, cover and publish date. `youtube_get_video` is the platform answering
 about its own video; it is not a deferred job and carries the same facts plus public counts. Call it
-with `{"parameters": {"video_id": "<resolved-video-id>"}, "delivery": "download"}`. The media tools
-`public_video_fetch_transcript`, `public_video_extract_keyframes` and
-`public_video_measure_media_signals` take `{"parameters": {"url": "<original-video-url>"}}`
-(keyframes add `"sampling": "duration_scaled"` and no `fps`), built into full arguments (with
-`delivery` and `idempotency_key`, and `max_frames` for keyframes) by
-`static_host.py job-call` as `SKILL.md` says. Readiness alone does not
-supply parameter names; use each tool's input schema.
+with `{"parameters": {"video_id": "<resolved-video-id>"}, "delivery": "download"}`. Transcript,
+frames and measurements come from `collect_media.py` with the original video URL, as `SKILL.md`
+says; it builds the arguments.
 
-On **Instagram and TikTok** `public_video_collect_public_metadata` stays the metadata call.
+On **Instagram and TikTok** the media call's `metadata` operation stays the metadata source.
 
 Persist the YouTube response like any other, naming its own connector and operation:
 `--connector youtube-public --operation get_video`. The builder reads its fields into the same shape.
@@ -130,40 +126,24 @@ but never describe what the cover *looks like*, and never judge whether it works
 
 ## When to stop waiting
 
-**A call that cannot succeed is not a call to make.** The `public_video_*` tools run server-side;
+**A call that cannot succeed is not a call to make.** The media jobs run server-side;
 **a file on the creator's machine is not reachable by any of them** — not as a `file://` URI, not
-by copying it into the run directory. When `source.acquisition` is `local_file`, call no
-`public_video_*` tool at all and follow `references/local-file.md`. `build_content_evidence.py`
+by copying it into the run directory. When `source.acquisition` is `local_file`, make no
+media call at all and follow `references/local-file.md`. `build_content_evidence.py`
 refuses the mixture too.
 
 A retrieval path that has not answered is not evidence that arrives later. Give each tool one
-retry (for a `public_video_*` tool, a retry after an error result is a new request: build it with
-the next `job-call --attempt`; any other tool is simply called again), and treat a call that comes back with neither an envelope nor a job id as failed at once.
+retry, and treat a call that comes back with neither an envelope nor a job id as failed at once.
 Such a result is also what `static_host.py fetch` and `stage` refuse ("MCP error contains no terminal
 connector evidence"): record it with `--limitation` on the evidence-building command and carry on.
-The `public_video_*` tools are deferred: a healthy call answers with a job id, which you read with
-`get_research_data_job`. Pass `wait_s` (an integer from 1 to 30; 0 is rejected) so the server
-waits for you instead of a polling turn; it replaces a turn, not the job's own runtime, and a job can still come back unfinished.
-Poll again until it is terminal, a retry has failed, or the approved budget for this request is
-spent; never restart a queued job. On a real run two calls sat idle for 936 and 681 seconds after
-the same tools had already failed five times; that run spent 27 of its 48 minutes on a dependency
-that was already dead. Record each attempt and its failure verbatim, then continue under
-`failure_policy`.
 
-Make the run's independent calls in the same turn — they take no input from each other.
-
-A job that answered with a job id is healthy, the opposite case from the dead calls above: keep
-polling it inside this same turn with `get_research_data_job` and `wait_s`, until about three minutes
-after it was submitted or until the turn has only enough time left to build and deliver. Where the
-host scopes a job id to the turn that submitted it, ending the turn to wait throws the job away and
-the next turn pays for the same analysis again; where the host keeps jobs across turns, a later turn
-polls the same id instead of submitting again.
-
-When a valid job id exists but the waiting window ends before a terminal result, pass it to
-`build_content_evidence.py` as `--pending <operation>=<job id>` (recorded `pending`), or as
-`--deferred-incomplete <operation>=<job id>` when this run is closing (recorded
-`deferred_incomplete`), rather than recording `failed`. These carry no media evidence and keep the
-affected stages unassessed.
+The media jobs (transcript, frames, measurements) are deferred and take minutes. The backend waits
+for them inside `collect_video_media`; `collect_media.py` prints the same call again while any is
+still running, and nothing is queued or charged twice. Keep making that call within this turn until
+the script reports `status: collected`: ending the turn to wait throws the jobs away. A job still
+unfinished when the script stops waiting comes back as `--deferred-incomplete <operation>=<job id>`
+for the evidence builder (recorded `deferred_incomplete`), never as `failed`; it carries no media
+evidence and keeps the affected stages unassessed.
 
 When the window closes with frames still outstanding, deliver; a reply that only says the analysis
 is still processing is not a delivery. With no keyframe envelope the builder records `frames.status` as `not_attempted`; list the visual dimensions in
@@ -173,15 +153,15 @@ that never arrives.
 
 ## When part of the media is out of reach
 
-- **No measurement.** When `public_video_measure_media_signals` is missing or says the media could
+- **No measurement.** When the `measure` result is missing or says the media could
   not be retrieved, and no keyframe result carries `signals`, say the cuts were not measured because
   the platform refused the download, never that the video cannot be analysed. Place each visible
   change between the two frames that bracket it ("between 1:03 and 1:05"), read the on-screen text
   of every frame with its second, and mark the spans between frames unconfirmed.
 - **No words on a long video.** For a published video, a quick transcript lookup that returns none
-  is not the final answer: call `public_video_fetch_transcript`, which falls back to machine
-  transcription inside the same call, before saying the words were not read. A local file never
-  goes to that tool; its words come from the tiers in `references/local-file.md`. When a
+  is not the final answer: the media call's `transcript` operation falls back to machine
+  transcription inside the same job, before saying the words were not read. A local file never
+  goes to the media call; its words come from the tiers in `references/local-file.md`. When a
   whole-video reading is capped by length but accepts segments, read the opening window and the
   spans the question names, deliver, and only then ask for timestamps.
 - **Photo and carousel posts.** Metadata naming a photo or slideshow post, or a video reading that
