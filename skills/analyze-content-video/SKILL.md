@@ -80,12 +80,13 @@ If this Skill cannot produce the report, say so.
   their fields directly. Make
   each call individually, never in a batch: a batch that fails as a whole erases every route's
   evidence. Independent calls go out in the
-  same turn: an own-published Instagram diagnosis needs the post row, metadata, transcript, frames,
-  measurements **and** the baseline, and none waits on another.
+  same turn: an own-published Instagram diagnosis needs the post row, the media call **and** the
+  baseline, and none waits on another.
 - **Media call: one backend call, run by a script.** Transcript, frames, measurements and (on
   Instagram and TikTok) metadata are deferred jobs that take minutes. Never call them one by one and
   never poll them yourself: the backend queues them all with one `collect_video_media` call and waits.
-  Start it with the operations this mode needs (diagnosis: `transcript,keyframes,measure`, plus
+  Only `collect_media.py` writes that call's arguments: never compose it yourself, and if it fails,
+  never fall back to per-operation media or job calls. Start it with the operations this mode needs (diagnosis: `transcript,keyframes,measure`, plus
   `metadata` on Instagram and TikTok; craft teardown: `transcript,keyframes,measure`; transcript
   export: `transcript`):
 
