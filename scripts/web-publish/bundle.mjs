@@ -397,14 +397,14 @@ function validatePluginBundle(bundle) {
 }
 
 /** 插件仓一个 skill 目录 → 插件来源的包。版本由调用方给（线上版本往上接），不读也不写 manifest。 */
-export function buildPluginBundle({ skillDirectory, sourceCommit, version }) {
+export function buildPluginBundle({ skillDirectory, sourceCommit, version, probe = false }) {
   if (!COMMIT.test(sourceCommit ?? '')) fail('sourceCommit must be a 40-character lowercase Git commit');
   if (!SEMVER.test(version ?? '')) fail(`version must be x.y.z, got ${JSON.stringify(version)}`);
   const directory = path.resolve(skillDirectory);
   const id = path.basename(directory);
   if (!SKILL_ID.test(id)) fail(`skill directory name is not a valid id: ${id}`);
   const files = collectFiles(directory);
-  return validateBundle({
+  const bundle = {
     format_version: BUNDLE_FORMAT_VERSION,
     id,
     version,
@@ -412,5 +412,8 @@ export function buildPluginBundle({ skillDirectory, sourceCommit, version }) {
     files: files.map((file) => ({ path: file.path, content_base64: file.content.toString('base64') })),
     content_checksum: checksumForFiles(files),
     source: { repository: PLUGIN_SOURCE_REPOSITORY, commit: sourceCommit },
-  });
+  };
+  // 探测只为算内容校验和与读声明版本，版本号此时还没定，不比对 metadata.version。
+  if (probe) return { ...bundle, declared_version: parsePluginSkillHeader(files.find((file) => file.path === 'SKILL.md')?.content.toString('utf8') ?? '', id).version };
+  return validateBundle(bundle);
 }

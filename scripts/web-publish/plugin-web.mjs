@@ -73,12 +73,19 @@ function liveVersion(id, indexes) {
  * 版本：内容和 overlay 里现有条目相同就原样沿用；变了就取「频道现行版本」与「overlay 现有版本」中
  * 较大的那个，补丁号 +1。所以 Web 上的版本号接着线上往上走，每次插件发版只给真正变了的 skill 升版。
  */
-export function versionFor(id, checksum, liveIndexes, current) {
+export function versionFor(id, checksum, liveIndexes, current, declared = null) {
   const existing = current?.skills?.[id];
   if (existing && existing.content_checksum === checksum) return existing.version;
   const candidates = [liveVersion(id, liveIndexes), existing?.version].filter(Boolean);
   if (!candidates.length) return null;
-  const [major, minor, patch] = SEMVER.exec(candidates.sort(compare).at(-1)).slice(1).map(Number);
+  const latest = candidates.sort(compare).at(-1);
+  // SKILL.md 声明了 metadata.version（脚本会读它，例如内容日历）：用它，但必须高于线上与 overlay 的版本。
+  if (declared) {
+    if (!SEMVER.test(declared) || compare(declared, latest) <= 0)
+      fail(`${id}: SKILL.md metadata.version ${declared} must be above the live version ${latest}; bump it in kabo-mcp-plugin`);
+    return declared;
+  }
+  const [major, minor, patch] = SEMVER.exec(latest).slice(1).map(Number);
   return `${major}.${minor}.${patch + 1}`;
 }
 
@@ -135,11 +142,11 @@ export async function publish({ store, bundleStore = store, pluginRoot, pluginCo
   const kept = {};
   for (const id of wanted) {
     const directory = path.join(pluginRoot, 'skills', id);
-    const probe = buildPluginBundle({ skillDirectory: directory, sourceCommit: pluginCommit, version: '0.0.1' });
+    const probe = buildPluginBundle({ skillDirectory: directory, sourceCommit: pluginCommit, version: '0.0.1', probe: true });
     const existing = current?.skills?.[id];
     // 内容没变：原样沿用 overlay 里那一条（包已在桶里，source.commit 记的是首次发它的那个 commit）。
     if (existing && existing.content_checksum === probe.content_checksum) { kept[id] = existing; continue; }
-    const version = versionFor(id, probe.content_checksum, live, current);
+    const version = versionFor(id, probe.content_checksum, live, current, probe.declared_version);
     // 频道里从没有过的 skill（如插件独有的）不在这里首发：Web 上没有它的入口与 chip 策略。
     if (!version) { skipped.push({ id, reason: 'not live on any channel' }); continue; }
     bundles.push(buildPluginBundle({ skillDirectory: directory, sourceCommit: pluginCommit, version }));

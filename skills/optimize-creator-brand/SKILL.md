@@ -4,7 +4,7 @@ description: "Generate platform-ready YouTube channel names, Instagram or TikTok
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. A brand kit for a named account and official visual sizes also require the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for those two tasks only: data."
 metadata:
-  version: "0.3.22"
+  version: "0.3.23"
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download collect_account_history render_official_pages youtube_get_channel
 ---
 

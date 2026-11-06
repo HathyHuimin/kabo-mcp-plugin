@@ -41,3 +41,11 @@ test('plugin metadata.version must equal the Registry version; a mismatch names 
   fs.renameSync(path.join(wrongName, 'skills', 'gamma-skill'), path.join(wrongName, 'skills', 'delta-skill'));
   assert.throws(() => buildPluginBundle({ skillDirectory: path.join(wrongName, 'skills', 'delta-skill'), sourceCommit: COMMIT, version: '1.0.0' }), /name "gamma-skill" must equal "delta-skill"/);
 });
+
+test('a declared metadata.version is the Web version when it is above the live one; otherwise the publish stops', async () => {
+  const { versionFor } = await import('./web-publish/plugin-web.mjs');
+  const live = [{ skills: { 'beta-skill': { version: '0.4.12' } } }];
+  assert.equal(versionFor('beta-skill', 'x', live, null, '0.4.13'), '0.4.13');
+  assert.throws(() => versionFor('beta-skill', 'x', live, null, '0.4.12'), /must be above the live version 0.4.12/);
+  assert.equal(versionFor('beta-skill', 'x', live, null, null), '0.4.13');
+});

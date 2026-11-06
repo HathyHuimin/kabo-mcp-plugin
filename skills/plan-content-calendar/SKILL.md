@@ -4,7 +4,7 @@ description: "Build a reviewable four-week or date-range content calendar (up to
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Uses no Kabo data tools: every input is an artifact the creator or another Skill already produced in this workspace."
 metadata:
-  version: "0.1.24"
+  version: "0.1.25"
 ---
 
 # Plan Content Calendar
