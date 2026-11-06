@@ -114,9 +114,11 @@ the report or profile schemas once the compact input exists. `scope.user_questio
   it — topic, presentation, distribution or one-off event; adopt or not, and why. Do not treat the
   highest multiple as a post that must be copied. Tests return to the most valuable current
   hypothesis, not automatically to that post. Do not hard-code a format such as interviews.
-  Check its maturity first. If it is too recent or unknown, name it only as a current observation,
-  omit the multiple and withhold performance-based adoption; propose a wording test only on its
-  own merits. The highest-multiple pointer does not override comparison eligibility.
+  Check its maturity and the format baseline's `metrics.views.available_n` first. If its age is
+  too recent or unknown, or fewer than three measured views support that baseline, name it only
+  as a current observation, omit the multiple and withhold performance-based adoption; propose a
+  wording test only on its own merits. The highest-multiple pointer does not override comparison
+  eligibility.
 - Growth figures, when present, are only those `drive.py growth` printed for this run.
 
 ## Recommendations
