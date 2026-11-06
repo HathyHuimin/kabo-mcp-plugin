@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { stableJson } from './web-publish/bundle.mjs';
 import { MemoryObjectStore } from './web-publish/store.mjs';
-import { TARGETS, TEST_ACCOUNTS_OBJECT, clear, publish, restore, testAccounts, versionFor } from './web-publish/plugin-web.mjs';
+import { TARGETS, TEST_ACCOUNTS_OBJECT, VERSIONS_OBJECT, clear, publish, restore, testAccounts, versionFor } from './web-publish/plugin-web.mjs';
 
 const COMMIT = 'c'.repeat(40);
 
@@ -66,6 +66,22 @@ test('restore 回到任一历史版本；clear 写空 overlay；test 目标与�
   await clear({ store });
   assert.deepEqual(JSON.parse((await store.read(TARGETS.index)).bytes).skills, {});
   assert.equal(Object.keys(JSON.parse((await store.read(TARGETS.test)).bytes).skills).length, 1);
+});
+
+test('版本号不复用：clear 或暂扣后再发接着用过的最高号往上走；test 目标已有同内容就沿用同号同包', async () => {
+  const { store } = await liveStore();
+  const root = pluginRepo({ 'beta-skill': '# b1' });
+  const first = await publish({ store, pluginRoot: root, pluginCommit: COMMIT });
+  assert.equal(first.skills['beta-skill'].version, '0.4.11');
+  await clear({ store });
+  fs.writeFileSync(path.join(root, 'skills', 'beta-skill', 'SKILL.md'), '---\nname: beta-skill\ndescription: "x"\n---\n# b2\n');
+  const test1 = await publish({ store, pluginRoot: root, pluginCommit: 'd'.repeat(40), targetName: 'test' });
+  assert.equal(test1.skills['beta-skill'].version, '0.4.12');
+  const prod = await publish({ store, pluginRoot: root, pluginCommit: 'e'.repeat(40) });
+  assert.deepEqual(prod.skills['beta-skill'], test1.skills['beta-skill']);
+  assert.equal(JSON.parse((await store.read(VERSIONS_OBJECT)).bytes).skills['beta-skill'], '0.4.12');
+  // 频道里没有的 skill 仍不首发，即使 versions.json 里有记录
+  assert.equal(versionFor('new-skill', 'sha256:z', [], null, null, ['9.9.9']), null);
 });
 
 test('测试账号名单：add / remove / list，重复 add 只留一条', async () => {

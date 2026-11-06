@@ -28,6 +28,9 @@ import { GcsObjectStore, validateIndex } from './store.mjs';
 export const OVERLAY_PREFIX = 'channels/production/overlays/web-plugin/';
 export const TARGETS = { index: `${OVERLAY_PREFIX}index.json`, test: `${OVERLAY_PREFIX}test.json` };
 export const TEST_ACCOUNTS_OBJECT = `${OVERLAY_PREFIX}test-accounts.json`;
+// 每个 skill 在任一 overlay 上用过的最高版本。overlay 被 clear、某个 skill 被暂扣再放回、或先发到 test 目标时，
+// 只看「频道 + 当前 overlay」会把用过的版本号再发一次（内容却不同），/health 就分不出新旧。
+export const VERSIONS_OBJECT = `${OVERLAY_PREFIX}versions.json`;
 const historyObject = (sha) => `${OVERLAY_PREFIX}history/${sha}.json`;
 // 复刻在 Web 上由 creator-remake-web（production 频道）承担；插件的 remake-viral-video 走别的工具面，不进 Web。
 export const EXCLUDED = new Set(['remake-viral-video']);
@@ -73,10 +76,13 @@ function liveVersion(id, indexes) {
  * 版本：内容和 overlay 里现有条目相同就原样沿用；变了就取「频道现行版本」与「overlay 现有版本」中
  * 较大的那个，补丁号 +1。所以 Web 上的版本号接着线上往上走，每次插件发版只给真正变了的 skill 升版。
  */
-export function versionFor(id, checksum, liveIndexes, current, declared = null) {
+export function versionFor(id, checksum, liveIndexes, current, declared = null, used = []) {
   const existing = current?.skills?.[id];
   if (existing && existing.content_checksum === checksum) return existing.version;
-  const candidates = [liveVersion(id, liveIndexes), existing?.version].filter(Boolean);
+  // used：别的 overlay 目标与 versions.json 里记下的该 skill 版本；只抬高下限，不让一个频道里没有的 skill 首发。
+  const live = [liveVersion(id, liveIndexes), existing?.version].filter(Boolean);
+  if (!live.length) return null;
+  const candidates = [...live, ...used.filter((version) => SEMVER.test(version ?? ''))];
   if (!candidates.length) return null;
   const latest = candidates.sort(compare).at(-1);
   // SKILL.md 声明了 metadata.version（脚本会读它，例如内容日历）：用它，但必须高于线上与 overlay 的版本。
@@ -130,6 +136,11 @@ export async function publish({ store, bundleStore = store, pluginRoot, pluginCo
   const live = [await readChannel('production'), await readChannel('internal')];
   if (!live.some(Boolean)) fail('cannot read any live channel index');
   const current = (await readIndex(store, object))?.index ?? null;
+  // 另一个目标（生产 / test）的 overlay：同一份内容在那边已经有版本号，就用同一个号和同一个包。
+  const others = await Promise.all(Object.entries(TARGETS).filter(([name]) => name !== targetName)
+    .map(async ([, other]) => (await readIndex(store, other))?.index ?? null));
+  const versionsRaw = await store.read(VERSIONS_OBJECT);
+  const highwater = versionsRaw ? JSON.parse(versionsRaw.bytes) : { format_version: 1, skills: {} };
   const available = fs.readdirSync(path.join(pluginRoot, 'skills'))
     .filter((id) => SKILL_ID.test(id) && fs.existsSync(path.join(pluginRoot, 'skills', id, 'SKILL.md')));
   // hold：本次不进 overlay 的 skill（Web 继续用 Registry 原版本），由工作流的 PLUGIN_WEB_HOLD 传入。
@@ -146,7 +157,10 @@ export async function publish({ store, bundleStore = store, pluginRoot, pluginCo
     const existing = current?.skills?.[id];
     // 内容没变：原样沿用 overlay 里那一条（包已在桶里，source.commit 记的是首次发它的那个 commit）。
     if (existing && existing.content_checksum === probe.content_checksum) { kept[id] = existing; continue; }
-    const version = versionFor(id, probe.content_checksum, live, current, probe.declared_version);
+    const twin = others.map((index) => index?.skills?.[id]).find((entry) => entry?.content_checksum === probe.content_checksum);
+    if (twin && (await bundleStore.read(twin.object))) { kept[id] = twin; continue; }
+    const used = [...others.map((index) => index?.skills?.[id]?.version), highwater.skills?.[id]].filter(Boolean);
+    const version = versionFor(id, probe.content_checksum, live, current, probe.declared_version, used);
     // 频道里从没有过的 skill（如插件独有的）不在这里首发：Web 上没有它的入口与 chip 策略。
     if (!version) { skipped.push({ id, reason: 'not live on any channel' }); continue; }
     bundles.push(buildPluginBundle({ skillDirectory: directory, sourceCommit: pluginCommit, version }));
@@ -180,6 +194,16 @@ export async function publish({ store, bundleStore = store, pluginRoot, pluginCo
     ].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))),
   };
   const written = await writeOverlay(store, object, overlay);
+  // 记下每个 skill 用过的最高版本（只升不降）。
+  const nextHighwater = { format_version: 1, skills: { ...(highwater.skills ?? {}) } };
+  for (const [id, entry] of Object.entries(overlay.skills)) {
+    const prior = nextHighwater.skills[id];
+    if (!prior || compare(entry.version, prior) > 0) nextHighwater.skills[id] = entry.version;
+  }
+  if (stableJson(nextHighwater) !== stableJson(highwater)) {
+    const saved = await store.write(VERSIONS_OBJECT, Buffer.from(stableJson(nextHighwater)), versionsRaw?.generation ?? 0);
+    if (!saved.ok) fail(`${VERSIONS_OBJECT} changed while writing; rerun`);
+  }
   if (targetName === 'index') {
     // 记下这份生产 overlay 来自插件的哪个发版：定时任务据此判断「新发版还没上 Web」。
     const record = Buffer.from(stableJson({ plugin_commit: pluginCommit, plugin_tag: pluginTag, overlay_sha256: written.sha256, published_at: now.toISOString() }));
