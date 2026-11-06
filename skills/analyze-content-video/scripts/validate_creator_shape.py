@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 import unicodedata
@@ -170,15 +171,17 @@ def quotes_the_video(line: str, cues: list[dict]) -> str | None:
 # reads as three million. "万亿" is listed before "万" so "5万亿" reads as five trillion, not
 # 5万 followed by a stray 亿, and ".5B" reads as 0.5B, not 5B. A dot after a letter, digit or dot
 # is not a leading-dot decimal: "obs.14" in a reference stays 14, as it always read.
+# "千" before a measurement unit (千米, 千克, 千瓦, 千卡) is part of the unit, not a scale.
 MAGNITUDES = {
     "": 1,
-    "万": 10_000, "亿": 100_000_000, "万亿": 1_000_000_000_000,
+    "千": 1_000, "万": 10_000, "百万": 1_000_000, "千万": 10_000_000,
+    "亿": 100_000_000, "万亿": 1_000_000_000_000,
     "k": 1_000, "thousand": 1_000,
     "m": 1_000_000, "million": 1_000_000,
     "b": 1_000_000_000, "bn": 1_000_000_000, "billion": 1_000_000_000,
 }
 FIGURE = re.compile(
-    r"(\d+(?:[.,]\d+)*|(?<![A-Za-z0-9.])\.\d+)\s*(万亿|万|亿|thousand|million|billion|bn|[kmb](?![a-z]))?",
+    r"(\d+(?:[.,]\d+)*|(?<![A-Za-z0-9.])\.\d+)\s*(万亿|千万|百万|万|亿|千(?![米克瓦卡])|thousand|million|billion|bn|[kmb](?![a-z]))?",
     re.IGNORECASE)
 # A clock is not a figure the creator stands behind, and splitting one produces two that nobody
 # wrote: `14:00` yields `14` and `00`. Hours are governed by the block rules above, which already
@@ -194,7 +197,7 @@ CLOCK = re.compile(r"\d{1,2}:\d{2}(?::\d{2})?")
 LEADING_DOT = re.compile(r"(?<![A-Za-z0-9.])\.\d+")
 SOURCE_FIGURE = re.compile(
     r"(?<![A-Za-z0-9.])(\d+(?:[.,]\d+)*|\.\d+)"
-    r"(?:\s*(万亿|万|亿|(?i:thousand|million|billion|bn))|([kmbKMB])|\s+([KMB]))"
+    r"(?:\s*(万亿|千万|百万|万|亿|千(?![米克瓦卡])|(?i:thousand|million|billion|bn))|([kmbKMB])|\s+([KMB]))"
     r"(?![A-Za-z0-9])")
 
 
@@ -244,11 +247,32 @@ def is_grounded(token: str, unit: str, values: set) -> bool:
         return True
     scale = MAGNITUDES.get((unit or "").lower(), 1)
     decimals = len(plain.split(".")[1]) if "." in plain else 0
+    # Rounding a count to a few significant figures is how people write it: 18,067,177 views is
+    # "1800 万" or "1,800 万+" in a Chinese report, and 2,689,000 is "2.6M+" ("over 2.6M") as often
+    # as "2.7M". Rounding only at the written decimal place called both invented, and a production
+    # run of this Skill stopped on exactly that. So trailing zeros in a large written count are a
+    # precision, not digits the source must hold, and cutting at the written precision counts the
+    # same as rounding at it. Kept to counts of ten thousand or more with at least two significant
+    # digits left, so a small round figure ("20 seconds", "100") still needs a source of its own.
+    trailing = 0
+    if decimals == 0 and target >= 1 and target == int(target):
+        digits = str(int(target))
+        trailing = len(digits) - len(digits.rstrip("0"))
+        if target * scale < 10_000 or len(digits) - trailing < 2:
+            trailing = 0
+    step = 10.0 ** (trailing - decimals)
+    # Small unscaled figures (seconds, multiples, ranks) keep plain rounding only.
+    counted = scale > 1 or target * scale >= 10_000
     for value in values:
         if value == target and scale == 1:
             return True
         try:
-            if round(value / scale, decimals) == target:
+            scaled = value / scale
+            if round(scaled, decimals) == target:
+                return True
+            if counted and scaled > 0 and (
+                    math.isclose(math.floor(scaled / step + 1e-9) * step, target)
+                    or (trailing and math.isclose(round(scaled / step) * step, target))):
                 return True
         except (ValueError, ZeroDivisionError, OverflowError):
             continue

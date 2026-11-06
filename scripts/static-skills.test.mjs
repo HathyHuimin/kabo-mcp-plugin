@@ -262,3 +262,30 @@ print(json.dumps({
   assert.deepEqual(out.bare_dot, []);
   assert.deepEqual(out.dotted_ref, []);
 });
+
+// 播放量按有效数字取整（"1800 万"、"1.8千万"）或截断（"2.6M+"）是正常写法，不能判成编造；
+// 小数字、只剩一位有效数字的整数和取整方向错的写法仍要拦。2026-11-06 生产 Web 视频分析在最终校验被拒的就是这种缩写。
+test("ACV 数字核对接受按有效数字取整或截断的大计数，小数字仍按原规则", () => {
+  const probe = `
+import json, sys
+sys.path.insert(0, sys.argv[1])
+from validate_creator_shape import figure_errors, source_values
+values = source_values({"views": 18067177, "likes": 501301, "other_views": 2689000, "duration_s": 3.9})
+def errs(text):
+    return len(figure_errors({"summary": text}, values))
+print(json.dumps({t: errs(t) for t in [
+    "1800 万播放", "1,800 万+", "1.8千万", "约 1807 万", "18M", "2.6M+", "2.7M", "50 万点赞",
+    "2000 万", "1900 万", "1.9千万", "18.2M", "3 倍", "100 次"]}, ensure_ascii=False))
+print(json.dumps(len(figure_errors({"summary": "跑了 5千米"}, source_values({"distance_km": 5})))))
+`;
+  const scripts = path.join(import.meta.dirname, "..", "skills", "analyze-content-video", "scripts");
+  const [line, unitLine] = execFileSync("python3", ["-I", "-B", "-c", probe, scripts], { encoding: "utf8" }).trim().split("\n");
+  const out = JSON.parse(line);
+  assert.equal(JSON.parse(unitLine), 0, "千米 is a unit, not a scale");
+  for (const ok of ["1800 万播放", "1,800 万+", "1.8千万", "约 1807 万", "18M", "2.6M+", "2.7M", "50 万点赞"]) {
+    assert.equal(out[ok], 0, ok);
+  }
+  for (const bad of ["2000 万", "1900 万", "1.9千万", "18.2M", "3 倍", "100 次"]) {
+    assert.equal(out[bad], 1, bad);
+  }
+});
