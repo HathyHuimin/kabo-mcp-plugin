@@ -106,8 +106,9 @@
     "resolved_pattern": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["pattern", "explanation", "examples"],
+      "required": ["pattern", "explanation", "examples", "claim_type"],
       "properties": {
+        "claim_type": {"enum": ["public_observation", "performance_association", "hypothesis"], "description": "Declare the evidence used: bounded public wording/count observation, mature same-format performance association, or a clearly labelled hypothesis to test. None establishes sales or causality from public engagement."},
         "pattern": {"type": "string", "minLength": 1},
         "explanation": {"type": "string", "minLength": 1},
         "examples": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/content_example"}}
@@ -116,12 +117,15 @@
     "content_example": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["content_id", "title", "format", "metrics", "view_multiple_vs_format_median"],
+      "required": ["content_id", "title", "format", "metrics", "view_multiple_vs_format_median", "published_at", "baseline_maturity"],
       "properties": {
         "content_id": {"type": "string", "minLength": 1},
         "title": {"type": "string", "minLength": 1},
         "url": {"type": ["string", "null"]},
         "format": {"type": "string", "minLength": 1},
+        "published_at": {"type": "string", "minLength": 1},
+        "baseline_maturity": {"enum": ["mature", "too_recent", "unavailable"]},
+        "baseline_cutoff_at": {"type": "string", "minLength": 1},
         "format_confidence": {"type": "string", "minLength": 1},
         "format_source": {"type": "string", "minLength": 1},
         "metrics": {"type": "object", "additionalProperties": {"type": "number"}},

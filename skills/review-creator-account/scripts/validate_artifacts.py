@@ -32,6 +32,9 @@ def require(obj: dict[str, Any], keys: set[str], label: str) -> None:
 
 
 def validate(analysis: dict[str, Any], synthesis: dict[str, Any], report: dict[str, Any], profile: dict[str, Any]) -> None:
+    from evidence_context import maturity_by_format, evidence_age
+    from synthesis_authoring import validate_authoring
+    validate_authoring(analysis, synthesis)
     require(analysis, {"analysis_id", "snapshot_id", "baselines", "rankings", "coverage"}, "analysis")
     require(synthesis, {"analysis_id", "snapshot_id", "output_language", "headline", "what_works", "what_hurts"}, "synthesis")
     require(
@@ -65,15 +68,23 @@ def validate(analysis: dict[str, Any], synthesis: dict[str, Any], report: dict[s
         raise ValueError("report baselines differ from deterministic analysis")
 
     ranking = {row["content_id"]: row for row in analysis["rankings"]}
+    policies = maturity_by_format(analysis)
     for key in ("what_works", "what_hurts"):
+        if len(report[key]) != len(synthesis[key]):
+            raise ValueError(f"{key} patterns differ from synthesis")
         for row in synthesis[key]:
             if any(content_id not in ranking for content_id in row["content_ids"]):
                 raise ValueError(f"{key} references unknown content")
-        for row in report[key]:
+        for row, authored in zip(report[key], synthesis[key]):
+            if row.get("claim_type") != authored["claim_type"]:
+                raise ValueError(f"{key} claim type differs from synthesis")
             for example in row["examples"]:
                 source = ranking.get(example["content_id"])
                 if source is None:
                     raise ValueError(f"{key} report references unknown content")
+                for field, value in evidence_age(source, policies).items():
+                    if example.get(field) != value:
+                        raise ValueError(f"{key} example altered evidence age: {field}")
                 for field in (
                     "url", "metrics", "view_multiple_vs_format_median",
                     "format_confidence", "format_source",

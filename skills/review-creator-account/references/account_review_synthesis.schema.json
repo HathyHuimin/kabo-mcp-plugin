@@ -47,8 +47,9 @@
     "pattern": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["pattern", "explanation", "content_ids"],
+      "required": ["pattern", "explanation", "content_ids", "claim_type"],
       "properties": {
+        "claim_type": {"enum": ["public_observation", "performance_association", "hypothesis"], "description": "Declare the evidence used: bounded public wording/count observation, mature same-format performance association, or a clearly labelled hypothesis to test. None establishes sales or causality from public engagement."},
         "pattern": {"type": "string", "minLength": 1, "description": "Creator-facing report heading rendered unchanged. Name the pattern in natural creator language using output_language; express the analytical meaning in that language. Quoted native source titles and proper names keep their original wording in cited evidence."},
         "explanation": {"type": "string", "minLength": 1, "description": "Creator-facing explanatory prose rendered unchanged, using natural output_language. Explain why this observed pattern matters without upgrading sample association to historical change or its cause."},
         "content_ids": {"type": "array", "minItems": 1, "maxItems": 3, "uniqueItems": true, "description": "Copy IDs character for character from this run's synthesis_input.content; verify the associated title. Never reconstruct IDs from titles, URLs or memory.", "items": {"type": "string", "minLength": 1}}

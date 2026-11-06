@@ -24,6 +24,7 @@ from profile_contract import synthesis_schema, validate_profile
 from estimate_growth import estimate, with_snapshot, time as growth_time
 from account_analyzers import normalize_format
 from synthesis_authoring import validate_authoring
+from evidence_context import maturity_by_format, evidence_age
 
 
 # Localize presentation only; preserve source titles, numbers and native evidence facts.
@@ -46,6 +47,9 @@ TEXT = {
     "evidence_interact": "{value:.2f}% interactions/view",
     "multiple": "{value:.2f}x the creator's same-format median",
     "provisional_format": "short/long format inferred from duration, not a platform label",
+    "published_at": "published {value}",
+    "too_recent": "younger than the baseline cutoff {value}; cumulative counts are not an equal-age performance comparison",
+    "maturity_unavailable": "no comparable age baseline; cumulative counts only",
     "identity_bio": "The public bio reads \"{bio}\".",
     "identity_followers": "About {followers} public followers.",
 }
@@ -65,6 +69,9 @@ ZH_TEXT = {
     "evidence_interact": "互动数 / 播放量 {value:.2f}%",
     "multiple": "本人同格式中位数的 {value:.2f} 倍",
     "provisional_format": "短/长视频格式按时长推断，并非平台标记",
+    "published_at": "发布于 {value}",
+    "too_recent": "晚于基线截止 {value}，累计数不代表等观察期表现比较",
+    "maturity_unavailable": "无可比日龄基线，仅展示累计数",
     "identity_bio": "公开主页写着「{bio}」。",
     "identity_followers": "公开粉丝约 {followers}。",
 }
@@ -143,7 +150,7 @@ def stable_id(prefix: str, *parts: str) -> str:
     return f"{prefix}-{digest}"
 
 
-def resolve_patterns(patterns: list[dict[str, Any]], rankings: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+def resolve_patterns(patterns: list[dict[str, Any]], rankings: dict[str, dict[str, Any]], policies: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     resolved = []
     for pattern in patterns:
         examples = []
@@ -156,12 +163,13 @@ def resolve_patterns(patterns: list[dict[str, Any]], rankings: dict[str, dict[st
                 "title": row["title"],
                 "url": row.get("url"),
                 "format": row["format"],
+                **evidence_age(row, policies),
                 **({"format_confidence": row["format_confidence"]} if "format_confidence" in row else {}),
                 **({"format_source": row["format_source"]} if "format_source" in row else {}),
                 "metrics": dict(row["metrics"]),
                 "view_multiple_vs_format_median": row.get("view_multiple_vs_format_median"),
             })
-        resolved.append({"pattern": pattern["pattern"], "explanation": pattern["explanation"], "examples": examples})
+        resolved.append({"pattern": pattern["pattern"], "explanation": pattern["explanation"], "claim_type": pattern["claim_type"], "examples": examples})
     return resolved
 
 
@@ -291,6 +299,12 @@ def evidence_line(item: dict[str, Any], text: dict[str, Any] = TEXT) -> str:
         facts.append(text["evidence_interact"].format(value=round(interactions / views * 100 + 1e-12, 2)))
     if item.get("view_multiple_vs_format_median") is not None:
         facts.append(text["multiple"].format(value=item["view_multiple_vs_format_median"]))
+    if item.get("published_at"):
+        facts.append(text["published_at"].format(value=item["published_at"]))
+    if item.get("baseline_maturity") == "too_recent":
+        facts.append(text["too_recent"].format(value=item["baseline_cutoff_at"]))
+    elif item.get("baseline_maturity") == "unavailable":
+        facts.append(text["maturity_unavailable"])
     if (
         item.get("view_multiple_vs_format_median") is not None
         and item.get("format_confidence") == "provisional"
@@ -509,6 +523,7 @@ def compose(
     if synthesis.get("analysis_id") != analysis.get("analysis_id"):
         raise ValueError("synthesis analysis_id does not match analysis")
     synthesis = relabel_public_connectors(synthesis)
+    policies = maturity_by_format(analysis)
     rankings = {row["content_id"]: row for row in analysis["rankings"]}
     profile = build_profile(analysis, synthesis)
     resolved_identity = merge_identity(identity_from_scope(analysis.get("scope")), identity or {})
@@ -526,8 +541,8 @@ def compose(
         "headline": synthesis["headline"],
         "diagnosis": diagnosis,
         "baselines": analysis["baselines"],
-        "what_works": resolve_patterns(synthesis["what_works"], rankings),
-        "what_hurts": resolve_patterns(synthesis["what_hurts"], rankings),
+        "what_works": resolve_patterns(synthesis["what_works"], rankings, policies),
+        "what_hurts": resolve_patterns(synthesis["what_hurts"], rankings, policies),
         "recommendations": synthesis["recommendations"],
         "data_gaps": synthesis["data_gaps"],
     }

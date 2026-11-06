@@ -45,6 +45,21 @@ the report or profile schemas once the compact input exists. `scope.user_questio
 
 ## Evidence boundary
 
+- For sales or conversion questions, apply [sales-evidence.md](sales-evidence.md). Public content
+  can reveal wording and observed reach, not which content sells. Put the unresolved sales premise
+  in the headline/diagnosis themselves when it is central to the question; do not title the report
+  with a sales conclusion and retract it below.
+- `scope.baseline_maturity` gives the actual anchor and per-format cutoff. Publication day counts
+  as day one: a 14-day threshold is 13 elapsed days at that anchor, not fourteen full 24-hour days.
+  Each post and the highest-multiple pointer carry their own maturity status. A young post's low
+  cumulative count cannot establish weak content; a young high outlier does not prove effectiveness
+  either. The cutoff gives minimum-age eligibility, not identical exposure ages or causal evidence.
+- Declare each pattern's `claim_type`: `public_observation` for bounded wording/count descriptions,
+  `performance_association` for mature same-format baseline comparisons, or `hypothesis` for a
+  clearly labelled proposed explanation to test. Young posts may support wording observations and
+  tests, but not established performance patterns. The composer checks the declared comparisons;
+  it does not understand free-text claims, so check the title and explanations before delivery.
+
 - Apply the same boundary to `headline`, `verdict`, `diagnosis` and every pattern claim. Without
   historical observations, a single snapshot of cumulative views and dated uploads cannot verify
   recent follower or view growth or explain its cause: say the growth premise cannot be verified,

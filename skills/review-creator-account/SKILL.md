@@ -103,6 +103,10 @@ Decide before retrieving anything.
   Insights UI controls.
 - Ask only for a fact a conclusion needs, and never hold the public work while waiting for it.
 
+For sales or conversion questions, read [sales-evidence.md](references/sales-evidence.md) before
+interpreting public performance or supplied funnel numbers. Apply its boundary to the title as
+well as the answer; continue the supported public review when private results are missing.
+
 ## Complete review
 
 Read `references/complete-review.md` whole before step 1: it holds the retrieval, placement and
