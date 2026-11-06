@@ -33,8 +33,12 @@ OAuth 通过 `securitySchemes` 与 `_meta.securitySchemes` 同值声明。下表
 | analyze_content_video | video | false | false | true | 创建账号拥有的视频分析记录（新分析需有效 Pro 订阅）；同一幂等键重放原分析，不发布或改动源视频。 |
 | get_analysis_run | video | true | false | false | 仅查询当前用户持有的已存分析，不启动任务、不读取任意外部地址。 |
 | start_remake_video | video | false | false | true | 取第三方公开视频（占取数额度）并创建账号拥有的复刻任务（占每日复刻名额）；idempotency_key 必填，同键同入参重放或续做同一任务，不发布或改动源视频。 |
-| get_remake_video | video | true | false | false | 只读当前用户经 /mcp-pub 建的复刻任务并签发短期下载链接；不启动任务、不访问第三方、不占额度。 |
+| get_remake_video | video | false | false | false | 读当前用户经 /mcp-pub 建的复刻任务并签发短期下载链接；带 cancel 时终止该任务在跑的一步或准备（已花费照记），不访问第三方、不占额度。 |
 | render_remake_video | video | false | false | true | 提交宿主写的稿件并启动付费生成（runner 调用口播、配音与图像供应商）；已受理的任务再调只回当前状态、不重复启动。 |
+| start_video_project | video | false | false | true | 取第三方公开视频与公开图片（占取数额度）并创建账号拥有的原子项目，或带 job_id 往已有项目或已交付复刻追加素材；本身不生成、不扣生成费；idempotency_key 必填，同键同入参重放同一项目。 |
+| make_video_step | video | false | false | true | 在账号自己的项目或已交付复刻的工作区里启动一步生成或剪辑（Runner 调视频、配音、图像供应商；op 封闭枚举、只收工作区句柄），按实际花费计费、超出任务预算拒收；同键同入参只回当前状态、不重复启动。 |
+| edit_remake_video | video | false | false | true | 改账号自己已交付的视频（台词重配音并对口型、字幕、叠图、换背景、插镜），按实际花费计费，登记新版本、旧版本保留；同键同入参只回当前状态、不重复启动。 |
+| finish_video_project | video | false | false | false | 把账号自己项目里的一个成片句柄做相似度检查后登记为新版本成片并签发下载链接；不访问第三方；同键同入参只回当前状态。 |
 | get_research_capabilities | data | true | false | false | 只读 Kabo 自有状态（任务、制品、快照或目录），不访问第三方、不占额度。 |
 | youtube_search_videos | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |
 | youtube_search_channels | data | false | false | true | 读取第三方公开数据，并占账号每日取数额度或创建账号拥有的任务/候选集；不修改上游内容。 |

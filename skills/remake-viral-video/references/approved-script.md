@@ -53,6 +53,7 @@ reference scene.
 
 Go to step 6 of the Skill: show the model options and wait for the user's choice, exactly as for
 a reference remake; never preselect. At delivery, say the approved script was used word for word
-and only the line breaks may differ; do not say you rewrote anything. If the runner rejects the
+and only the line breaks may differ; do not say you rewrote anything. Anything else the user asked for (B-roll,
+a close-up) is added before the fetch, as step 7 says. If the runner rejects the
 text check, restore the exact approved text with `copy-drafts`; never change the words to pass.
 A change to the words is a new approved script and needs a new job once the user approves it.

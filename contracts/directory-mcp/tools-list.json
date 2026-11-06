@@ -14998,7 +14998,7 @@
         "openWorldHint": true,
         "readOnlyHint": false
       },
-      "description": "Remake a public talking-head video (YouTube, Instagram or TikTok, 90 s max) with the creator's videos or photos. Only after the user confirms. Top-level. Fetching uses daily quota. Uses one daily remake (shared with web) either way; one at a time. On fetching_inputs, repeat after retry_after_s. Next: poll get_remake_video.",
+      "description": "Remake a public talking-head video (YouTube, Instagram or TikTok, 10 min max) with the creator's videos or photos. Only after the user confirms. Top-level. Fetching uses daily quota. Uses one daily remake (shared with web) either way; one at a time. On fetching_inputs, repeat after retry_after_s. Next: poll get_remake_video.",
       "execution": {
         "taskSupport": "forbidden"
       },
@@ -15168,7 +15168,7 @@
         "destructiveHint": false,
         "idempotentHint": true,
         "openWorldHint": false,
-        "readOnlyHint": true
+        "readOnlyHint": false
       },
       "description": "Read a remake job. Top-level. Send job_id and wait_s. At waiting_script: brief.download is a JSON bundle {schema, job_id, files} to write the four files from, and talking_models lists the model choices with estimated cost (all_models: every model). At delivered: video.download is the final MP4; with include [\"review\"], review has Kabo's final-review verdict (qc, null when unknown) and the runner's notes on what it changed. Links are short-lived; call again to re-sign. out_of_scope, failed, timed_out and failure unsupported_type are final and come back as a normal result. No quota.",
       "execution": {
@@ -15181,6 +15181,11 @@
           "all_models": {
             "const": true,
             "description": "true adds talking_model_choices: every model, the first is the default.",
+            "type": "boolean"
+          },
+          "cancel": {
+            "const": true,
+            "description": "Stops the running step",
             "type": "boolean"
           },
           "include": {
@@ -15199,6 +15204,10 @@
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
             "type": "string"
+          },
+          "project": {
+            "const": true,
+            "type": "boolean"
           },
           "wait_s": {
             "description": "Seconds to wait while preparing or running, up to 30.",
@@ -15350,6 +15359,773 @@
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
             "type": "string"
+          },
+          "project": {
+            "additionalProperties": false,
+            "properties": {
+              "failure_reason": {
+                "anyOf": [
+                  {
+                    "maxLength": 500,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "handles": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "face": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "median": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "p10": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "verdict": {
+                              "enum": [
+                                "pass",
+                                "degraded"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "verdict",
+                            "median",
+                            "p10"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "from_op": {
+                      "anyOf": [
+                        {
+                          "maxLength": 32,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "name": {
+                      "maxLength": 80,
+                      "type": "string"
+                    },
+                    "seconds": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "video",
+                        "image",
+                        "audio"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "type",
+                    "seconds",
+                    "from_op",
+                    "face"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              "job_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "kind": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "remake",
+                      "project"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "last_step": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "error": {
+                        "anyOf": [
+                          {
+                            "maxLength": 64,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "face": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "median": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "p10": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "verdict": {
+                                "enum": [
+                                  "pass",
+                                  "degraded"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "verdict",
+                              "median",
+                              "p10"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "fallback_from": {
+                        "anyOf": [
+                          {
+                            "maxLength": 128,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "message": {
+                        "anyOf": [
+                          {
+                            "maxLength": 500,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "model": {
+                        "anyOf": [
+                          {
+                            "maxLength": 128,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "notes": {
+                        "anyOf": [
+                          {
+                            "maxLength": 4000,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "op": {
+                        "maxLength": 32,
+                        "type": "string"
+                      },
+                      "output": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "download": {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "bytes": {
+                                        "maximum": 9007199254740991,
+                                        "minimum": 0,
+                                        "type": "integer"
+                                      },
+                                      "content_type": {
+                                        "minLength": 1,
+                                        "type": "string"
+                                      },
+                                      "expires_at": {
+                                        "format": "date-time",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "enum": [
+                                          "envelope",
+                                          "artifact"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "sha256": {
+                                        "pattern": "^[a-f0-9]{64}$",
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "const": "ready",
+                                        "type": "string"
+                                      },
+                                      "url": {
+                                        "format": "uri",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "kind",
+                                      "url",
+                                      "expires_at",
+                                      "sha256",
+                                      "bytes",
+                                      "content_type"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "reason": {
+                                        "enum": [
+                                          "too_large",
+                                          "not_found",
+                                          "service_unavailable"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "const": "unavailable",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "reason"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              },
+                              "handle": {
+                                "maxLength": 80,
+                                "type": "string"
+                              },
+                              "preview": {
+                                "anyOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                          "bytes": {
+                                            "maximum": 9007199254740991,
+                                            "minimum": 0,
+                                            "type": "integer"
+                                          },
+                                          "content_type": {
+                                            "minLength": 1,
+                                            "type": "string"
+                                          },
+                                          "expires_at": {
+                                            "format": "date-time",
+                                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                            "type": "string"
+                                          },
+                                          "kind": {
+                                            "enum": [
+                                              "envelope",
+                                              "artifact"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          "sha256": {
+                                            "pattern": "^[a-f0-9]{64}$",
+                                            "type": "string"
+                                          },
+                                          "status": {
+                                            "const": "ready",
+                                            "type": "string"
+                                          },
+                                          "url": {
+                                            "format": "uri",
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "status",
+                                          "kind",
+                                          "url",
+                                          "expires_at",
+                                          "sha256",
+                                          "bytes",
+                                          "content_type"
+                                        ],
+                                        "type": "object"
+                                      },
+                                      {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                          "reason": {
+                                            "enum": [
+                                              "too_large",
+                                              "not_found",
+                                              "service_unavailable"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          "status": {
+                                            "const": "unavailable",
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "status",
+                                          "reason"
+                                        ],
+                                        "type": "object"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "handle",
+                              "download",
+                              "preview"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "spend_usd": {
+                        "anyOf": [
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "status": {
+                        "enum": [
+                          "running",
+                          "done",
+                          "failed"
+                        ],
+                        "type": "string"
+                      },
+                      "transcript": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "language": {
+                                "anyOf": [
+                                  {
+                                    "maxLength": 16,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "segments": {
+                                "items": {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "t0": {
+                                      "minimum": 0,
+                                      "type": "number"
+                                    },
+                                    "t1": {
+                                      "minimum": 0,
+                                      "type": "number"
+                                    },
+                                    "text": {
+                                      "maxLength": 600,
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "t0",
+                                    "t1",
+                                    "text"
+                                  ],
+                                  "type": "object"
+                                },
+                                "maxItems": 1500,
+                                "type": "array"
+                              },
+                              "text": {
+                                "maxLength": 60000,
+                                "type": "string"
+                              },
+                              "truncated": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "language",
+                              "text",
+                              "segments"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "op",
+                      "status",
+                      "spend_usd",
+                      "model",
+                      "fallback_from",
+                      "face",
+                      "error",
+                      "message",
+                      "notes",
+                      "output",
+                      "transcript"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lines": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "row": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "t0": {
+                          "anyOf": [
+                            {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "t1": {
+                          "anyOf": [
+                            {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "text": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "row",
+                        "text",
+                        "t0",
+                        "t1"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 200,
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "message": {
+                "anyOf": [
+                  {
+                    "maxLength": 500,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "persona": {
+                "type": "boolean"
+              },
+              "retry_after_s": {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "revisions": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "created_at": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    "handle": {
+                      "maxLength": 80,
+                      "type": "string"
+                    },
+                    "n": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "notes": {
+                      "maxLength": 4000,
+                      "type": "string"
+                    },
+                    "video": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "download": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "bytes": {
+                                  "maximum": 9007199254740991,
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                "content_type": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "expires_at": {
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "enum": [
+                                    "envelope",
+                                    "artifact"
+                                  ],
+                                  "type": "string"
+                                },
+                                "sha256": {
+                                  "pattern": "^[a-f0-9]{64}$",
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "const": "ready",
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "format": "uri",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "kind",
+                                "url",
+                                "expires_at",
+                                "sha256",
+                                "bytes",
+                                "content_type"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "reason": {
+                                  "enum": [
+                                    "too_large",
+                                    "not_found",
+                                    "service_unavailable"
+                                  ],
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "const": "unavailable",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "reason"
+                              ],
+                              "type": "object"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "download"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "n",
+                    "created_at",
+                    "notes",
+                    "handle",
+                    "video"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              "spend_usd": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "enum": [
+                  "fetching_inputs",
+                  "preparing",
+                  "waiting_script",
+                  "running",
+                  "delivered",
+                  "out_of_scope",
+                  "failed",
+                  "timed_out",
+                  "ready",
+                  "working",
+                  "cancelled"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "job_id",
+              "status",
+              "kind",
+              "retry_after_s",
+              "message",
+              "handles",
+              "revisions",
+              "last_step",
+              "lines",
+              "persona",
+              "spend_usd",
+              "failure_reason"
+            ],
+            "type": "object"
           },
           "reference_type": {
             "anyOf": [
@@ -16104,6 +16880,3528 @@
         }
       ],
       "title": "Render a video remake"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "video"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Start a video project (with job_id: add inputs to one) for videos a full remake does not make. Tell the user the plan first. Top-level. Fetching videos uses daily quota. On fetching_inputs repeat the call after retry_after_s. Next: make_video_step at ready.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "creator": {
+            "additionalProperties": false,
+            "description": "instagram_handle, or video_urls and/or photo_urls (face JPEG/PNG); max 4.",
+            "properties": {
+              "instagram_handle": {
+                "description": "Handle or profile link; Kabo picks reels.",
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "photo_urls": {
+                "items": {
+                  "maxLength": 2048,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 4,
+                "minItems": 1,
+                "type": "array"
+              },
+              "video_urls": {
+                "description": "Links of them talking.",
+                "items": {
+                  "maxLength": 2048,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 4,
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "creator_name": {
+            "description": "ASCII; defaults to handle, else required.",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "description": "8-128 of A-Za-z0-9._:- . New per remake; reuse only to retry or resume.",
+            "maxLength": 128,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "type": "string"
+          },
+          "job_id": {
+            "description": "Add to this project",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "type": "string"
+          },
+          "reference_image_urls": {
+            "description": "Product or scene images",
+            "items": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "type": "array"
+          },
+          "reference_video_urls": {
+            "description": "Videos by others",
+            "items": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 4,
+            "type": "array"
+          }
+        },
+        "required": [
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "name": "start_video_project",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "failure_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "handles": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "face": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "median": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "p10": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "verdict": {
+                          "enum": [
+                            "pass",
+                            "degraded"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "verdict",
+                        "median",
+                        "p10"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "from_op": {
+                  "anyOf": [
+                    {
+                      "maxLength": 32,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                "seconds": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": {
+                  "enum": [
+                    "video",
+                    "image",
+                    "audio"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "seconds",
+                "from_op",
+                "face"
+              ],
+              "type": "object"
+            },
+            "maxItems": 200,
+            "type": "array"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "remake",
+                  "project"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_step": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "error": {
+                    "anyOf": [
+                      {
+                        "maxLength": 64,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "face": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "median": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "p10": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "verdict": {
+                            "enum": [
+                              "pass",
+                              "degraded"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "verdict",
+                          "median",
+                          "p10"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fallback_from": {
+                    "anyOf": [
+                      {
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "message": {
+                    "anyOf": [
+                      {
+                        "maxLength": 500,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "notes": {
+                    "anyOf": [
+                      {
+                        "maxLength": 4000,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "op": {
+                    "maxLength": 32,
+                    "type": "string"
+                  },
+                  "output": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "download": {
+                            "anyOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "bytes": {
+                                    "maximum": 9007199254740991,
+                                    "minimum": 0,
+                                    "type": "integer"
+                                  },
+                                  "content_type": {
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "expires_at": {
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": [
+                                      "envelope",
+                                      "artifact"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "sha256": {
+                                    "pattern": "^[a-f0-9]{64}$",
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "const": "ready",
+                                    "type": "string"
+                                  },
+                                  "url": {
+                                    "format": "uri",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "kind",
+                                  "url",
+                                  "expires_at",
+                                  "sha256",
+                                  "bytes",
+                                  "content_type"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "reason": {
+                                    "enum": [
+                                      "too_large",
+                                      "not_found",
+                                      "service_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "const": "unavailable",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "reason"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "handle": {
+                            "maxLength": 80,
+                            "type": "string"
+                          },
+                          "preview": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "bytes": {
+                                        "maximum": 9007199254740991,
+                                        "minimum": 0,
+                                        "type": "integer"
+                                      },
+                                      "content_type": {
+                                        "minLength": 1,
+                                        "type": "string"
+                                      },
+                                      "expires_at": {
+                                        "format": "date-time",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "enum": [
+                                          "envelope",
+                                          "artifact"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "sha256": {
+                                        "pattern": "^[a-f0-9]{64}$",
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "const": "ready",
+                                        "type": "string"
+                                      },
+                                      "url": {
+                                        "format": "uri",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "kind",
+                                      "url",
+                                      "expires_at",
+                                      "sha256",
+                                      "bytes",
+                                      "content_type"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "reason": {
+                                        "enum": [
+                                          "too_large",
+                                          "not_found",
+                                          "service_unavailable"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "const": "unavailable",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "reason"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "handle",
+                          "download",
+                          "preview"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "spend_usd": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "running",
+                      "done",
+                      "failed"
+                    ],
+                    "type": "string"
+                  },
+                  "transcript": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "language": {
+                            "anyOf": [
+                              {
+                                "maxLength": 16,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "segments": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "t0": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "t1": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "text": {
+                                  "maxLength": 600,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "t0",
+                                "t1",
+                                "text"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 1500,
+                            "type": "array"
+                          },
+                          "text": {
+                            "maxLength": 60000,
+                            "type": "string"
+                          },
+                          "truncated": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "language",
+                          "text",
+                          "segments"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "op",
+                  "status",
+                  "spend_usd",
+                  "model",
+                  "fallback_from",
+                  "face",
+                  "error",
+                  "message",
+                  "notes",
+                  "output",
+                  "transcript"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "row": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "t0": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "t1": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "text": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "row",
+                    "text",
+                    "t0",
+                    "t1"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persona": {
+            "type": "boolean"
+          },
+          "retry_after_s": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revisions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "created_at": {
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "type": "string"
+                },
+                "handle": {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                "n": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "notes": {
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "video": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "download": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bytes": {
+                              "maximum": 9007199254740991,
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "content_type": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "expires_at": {
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "envelope",
+                                "artifact"
+                              ],
+                              "type": "string"
+                            },
+                            "sha256": {
+                              "pattern": "^[a-f0-9]{64}$",
+                              "type": "string"
+                            },
+                            "status": {
+                              "const": "ready",
+                              "type": "string"
+                            },
+                            "url": {
+                              "format": "uri",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "kind",
+                            "url",
+                            "expires_at",
+                            "sha256",
+                            "bytes",
+                            "content_type"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "reason": {
+                              "enum": [
+                                "too_large",
+                                "not_found",
+                                "service_unavailable"
+                              ],
+                              "type": "string"
+                            },
+                            "status": {
+                              "const": "unavailable",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "reason"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "download"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "n",
+                "created_at",
+                "notes",
+                "handle",
+                "video"
+              ],
+              "type": "object"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "spend_usd": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "fetching_inputs",
+              "preparing",
+              "waiting_script",
+              "running",
+              "delivered",
+              "out_of_scope",
+              "failed",
+              "timed_out",
+              "ready",
+              "working",
+              "cancelled"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "kind",
+          "retry_after_s",
+          "message",
+          "handles",
+          "revisions",
+          "last_step",
+          "lines",
+          "persona",
+          "spend_usd",
+          "failure_reason"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "video"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Start a video project"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "video"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Run one paid step on a ready project or delivered remake; inputs are job file handles, the result is a new handle. Top-level. One step at a time; tell the user the plan and cost first. Poll get_remake_video with project true.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "idempotency_key": {
+            "description": "8-128 of A-Za-z0-9._:- . New per step; reuse only to retry.",
+            "maxLength": 128,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "type": "string"
+          },
+          "inputs": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "type": "array"
+                }
+              ]
+            },
+            "propertyNames": {
+              "maxLength": 32,
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "job_id": {
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "type": "string"
+          },
+          "op": {
+            "enum": [
+              "refvideo",
+              "motion",
+              "replace",
+              "lipsync",
+              "talking",
+              "tts",
+              "still",
+              "animate",
+              "bg",
+              "overlay",
+              "splice",
+              "concat",
+              "text_cards",
+              "music",
+              "captions",
+              "frame",
+              "face_check",
+              "trim",
+              "mux",
+              "extract_audio",
+              "persona",
+              "voice_change",
+              "retime",
+              "crop",
+              "inpaint_text",
+              "layout",
+              "first_frame",
+              "still_video",
+              "transcribe",
+              "audio_edit"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {},
+            "description": "Per-op settings",
+            "propertyNames": {
+              "maxLength": 32,
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "job_id",
+          "op",
+          "inputs",
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "name": "make_video_step",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "failure_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "handles": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "face": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "median": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "p10": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "verdict": {
+                          "enum": [
+                            "pass",
+                            "degraded"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "verdict",
+                        "median",
+                        "p10"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "from_op": {
+                  "anyOf": [
+                    {
+                      "maxLength": 32,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                "seconds": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": {
+                  "enum": [
+                    "video",
+                    "image",
+                    "audio"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "seconds",
+                "from_op",
+                "face"
+              ],
+              "type": "object"
+            },
+            "maxItems": 200,
+            "type": "array"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "remake",
+                  "project"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_step": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "error": {
+                    "anyOf": [
+                      {
+                        "maxLength": 64,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "face": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "median": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "p10": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "verdict": {
+                            "enum": [
+                              "pass",
+                              "degraded"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "verdict",
+                          "median",
+                          "p10"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fallback_from": {
+                    "anyOf": [
+                      {
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "message": {
+                    "anyOf": [
+                      {
+                        "maxLength": 500,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "notes": {
+                    "anyOf": [
+                      {
+                        "maxLength": 4000,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "op": {
+                    "maxLength": 32,
+                    "type": "string"
+                  },
+                  "output": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "download": {
+                            "anyOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "bytes": {
+                                    "maximum": 9007199254740991,
+                                    "minimum": 0,
+                                    "type": "integer"
+                                  },
+                                  "content_type": {
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "expires_at": {
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": [
+                                      "envelope",
+                                      "artifact"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "sha256": {
+                                    "pattern": "^[a-f0-9]{64}$",
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "const": "ready",
+                                    "type": "string"
+                                  },
+                                  "url": {
+                                    "format": "uri",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "kind",
+                                  "url",
+                                  "expires_at",
+                                  "sha256",
+                                  "bytes",
+                                  "content_type"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "reason": {
+                                    "enum": [
+                                      "too_large",
+                                      "not_found",
+                                      "service_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "const": "unavailable",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "reason"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "handle": {
+                            "maxLength": 80,
+                            "type": "string"
+                          },
+                          "preview": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "bytes": {
+                                        "maximum": 9007199254740991,
+                                        "minimum": 0,
+                                        "type": "integer"
+                                      },
+                                      "content_type": {
+                                        "minLength": 1,
+                                        "type": "string"
+                                      },
+                                      "expires_at": {
+                                        "format": "date-time",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "enum": [
+                                          "envelope",
+                                          "artifact"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "sha256": {
+                                        "pattern": "^[a-f0-9]{64}$",
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "const": "ready",
+                                        "type": "string"
+                                      },
+                                      "url": {
+                                        "format": "uri",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "kind",
+                                      "url",
+                                      "expires_at",
+                                      "sha256",
+                                      "bytes",
+                                      "content_type"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "reason": {
+                                        "enum": [
+                                          "too_large",
+                                          "not_found",
+                                          "service_unavailable"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "const": "unavailable",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "reason"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "handle",
+                          "download",
+                          "preview"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "spend_usd": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "running",
+                      "done",
+                      "failed"
+                    ],
+                    "type": "string"
+                  },
+                  "transcript": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "language": {
+                            "anyOf": [
+                              {
+                                "maxLength": 16,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "segments": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "t0": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "t1": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "text": {
+                                  "maxLength": 600,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "t0",
+                                "t1",
+                                "text"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 1500,
+                            "type": "array"
+                          },
+                          "text": {
+                            "maxLength": 60000,
+                            "type": "string"
+                          },
+                          "truncated": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "language",
+                          "text",
+                          "segments"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "op",
+                  "status",
+                  "spend_usd",
+                  "model",
+                  "fallback_from",
+                  "face",
+                  "error",
+                  "message",
+                  "notes",
+                  "output",
+                  "transcript"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "row": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "t0": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "t1": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "text": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "row",
+                    "text",
+                    "t0",
+                    "t1"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persona": {
+            "type": "boolean"
+          },
+          "retry_after_s": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revisions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "created_at": {
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "type": "string"
+                },
+                "handle": {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                "n": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "notes": {
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "video": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "download": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bytes": {
+                              "maximum": 9007199254740991,
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "content_type": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "expires_at": {
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "envelope",
+                                "artifact"
+                              ],
+                              "type": "string"
+                            },
+                            "sha256": {
+                              "pattern": "^[a-f0-9]{64}$",
+                              "type": "string"
+                            },
+                            "status": {
+                              "const": "ready",
+                              "type": "string"
+                            },
+                            "url": {
+                              "format": "uri",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "kind",
+                            "url",
+                            "expires_at",
+                            "sha256",
+                            "bytes",
+                            "content_type"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "reason": {
+                              "enum": [
+                                "too_large",
+                                "not_found",
+                                "service_unavailable"
+                              ],
+                              "type": "string"
+                            },
+                            "status": {
+                              "const": "unavailable",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "reason"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "download"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "n",
+                "created_at",
+                "notes",
+                "handle",
+                "video"
+              ],
+              "type": "object"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "spend_usd": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "fetching_inputs",
+              "preparing",
+              "waiting_script",
+              "running",
+              "delivered",
+              "out_of_scope",
+              "failed",
+              "timed_out",
+              "ready",
+              "working",
+              "cancelled"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "kind",
+          "retry_after_s",
+          "message",
+          "handles",
+          "revisions",
+          "last_step",
+          "lines",
+          "persona",
+          "spend_usd",
+          "failure_reason"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "video"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Make one video step"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "video"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Change a delivered video: rewrite lines, restyle captions, or lay media, a background or a clip over a time range. Each call makes a new revision; earlier ones stay downloadable. Top-level. Paid; tell the user the plan first. Poll get_remake_video with project true.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "edits": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "box": {
+                  "description": "[x,y,w], 0-1",
+                  "items": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "maxItems": 3,
+                  "minItems": 3,
+                  "type": "array"
+                },
+                "clip": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "color": {
+                  "maxLength": 7,
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "lines",
+                    "captions",
+                    "overlay",
+                    "background",
+                    "clip"
+                  ],
+                  "type": "string"
+                },
+                "lines": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "row": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "text": {
+                        "maxLength": 600,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "row",
+                      "text"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 50,
+                  "type": "array"
+                },
+                "media": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "plate": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "size": {
+                  "maximum": 2,
+                  "minimum": 0.5,
+                  "type": "number"
+                },
+                "t0": {
+                  "maximum": 600,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "t1": {
+                  "maximum": 600,
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "type": "array"
+          },
+          "idempotency_key": {
+            "description": "8-128 of A-Za-z0-9._:- . New per step; reuse only to retry.",
+            "maxLength": 128,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "edits",
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "name": "edit_remake_video",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "failure_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "handles": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "face": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "median": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "p10": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "verdict": {
+                          "enum": [
+                            "pass",
+                            "degraded"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "verdict",
+                        "median",
+                        "p10"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "from_op": {
+                  "anyOf": [
+                    {
+                      "maxLength": 32,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                "seconds": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": {
+                  "enum": [
+                    "video",
+                    "image",
+                    "audio"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "seconds",
+                "from_op",
+                "face"
+              ],
+              "type": "object"
+            },
+            "maxItems": 200,
+            "type": "array"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "remake",
+                  "project"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_step": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "error": {
+                    "anyOf": [
+                      {
+                        "maxLength": 64,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "face": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "median": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "p10": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "verdict": {
+                            "enum": [
+                              "pass",
+                              "degraded"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "verdict",
+                          "median",
+                          "p10"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fallback_from": {
+                    "anyOf": [
+                      {
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "message": {
+                    "anyOf": [
+                      {
+                        "maxLength": 500,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "notes": {
+                    "anyOf": [
+                      {
+                        "maxLength": 4000,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "op": {
+                    "maxLength": 32,
+                    "type": "string"
+                  },
+                  "output": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "download": {
+                            "anyOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "bytes": {
+                                    "maximum": 9007199254740991,
+                                    "minimum": 0,
+                                    "type": "integer"
+                                  },
+                                  "content_type": {
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "expires_at": {
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": [
+                                      "envelope",
+                                      "artifact"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "sha256": {
+                                    "pattern": "^[a-f0-9]{64}$",
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "const": "ready",
+                                    "type": "string"
+                                  },
+                                  "url": {
+                                    "format": "uri",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "kind",
+                                  "url",
+                                  "expires_at",
+                                  "sha256",
+                                  "bytes",
+                                  "content_type"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "reason": {
+                                    "enum": [
+                                      "too_large",
+                                      "not_found",
+                                      "service_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "const": "unavailable",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "reason"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "handle": {
+                            "maxLength": 80,
+                            "type": "string"
+                          },
+                          "preview": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "bytes": {
+                                        "maximum": 9007199254740991,
+                                        "minimum": 0,
+                                        "type": "integer"
+                                      },
+                                      "content_type": {
+                                        "minLength": 1,
+                                        "type": "string"
+                                      },
+                                      "expires_at": {
+                                        "format": "date-time",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "enum": [
+                                          "envelope",
+                                          "artifact"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "sha256": {
+                                        "pattern": "^[a-f0-9]{64}$",
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "const": "ready",
+                                        "type": "string"
+                                      },
+                                      "url": {
+                                        "format": "uri",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "kind",
+                                      "url",
+                                      "expires_at",
+                                      "sha256",
+                                      "bytes",
+                                      "content_type"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "reason": {
+                                        "enum": [
+                                          "too_large",
+                                          "not_found",
+                                          "service_unavailable"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "const": "unavailable",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "reason"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "handle",
+                          "download",
+                          "preview"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "spend_usd": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "running",
+                      "done",
+                      "failed"
+                    ],
+                    "type": "string"
+                  },
+                  "transcript": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "language": {
+                            "anyOf": [
+                              {
+                                "maxLength": 16,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "segments": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "t0": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "t1": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "text": {
+                                  "maxLength": 600,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "t0",
+                                "t1",
+                                "text"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 1500,
+                            "type": "array"
+                          },
+                          "text": {
+                            "maxLength": 60000,
+                            "type": "string"
+                          },
+                          "truncated": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "language",
+                          "text",
+                          "segments"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "op",
+                  "status",
+                  "spend_usd",
+                  "model",
+                  "fallback_from",
+                  "face",
+                  "error",
+                  "message",
+                  "notes",
+                  "output",
+                  "transcript"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "row": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "t0": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "t1": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "text": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "row",
+                    "text",
+                    "t0",
+                    "t1"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persona": {
+            "type": "boolean"
+          },
+          "retry_after_s": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revisions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "created_at": {
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "type": "string"
+                },
+                "handle": {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                "n": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "notes": {
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "video": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "download": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bytes": {
+                              "maximum": 9007199254740991,
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "content_type": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "expires_at": {
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "envelope",
+                                "artifact"
+                              ],
+                              "type": "string"
+                            },
+                            "sha256": {
+                              "pattern": "^[a-f0-9]{64}$",
+                              "type": "string"
+                            },
+                            "status": {
+                              "const": "ready",
+                              "type": "string"
+                            },
+                            "url": {
+                              "format": "uri",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "kind",
+                            "url",
+                            "expires_at",
+                            "sha256",
+                            "bytes",
+                            "content_type"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "reason": {
+                              "enum": [
+                                "too_large",
+                                "not_found",
+                                "service_unavailable"
+                              ],
+                              "type": "string"
+                            },
+                            "status": {
+                              "const": "unavailable",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "reason"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "download"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "n",
+                "created_at",
+                "notes",
+                "handle",
+                "video"
+              ],
+              "type": "object"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "spend_usd": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "fetching_inputs",
+              "preparing",
+              "waiting_script",
+              "running",
+              "delivered",
+              "out_of_scope",
+              "failed",
+              "timed_out",
+              "ready",
+              "working",
+              "cancelled"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "kind",
+          "retry_after_s",
+          "message",
+          "handles",
+          "revisions",
+          "last_step",
+          "lines",
+          "persona",
+          "spend_usd",
+          "failure_reason"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "video"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Edit a delivered video"
+    },
+    {
+      "_meta": {
+        "securitySchemes": [
+          {
+            "scopes": [
+              "video"
+            ],
+            "type": "oauth2"
+          }
+        ]
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Deliver one .mp4 handle of a project as the finished video after a likeness check; it becomes a new revision with a download. Top-level. Poll get_remake_video with project true.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "handle": {
+            "description": "The .mp4 to deliver",
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          "idempotency_key": {
+            "description": "8-128 of A-Za-z0-9._:- . New per step; reuse only to retry.",
+            "maxLength": 128,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "handle",
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "name": "finish_video_project",
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "failure_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "handles": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "face": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "median": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "p10": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "verdict": {
+                          "enum": [
+                            "pass",
+                            "degraded"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "verdict",
+                        "median",
+                        "p10"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "from_op": {
+                  "anyOf": [
+                    {
+                      "maxLength": 32,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                "seconds": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": {
+                  "enum": [
+                    "video",
+                    "image",
+                    "audio"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "seconds",
+                "from_op",
+                "face"
+              ],
+              "type": "object"
+            },
+            "maxItems": 200,
+            "type": "array"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "remake",
+                  "project"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_step": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "error": {
+                    "anyOf": [
+                      {
+                        "maxLength": 64,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "face": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "median": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "p10": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "verdict": {
+                            "enum": [
+                              "pass",
+                              "degraded"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "verdict",
+                          "median",
+                          "p10"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fallback_from": {
+                    "anyOf": [
+                      {
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "message": {
+                    "anyOf": [
+                      {
+                        "maxLength": 500,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "notes": {
+                    "anyOf": [
+                      {
+                        "maxLength": 4000,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "op": {
+                    "maxLength": 32,
+                    "type": "string"
+                  },
+                  "output": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "download": {
+                            "anyOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "bytes": {
+                                    "maximum": 9007199254740991,
+                                    "minimum": 0,
+                                    "type": "integer"
+                                  },
+                                  "content_type": {
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "expires_at": {
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": [
+                                      "envelope",
+                                      "artifact"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "sha256": {
+                                    "pattern": "^[a-f0-9]{64}$",
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "const": "ready",
+                                    "type": "string"
+                                  },
+                                  "url": {
+                                    "format": "uri",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "kind",
+                                  "url",
+                                  "expires_at",
+                                  "sha256",
+                                  "bytes",
+                                  "content_type"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "reason": {
+                                    "enum": [
+                                      "too_large",
+                                      "not_found",
+                                      "service_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "const": "unavailable",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "reason"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "handle": {
+                            "maxLength": 80,
+                            "type": "string"
+                          },
+                          "preview": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "bytes": {
+                                        "maximum": 9007199254740991,
+                                        "minimum": 0,
+                                        "type": "integer"
+                                      },
+                                      "content_type": {
+                                        "minLength": 1,
+                                        "type": "string"
+                                      },
+                                      "expires_at": {
+                                        "format": "date-time",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "enum": [
+                                          "envelope",
+                                          "artifact"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "sha256": {
+                                        "pattern": "^[a-f0-9]{64}$",
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "const": "ready",
+                                        "type": "string"
+                                      },
+                                      "url": {
+                                        "format": "uri",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "kind",
+                                      "url",
+                                      "expires_at",
+                                      "sha256",
+                                      "bytes",
+                                      "content_type"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "reason": {
+                                        "enum": [
+                                          "too_large",
+                                          "not_found",
+                                          "service_unavailable"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "const": "unavailable",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "reason"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "handle",
+                          "download",
+                          "preview"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "spend_usd": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "running",
+                      "done",
+                      "failed"
+                    ],
+                    "type": "string"
+                  },
+                  "transcript": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "language": {
+                            "anyOf": [
+                              {
+                                "maxLength": 16,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "segments": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "t0": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "t1": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "text": {
+                                  "maxLength": 600,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "t0",
+                                "t1",
+                                "text"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 1500,
+                            "type": "array"
+                          },
+                          "text": {
+                            "maxLength": 60000,
+                            "type": "string"
+                          },
+                          "truncated": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "language",
+                          "text",
+                          "segments"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "op",
+                  "status",
+                  "spend_usd",
+                  "model",
+                  "fallback_from",
+                  "face",
+                  "error",
+                  "message",
+                  "notes",
+                  "output",
+                  "transcript"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "row": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "t0": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "t1": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "text": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "row",
+                    "text",
+                    "t0",
+                    "t1"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persona": {
+            "type": "boolean"
+          },
+          "retry_after_s": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revisions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "created_at": {
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "type": "string"
+                },
+                "handle": {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                "n": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "notes": {
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "video": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "download": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bytes": {
+                              "maximum": 9007199254740991,
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "content_type": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "expires_at": {
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "envelope",
+                                "artifact"
+                              ],
+                              "type": "string"
+                            },
+                            "sha256": {
+                              "pattern": "^[a-f0-9]{64}$",
+                              "type": "string"
+                            },
+                            "status": {
+                              "const": "ready",
+                              "type": "string"
+                            },
+                            "url": {
+                              "format": "uri",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "kind",
+                            "url",
+                            "expires_at",
+                            "sha256",
+                            "bytes",
+                            "content_type"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "reason": {
+                              "enum": [
+                                "too_large",
+                                "not_found",
+                                "service_unavailable"
+                              ],
+                              "type": "string"
+                            },
+                            "status": {
+                              "const": "unavailable",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "reason"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "download"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "n",
+                "created_at",
+                "notes",
+                "handle",
+                "video"
+              ],
+              "type": "object"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "spend_usd": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "fetching_inputs",
+              "preparing",
+              "waiting_script",
+              "running",
+              "delivered",
+              "out_of_scope",
+              "failed",
+              "timed_out",
+              "ready",
+              "working",
+              "cancelled"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "kind",
+          "retry_after_s",
+          "message",
+          "handles",
+          "revisions",
+          "last_step",
+          "lines",
+          "persona",
+          "spend_usd",
+          "failure_reason"
+        ],
+        "type": "object"
+      },
+      "securitySchemes": [
+        {
+          "scopes": [
+            "video"
+          ],
+          "type": "oauth2"
+        }
+      ],
+      "title": "Deliver a video project"
     },
     {
       "_meta": {

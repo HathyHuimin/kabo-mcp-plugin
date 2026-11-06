@@ -145,7 +145,7 @@ cd '<run directory>' && KABO_STATIC_RUN_DIR='<run directory>' python3 '<skill di
 
 When it says the preview is still rendering, wait about 30 seconds and repeat both steps. It
 saves `preview/<n>/page_NN.jpg`: one strip per row with the row and lines, the line, and four
-frames. Open every page with your image viewer and check each strip: the words read at phone
+frames. Open every page listed in `open` (a long video gives an even sample; follow `open_note`) and check each strip: the words read at phone
 size, the frame is filled, nothing important sits in the bottom third under the captions, and the
 picture shows what the line says. `errors` names rows that did not render. Fix what does not
 work in `script/decisions.json`, run step 5 again and preview again -- there is no limit. A
@@ -156,7 +156,7 @@ preview does not start production; the job stays at the script gate.
 After the video is made, a voice-over job stops once more: `get_remake_video` shows
 `waiting_script` again with a `gate_message` asking you to look at every line's picture. Save that
 result and run `fetch` on it (step 3's command); it reports `"saved": "review"` and saves
-`review/pages/page_NN.jpg` -- each row: the video's
+`review/pages/page_NN.jpg` (open those listed in `open`) -- each row: the video's
 picture while the line is heard | the reference's picture where the same line was heard | the
 line -- and `review/brief/` with the current decisions and
 `production/review/beats/beat_review.template.json`.

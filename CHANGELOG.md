@@ -2,6 +2,53 @@
 
 版本号以 `plugin.json` 为准；`.claude-plugin/plugin.json`、`package.json` 与 `package-lock.json` 的根包版本与之同步。
 
+## 1.0.21（2026-11-06；GitHub Release）
+
+- `remake-viral-video`：旁白类（voice-over）参考不再因为创作者视频没有正脸而被当成不支持、先问用户要正脸照——旁白只用创作者的声音（本地插件闸门 C4/C5 发现，历史措辞）。正文等量压缩，20,999 字符。
+- `remake-viral-video`（pre t17 验收）：取消后等到任务不再 running 再回话，没等到就说「已请求取消、正在停止」；`bg` 估价改为约 $0.02/秒（与 runner 计价一致，不再归入「花费很少或不花钱」）；`quota_exceeded` 的 message 说另一步还在跑时等它跑完、用同一把键重提，不说成额度用完；修改后总花费读 `project.spend_usd`（kabo 已把交付后的步骤与修改算进去）。
+- `remake-viral-video`：出片后修改与原子项目（跨仓契约 v1–v1.4，2026-11-04；内容改写自复刻包 V2-r87 的 `skill/references/atoms.md`，
+  从「跑 cr 命令」改成「调 /mcp-pub 工具」）。
+  - 交付后的局部修改（换台词、字幕颜色/大小、某段换背景、叠图、插一段新镜头）走 `edit_remake_video`，只改用户点名的部分、
+    生成新修订版、旧版保留；时间段从 `get_remake_video`（`project: true`）的 `lines` 取；细则在 `references/edits.md`。
+  - 五类之内的新视频仍默认整条复刻；五类以外用原子项目：`start_video_project` → 多次 `make_video_step` → `finish_video_project`；
+    先写计划、告诉用户做什么与大约花费再付费；碰脸规则（少重绘、优先真实画面、degraded 不拦交付但要说明）；细则在 `references/atoms.md`。
+  - 缺口清单对应：整条复刻拒收「无人出镜参考」后改走项目（参考进 `--reference-video`，复用参考画面 + 本人段拼回，G1）；
+    不含本人的生成视频只用无脸步骤（G5）；本人视频没人说话时先要录音、没有再让用户选预设音色（G3）；
+    用户要求时用 `get_remake_video` 的 `cancel: true` 取消卡住的任务（G6）；description 收窄为只在要成片 / 改成片时触发，
+    写稿、拆解、账号诊断不触发（G8）。
+  - 契约 v1.5（G4）：用户完全没有本人素材时，可用 `persona` 做一个虚构 AI 出镜人（定妆照 + 预设音色），之后照常用原子；
+    只能是虚构人物、不指向真实可识别的人，有本人素材时不用、两者不混用，交付时说明是 AI 生成的虚构人物。
+    `step-call` 校验 description（≤600 字、不含 @账号或链接）与 seed_images（≤4 张、非 creator/ 句柄）。
+  - `scripts/static_host.py`：`project-call`（创作者视频 0–4 段、照片、参考视频、参考图，或 `--job-id` 往已有项目追加）、
+    `step-call`（含 trim / mux / extract_audio / voice_change、tts 预设音色）、`edit-call`、`finish-call` 按严格形状核对、
+    只收工作区句柄、幂等键 `<skill>:<运行目录>:<工具>:<入参摘要>:a<序号>`；`fetch-step` 与 `fetch-revision` 只下载工具结果
+    给出的签名链接（大小、sha256、类型、文件头），最新修订版另存 `remake-<id>-r<N>.mp4`。
+  - 契约 v1.6（kabo `e6ecd21b`）：四个工具级原子 `retime`（speed / loop / bounce / hold）、`crop`、`inpaint_text`、`layout`
+    （多图层按框与时间合成，可只留近白/近黑笔画），本地执行、$0、不碰脸；`lipsync` 加 `sync_mode`（只给 sync-lipsync）、
+    `tts` 加 `speed`（0.5–2）。只加工具，不加场景化步骤或配方，场景由宿主组合原子。`step-call` 按服务端同口径校验
+    （比例框非空且在画面内、retime 的 mode 与 speed/duration 搭配、sync_mode 与模型搭配），并先核 `layout` 的 layers 与句柄一一对应。
+  - 为腾出正文长度，错误处理移到 `references/tool-errors.md`、稿件被退回的处理移到 `references/script-returned.md`，内容不变。
+  - 路线判断与网页端 creator-remake-web 0.1.40、本地复刻包（AGENTS.md / atoms.md）对齐：正文「Which path」换成
+    「Choose what to make」——五条通用原则（没说改的都保留；能保留真实像素就不重画脸；先用已有素材再问；只问只有用户能决定
+    或知道的事；整条复刻是「照这种结构再拍一条」的快捷路径，不是兜底）+ 按「保留什么 / 改变什么」组织的能力目录（每项标会不会
+    重画脸）。原片同镜头同动作走 `replace` → `lipsync`，本人视频换词/换语言走 `tts` → `lipsync`，整条复刻没做的（B-roll、特写）
+    交付后用步骤或修改补。项目步骤与修改说完计划和大约花费即开做，超出用户已同意的才先问（原为等用户点头）。
+    `motion` 不把全身照当前置（本人画面抽帧即可）；修改要配图时先看成片、素材与参考片里有没有。为不超 21,000 字符压缩了第 1、2 步与
+    「What this covers」的几处措辞，规则不变。
+- 契约 v1.7（复刻包 V2-r95）：`make_video_step` 的 op 加 `first_frame`（改一张图出新静帧，重画脸、付费、只收三档 tested 模型）、`still_video`（图片成段，可缓推）、`audio_edit`（音量/响度/淡入淡出/速度/长度，本地 $0）；`frame` 收 `at: first|last`（与 `t` 二选一）；`refvideo` 用 Kling v4 时到 30 秒；`talking` 收 `prompt`；`captions` 收 `max_words` / `upper`；已交付复刻另有句柄 `master.mp4`（当前无字幕画面）、`broll_bNN.mp4|png`（B-roll 段与其静帧）、`frame_sNN.png`（口播段首帧）。`step-call` 按服务端同口径校验。
+- 契约 v1.8（复刻包 V2-r96）：`make_video_step` 加 `transcribe`（一段视频 / 音频说了什么，带时间；本地 $0，不出文件），结果在 `last_step.transcript`；出图 / 出视频的一步另有 `last_step.output.preview`（≤1280 px、≤200 KB 的 JPEG，视频为四帧拼图）。`fetch-step` 把预览另存成 `<句柄>.preview.jpg` 并给出 `preview_path` 让模型打开看，转写存成 JSON 并原样交回；`step-call` 校验 `transcribe` 的 `language`。
+- 契约：`tools-list.json` 整份换成数据层正式导出（kabo#2022 分支 `yutian/remake-atoms-launch` 同步 kabo main `6677ce0f` 后的提交 `21a97d65`；kabo#2022 合并进 kabo main 后在合并提交 `8c8cfc0d` 上重新导出，三份文件逐字节一致，`pin.json` 的 sourceCommit 改钉 `8c8cfc0d`，含 1.0.17 钉住的 `4c0b966e` 的全部工具（含 `collect_video_media`）；golden 逐字节一致，77 个工具；`start_remake_video` 说明与转写上限随 kabo#2022 改为参考片 10 分钟、1500 段 / 60000 字），`pin.json` 重新钉住。相对 1.0.17 钉住的版本（73 个）：新增 `start_video_project`、`make_video_step`、`edit_remake_video`、`finish_video_project`（权限 video，进必需工具）；`get_remake_video` 加 `project: true`（项目状态）与 `cancel: true`，标注改为非只读；`start_remake_video` 带上 kabo#2011 的 `creator.photo_urls` / `voice_preset`。`make_video_step` 的 inputs / params 在公开 schema 里只是对象，服务端按 op 逐键严格校验，插件 `step-call` 的本地严格校验保留为第一道。kabo#2022 已于 2026-11-06 合并并部署生产。原计划的版本号 1.0.18 已被 main 占用，本次发为 1.0.21。
+- `remake-viral-video` 说明文字并入契约 v1.7（与网页端 creator-remake-web 0.1.41 同文）：能力表加 `first_frame`（改本人的一帧/照片出新静帧，重画脸）、
+  `audio_edit`、`still_video`；原则 3 点名已交付复刻的 `master.mp4`、takes、B-roll 与首帧；步骤 notes 说给的 box 压到画面文字或脸时
+  去掉 box 重做或告知用户；`atoms.md` 补 `frame` 的 `at`、`refvideo` 到 30 s、`talking.prompt`、`captions.max_words` / `upper` 与价格。
+- `remake-viral-video` 路线模拟（本地 t19）后续：原则 4 写明台词也由 agent 从参考片或本人视频的转写里拿、自己写；原则 3 写明 `frame` / `crop`
+  先看结果再用、不清楚换时刻、最后才向用户要；「1. Collect the inputs」开头注明只适用于整条复刻（此前把「换原片镜头」「本人视频换语言」
+  拉回整条复刻），「What this covers」改名「What a whole remake covers」，运行目录按「每条视频」预留。第 5、6 步与「What a whole remake
+  covers」措辞等量压缩，规则不变（正文 20,995 字符）。与网页端 creator-remake-web 0.1.42 同文。
+- `remake-viral-video` 说明文字并入契约 v1.8（与网页端 creator-remake-web 0.1.43 同文）：原则 4「从转写拿原话」指向 `transcribe`，
+  能力表加一行；原则 3「先看再用」改为看每一步的预览（`fetch-step` 打印的 `preview_path`，视频四帧）；`atoms.md` 补 `transcribe` 一行与
+  `fetch-step` 输出的预览 / 转写。正文等量压缩（20,998 字符）。
+- `remake-viral-video` 正文压回 21,000 字符以内（此前 21,195，`skills:lint` KS3.1 报错）：第 1、2、3、8 步与取消、范围说明里的几处措辞等量压缩，规则不变（正文 20,996 字符）。
 ## 1.0.20（2026-11-06；GitHub Release）
 
 - `analyze-content-video`：最终数字校验接受按有效数字取整或截断的大计数（如 18,067,177 写成「1800 万」「1.8千万」，2,689,000 写成「2.6M+」），并认「千 / 百万 / 千万」量级；小数字与只剩一位有效数字的写法仍按原规则拦。生产 Web 上视频分析曾因此在最后一步被拒（#120）。

@@ -7,8 +7,8 @@ needed by each host. The AI host runs the workflows and writes
 reports; Kabo provides the data tools. The plugin does not hand work to Kabo's web agent, download
 Skills at runtime, or register lifecycle hooks.
 
-The current GitHub package release is [**1.0.20**](https://github.com/kabo-sh/kabo-mcp-plugin/releases/tag/v1.0.20),
-packaged as `kabo-1.0.20.zip`. Version 1.0.0 reset the public release numbering while retaining the latest
+The current GitHub package release is [**1.0.21**](https://github.com/kabo-sh/kabo-mcp-plugin/releases/tag/v1.0.21),
+packaged as `kabo-1.0.21.zip`. Version 1.0.0 reset the public release numbering while retaining the latest
 implementation. Earlier version history and source Skill versions remain separate. OpenAI marketplace
 review and production acceptance remain separate from this GitHub release.
 
@@ -102,7 +102,7 @@ for `-g`. The repository's `skills.lock.json` is a separate record of the origin
 
 - `#stable` follows published releases. It advances only after a release; installed files stay as
   they are until you run an installation or update command.
-- `#v1.0.20` pins one release. Updating does not switch to a newer tag; install the new tag explicitly.
+- `#v1.0.21` pins one release. Updating does not switch to a newer tag; install the new tag explicitly.
 - Without a ref, the CLI follows `main`, which includes unreleased changes.
 
 See [GitHub Releases](https://github.com/kabo-sh/kabo-mcp-plugin/releases) for new versions and release
@@ -305,7 +305,8 @@ Current release acceptance focuses on short-window content-language checks and u
 creator-skills; their cross-host acceptance is pending.
 
 `remake-viral-video` uses the `start_remake_video`, `get_remake_video` and `render_remake_video`
-tools on `/mcp-pub`. Its scripts download the brief and the finished MP4 from the same signed
+tools on `/mcp-pub`, plus `edit_remake_video` to change a delivered video and `start_video_project`,
+`make_video_step` and `finish_video_project` to build a video outside the remake formats step by step. Its scripts download the brief and the finished MP4 from the same signed
 `storage.googleapis.com` links as evidence downloads; there is no `stage` fallback for them.
 
 - The Kabo service, which is not part of this repository, owns MCP, OAuth, data tools, asynchronous
