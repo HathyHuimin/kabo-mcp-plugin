@@ -1,0 +1,134 @@
+name: Publish a release to Kabo Web
+
+# Kabo Web runs the Skills of the latest GitHub release; desktop and the old plugin stay on their
+# frozen Registry channel. This workflow packs each Skill of a release into a content-addressed
+# bundle and rewrites the Web overlay (scripts/web-publish/plugin-web.mjs). It never writes a
+# channel index, the release, the package or any marketplace.
+#
+# - release published: publishes that release when the environment variable PLUGIN_WEB_AUTO is "on".
+# - workflow_dispatch: publishes `tag` (default: the latest release) to `target`; ignores PLUGIN_WEB_AUTO.
+# Idempotent: the production target is skipped when Web is already on that commit (`force` overrides,
+# for instance after changing PLUGIN_WEB_HOLD). PLUGIN_WEB_HOLD
+# (comma-separated Skill ids) keeps those Skills on their Registry version.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish (default — the latest release)
+        required: false
+      target:
+        description: index (production Web) or test (pre test accounts)
+        type: choice
+        options: [index, test]
+        default: index
+      force:
+        description: Republish even when Web is already on this release (e.g. after changing PLUGIN_WEB_HOLD)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: web-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The GCP identity only trusts this file on main or a v* tag, inside this environment.
+    environment: web-publish
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          # This job holds publish credentials and installs nothing; no cache to poison.
+          package-manager-cache: false
+      - name: Resolve the release to publish
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+          REQUESTED_TARGET: ${{ inputs.target || 'index' }}
+          AUTO: ${{ vars.PLUGIN_WEB_AUTO }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "release" && "$AUTO" != "on" ]]; then
+            echo "::notice::PLUGIN_WEB_AUTO is not on; $RELEASE_TAG was not published to Web. Run this workflow by hand to publish it."
+            echo "publish=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          tag="${RELEASE_TAG:-$REQUESTED_TAG}"
+          [[ -n "$tag" ]] || tag=$(gh release view -R "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "not a release tag: $tag" >&2; exit 1; }
+          gh release view "$tag" -R "$GITHUB_REPOSITORY" --json isDraft -q 'if .isDraft then error("draft release") else "ok" end' >/dev/null
+          commit=$(gh api "repos/$GITHUB_REPOSITORY/commits/$tag" -q .sha)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "target=$REQUESTED_TARGET" >> "$GITHUB_OUTPUT"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "release $tag -> $commit, target $REQUESTED_TARGET"
+      - name: Publisher tests
+        if: steps.target.outputs.publish == 'true'
+        run: node --test scripts/web-publish.test.mjs scripts/web-publish-bundle.test.mjs
+      - id: auth
+        if: steps.target.outputs.publish == 'true'
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_WEB_PUBLISHER }}
+      - name: Skip a release Web is already on
+        id: fresh
+        if: steps.target.outputs.publish == 'true'
+        env:
+          GCS_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          KABO_SKILL_REGISTRY_BUCKET: ${{ vars.GCP_SKILL_REGISTRY_BUCKET }}
+          COMMIT: ${{ steps.target.outputs.commit }}
+          TARGET: ${{ steps.target.outputs.target }}
+          FORCE: ${{ inputs.force && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+          current=$(node scripts/web-publish/plugin-web.mjs released)
+          echo "Web overlay is at ${current:-<none>}"
+          # release.json records only the production overlay; the test target always publishes.
+          if [[ "$TARGET" == "index" && "$COMMIT" == "$current" && "$FORCE" != "true" ]]; then
+            echo "already on Web; nothing to publish"; echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check out the release
+        if: steps.fresh.outputs.publish == 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.target.outputs.commit }}
+          path: release-source
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Publish the release's Skills to the Web overlay
+        if: steps.fresh.outputs.publish == 'true'
+        env:
+          GCS_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          KABO_SKILL_REGISTRY_BUCKET: ${{ vars.GCP_SKILL_REGISTRY_BUCKET }}
+          COMMIT: ${{ steps.target.outputs.commit }}
+          TAG: ${{ steps.target.outputs.tag }}
+          TARGET: ${{ steps.target.outputs.target }}
+          HOLD: ${{ vars.PLUGIN_WEB_HOLD }}
+        run: |
+          set -euo pipefail
+          test "$(git -C release-source rev-parse HEAD)" = "$COMMIT"
+          [[ -z "$HOLD" ]] || echo "holding back: $HOLD"
+          node scripts/web-publish/plugin-web.mjs publish --plugin-root release-source --plugin-commit "$COMMIT" \
+            --plugin-tag "$TAG" --target "$TARGET" ${HOLD:+--hold "$HOLD"} | tee "$RUNNER_TEMP/web-publish-result.json"
+      - uses: actions/upload-artifact@v4
+        if: steps.fresh.outputs.publish == 'true'
+        with:
+          name: web-publish-receipt
+          path: ${{ runner.temp }}/web-publish-result.json
