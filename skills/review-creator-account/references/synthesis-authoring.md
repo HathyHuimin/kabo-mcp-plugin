@@ -67,6 +67,11 @@ the report or profile schemas once the compact input exists. `scope.user_questio
   current count and insufficient age together, without using the count as support for weakness.
   Summaries must inherit these limits; do not compress mixed evidence into a claim that a whole
   content style underperforms. Each example mentioned in an explanation must appear in its cited IDs.
+  Select eligible same-format examples before drafting performance sections. Keep any young or
+  age-unknown example in a separate current-observation statement: publication date, current count
+  and the missing comparable exposure window. Do not place it beside an older post's count or the
+  mature median as evidence for a stronger/weaker style, even in an optional recommendation.
+  Review the complete answer, including its short summary, for that comparison before delivery.
 
 - Apply the same boundary to `headline`, `verdict`, `diagnosis` and every pattern claim. Without
   historical observations, a single snapshot of cumulative views and dated uploads cannot verify
@@ -102,6 +107,9 @@ the report or profile schemas once the compact input exists. `scope.user_questio
   it — topic, presentation, distribution or one-off event; adopt or not, and why. Do not treat the
   highest multiple as a post that must be copied. Tests return to the most valuable current
   hypothesis, not automatically to that post. Do not hard-code a format such as interviews.
+  Check its maturity first. If it is too recent or unknown, name it only as a current observation,
+  omit the multiple and withhold performance-based adoption; propose a wording test only on its
+  own merits. The highest-multiple pointer does not override comparison eligibility.
 - Growth figures, when present, are only those `drive.py growth` printed for this run.
 
 ## Recommendations

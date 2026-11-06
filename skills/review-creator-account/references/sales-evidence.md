@@ -29,6 +29,12 @@ raw totals a decline. Dividing by days alone does not repair different attributi
 must be matched and what remains descriptive. Even aligned funnel changes identify where a loss
 appears, not whether price, customer service, creative or an algorithm caused it. Give testable
 hypotheses and the observation that would distinguish them.
+Check observation duration and attribution duration as two separate dimensions before calculating
+cross-period changes. If either differs, state each period's supplied duration for both dimensions
+in the answer, identify every mismatch, and request matched windows before judging the change.
+Do not stop after noticing the first mismatch. Unknown durations remain unknown; do not assume
+alignment. Equal declared windows need no extra confirmation. For posts, also check elapsed time
+since publication: a recent post's cumulative count cannot rank its quality against an older post.
 
 A supplied narrow funnel question can be answered from that table without fetching public history
 as a substitute for private metrics. Do not insert supplied private totals into a public snapshot
