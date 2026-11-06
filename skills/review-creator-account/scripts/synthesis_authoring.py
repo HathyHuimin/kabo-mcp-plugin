@@ -57,12 +57,15 @@ def shape_issues(value: Any, root: dict[str, Any], label: str) -> list[dict[str,
 
 
 def pattern_evidence_issues(content: list[dict[str, Any]], policies: dict[str, dict[str, Any]],
-                           synthesis: dict[str, Any]) -> list[dict[str, str]]:
+                           synthesis: dict[str, Any], baselines: list[dict[str, Any]]) -> list[dict[str, str]]:
     """Check declared pattern claims against source rows after schema validation."""
     issues = []
     def fail(path: str, message: str) -> None:
+        """Collect a recoverable authoring issue without changing the claim."""
         issues.append({'path':path,'message':message})
     rankings = {row['content_id']: row for row in content}
+    view_counts = {row['format']: row.get('metrics', {}).get('views', {}).get('available_n', 0)
+                   for row in baselines}
     for kind in ('what_works','what_hurts'):
         for n,row in enumerate(synthesis[kind]):
             for i,content_id in enumerate(row['content_ids']):
@@ -73,12 +76,15 @@ def pattern_evidence_issues(content: list[dict[str, Any]], policies: dict[str, d
                 if len({item['format'] for item in cited}) > 1:
                     fail(f'synthesis.{kind}[{n}]', 'performance comparisons need one comparable format; split observations by format')
                 for item in cited:
-                    if content_maturity(item['published_at'], policies.get(item['format'])) != 'mature' or item.get('view_multiple_vs_format_median') is None:
+                    if (content_maturity(item['published_at'], policies.get(item['format'])) != 'mature'
+                            or item.get('view_multiple_vs_format_median') is None
+                            or view_counts.get(item['format'], 0) < 3):
                         fail(f'synthesis.{kind}[{n}]', f"{item['content_id']} cannot establish a baseline performance pattern: its age or comparable baseline is unavailable; use a bounded public observation or hypothesis instead")
     return issues
 
 
 def validate_authoring(analysis: dict[str, Any], synthesis: Any) -> None:
+    """Reject invalid source bindings or unsupported authored pattern claims."""
     # Bad deterministic inputs/provenance are fatal, never a recoverable writing mistake.
     path = Path(__file__).resolve().parent.parent / 'references/account_analysis.schema.json'
     source_errors = shape_issues(analysis, json.loads(path.read_text(encoding='utf-8')), 'analysis')
@@ -100,7 +106,7 @@ def validate_authoring(analysis: dict[str, Any], synthesis: Any) -> None:
             raise ValueError(f'synthesis {field} does not match analysis')
     issues=shape_issues(synthesis,synthesis_schema(),'synthesis')
     if issues:raise AuthoringError(issues)
-    issues = pattern_evidence_issues(analysis['rankings'], maturity_by_format(analysis), synthesis)
+    issues = pattern_evidence_issues(analysis['rankings'], maturity_by_format(analysis), synthesis, analysis['baselines'])
     if issues:raise AuthoringError(issues)
 
 

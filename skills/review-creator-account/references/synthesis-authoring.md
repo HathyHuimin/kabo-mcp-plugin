@@ -62,6 +62,11 @@ the report or profile schemas once the compact input exists. `scope.user_questio
   Check every cited post's maturity before choosing a performance association. If one is too young,
   remove the performance conclusion or choose eligible evidence; changing only `claim_type` while
   keeping the same unsupported conclusion is not a correction.
+  Do not compare an ineligible post's cumulative views with the mature median even inside a
+  hypothesis: a hypothesis label does not make exposure ages comparable. Describe its wording,
+  current count and insufficient age together, without using the count as support for weakness.
+  Summaries must inherit these limits; do not compress mixed evidence into a claim that a whole
+  content style underperforms. Each example mentioned in an explanation must appear in its cited IDs.
 
 - Apply the same boundary to `headline`, `verdict`, `diagnosis` and every pattern claim. Without
   historical observations, a single snapshot of cumulative views and dated uploads cannot verify

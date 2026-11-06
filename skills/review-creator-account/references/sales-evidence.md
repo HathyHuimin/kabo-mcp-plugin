@@ -20,6 +20,9 @@ without inventing their cause.
 Stable downstream ratios do not support blaming closing ability when the loss occurs upstream.
 If a denominator is zero the rate is undefined; missing values are unknown, not zero.
 Still answer the supported transitions when one column is missing.
+Calculate every displayed derived rate and change with a local arithmetic tool before writing,
+including optional totals. Copy the verified values; check percentage scaling and consistency
+between linked transition rates and the overall rate. Keep undefined or unknown results explicit.
 
 Different period lengths, cohort ages or attribution windows require alignment before calling
 raw totals a decline. Dividing by days alone does not repair different attribution. Explain what

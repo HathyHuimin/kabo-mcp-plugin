@@ -78,6 +78,14 @@ class EvidenceTests(unittest.TestCase):
         report,profile,markdown=compose(a,synthesis(['young']))
         self.assertIn('no comparable age baseline',markdown)
         with self.assertRaises(AuthoringError): validate_authoring(a,synthesis(['mature'],'performance_association'))
+    def test_few_measured_views_do_not_establish_performance(self):
+        a=fixture()
+        a['baselines'][0]['metrics']['views']['available_n']=2
+        with self.assertRaises(AuthoringError):validate_authoring(a,synthesis(['mature'],'performance_association'))
+        validate_authoring(a,synthesis(['mature'],'public_observation'))
+        validate_authoring(a,synthesis(['mature'],'hypothesis'))
+        a['baselines'][0]['metrics']['views']['available_n']=3
+        validate_authoring(a,synthesis(['mature'],'performance_association'))
     def test_unknown_ids_or_missing_claim_type_fail(self):
         a=fixture()
         with self.assertRaises(AuthoringError):validate_authoring(a,synthesis(['missing']))
