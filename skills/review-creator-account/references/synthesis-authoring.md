@@ -59,6 +59,9 @@ the report or profile schemas once the compact input exists. `scope.user_questio
   clearly labelled proposed explanation to test. Young posts may support wording observations and
   tests, but not established performance patterns. The composer checks the declared comparisons;
   it does not understand free-text claims, so check the title and explanations before delivery.
+  Check every cited post's maturity before choosing a performance association. If one is too young,
+  remove the performance conclusion or choose eligible evidence; changing only `claim_type` while
+  keeping the same unsupported conclusion is not a correction.
 
 - Apply the same boundary to `headline`, `verdict`, `diagnosis` and every pattern claim. Without
   historical observations, a single snapshot of cumulative views and dated uploads cannot verify

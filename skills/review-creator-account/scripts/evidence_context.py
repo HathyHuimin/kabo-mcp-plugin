@@ -7,6 +7,7 @@ from account_analyzers import parse_time
 
 
 def baseline_maturity_context(analysis: dict[str, Any]) -> dict[str, Any] | None:
+    """Expose the analyzer's existing per-format minimum-age cutoffs."""
     # 与 Analyzer 同口径：发布当天算第 1 天，不能解释成已满 N 个 24 小时。
     if not analysis["baselines"]:
         return None
@@ -32,17 +33,20 @@ def baseline_maturity_context(analysis: dict[str, Any]) -> dict[str, Any] | None
 
 
 def maturity_by_format(analysis: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Index existing age policies by format without choosing a new cohort."""
     context = baseline_maturity_context(analysis)
     return {row["format"]: row for row in context["by_format"]} if context else {}
 
 
 def content_maturity(published_at: str, policy: dict[str, Any] | None) -> str:
+    """Classify the minimum-age eligibility of one published timestamp."""
     if policy is None:
         return "unavailable"
     return "mature" if parse_time(published_at) <= parse_time(policy["cutoff_at"]) else "too_recent"
 
 
 def evidence_age(row: dict[str, Any], policies: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Attach source publication time and its applicable baseline age limit."""
     policy = policies.get(row["format"])
     return {
         "published_at": row["published_at"],

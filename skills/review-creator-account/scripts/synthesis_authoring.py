@@ -56,6 +56,28 @@ def shape_issues(value: Any, root: dict[str, Any], label: str) -> list[dict[str,
     return issues
 
 
+def pattern_evidence_issues(content: list[dict[str, Any]], policies: dict[str, dict[str, Any]],
+                           synthesis: dict[str, Any]) -> list[dict[str, str]]:
+    """Check declared pattern claims against source rows after schema validation."""
+    issues = []
+    def fail(path: str, message: str) -> None:
+        issues.append({'path':path,'message':message})
+    rankings = {row['content_id']: row for row in content}
+    for kind in ('what_works','what_hurts'):
+        for n,row in enumerate(synthesis[kind]):
+            for i,content_id in enumerate(row['content_ids']):
+                if content_id not in rankings:
+                    fail(f'synthesis.{kind}[{n}].content_ids[{i}]',f'synthesis references unknown content_id: {content_id}; copy an exact ID from synthesis_input.content')
+            if row['claim_type'] == 'performance_association':
+                cited = [rankings[cid] for cid in row['content_ids'] if cid in rankings]
+                if len({item['format'] for item in cited}) > 1:
+                    fail(f'synthesis.{kind}[{n}]', 'performance comparisons need one comparable format; split observations by format')
+                for item in cited:
+                    if content_maturity(item['published_at'], policies.get(item['format'])) != 'mature' or item.get('view_multiple_vs_format_median') is None:
+                        fail(f'synthesis.{kind}[{n}]', f"{item['content_id']} cannot establish a baseline performance pattern: its age or comparable baseline is unavailable; use a bounded public observation or hypothesis instead")
+    return issues
+
+
 def validate_authoring(analysis: dict[str, Any], synthesis: Any) -> None:
     # Bad deterministic inputs/provenance are fatal, never a recoverable writing mistake.
     path = Path(__file__).resolve().parent.parent / 'references/account_analysis.schema.json'
@@ -78,23 +100,7 @@ def validate_authoring(analysis: dict[str, Any], synthesis: Any) -> None:
             raise ValueError(f'synthesis {field} does not match analysis')
     issues=shape_issues(synthesis,synthesis_schema(),'synthesis')
     if issues:raise AuthoringError(issues)
-    def fail(path: str, message: str) -> None:
-        issues.append({'path':path,'message':message})
-    allowed=set(ids)
-    rankings = {row['content_id']: row for row in analysis['rankings']}
-    policies = maturity_by_format(analysis)
-    for kind in ('what_works','what_hurts'):
-        for n,row in enumerate(synthesis[kind]):
-            for i,content_id in enumerate(row['content_ids']):
-                if content_id not in allowed:
-                    fail(f'synthesis.{kind}[{n}].content_ids[{i}]',f'synthesis references unknown content_id: {content_id}; copy an exact ID from synthesis_input.content')
-            if row['claim_type'] == 'performance_association':
-                cited = [rankings[cid] for cid in row['content_ids'] if cid in rankings]
-                if len({item['format'] for item in cited}) > 1:
-                    fail(f'synthesis.{kind}[{n}]', 'performance comparisons need one comparable format; split observations by format')
-                for item in cited:
-                    if content_maturity(item['published_at'], policies.get(item['format'])) != 'mature' or item.get('view_multiple_vs_format_median') is None:
-                        fail(f'synthesis.{kind}[{n}]', f"{item['content_id']} cannot establish a baseline performance pattern: its age or comparable baseline is unavailable; use a bounded public observation or hypothesis instead")
+    issues = pattern_evidence_issues(analysis['rankings'], maturity_by_format(analysis), synthesis)
     if issues:raise AuthoringError(issues)
 
 

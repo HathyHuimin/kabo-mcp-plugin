@@ -69,9 +69,9 @@ ZH_TEXT = {
     "evidence_interact": "互动数 / 播放量 {value:.2f}%",
     "multiple": "本人同格式中位数的 {value:.2f} 倍",
     "provisional_format": "短/长视频格式按时长推断，并非平台标记",
-    "published_at": "发布于 {value}",
-    "too_recent": "晚于基线截止 {value}，累计数不代表等观察期表现比较",
-    "maturity_unavailable": "无可比日龄基线，仅展示累计数",
+    "published_at": TEXT["published_at"],
+    "too_recent": TEXT["too_recent"],
+    "maturity_unavailable": TEXT["maturity_unavailable"],
     "identity_bio": "公开主页写着「{bio}」。",
     "identity_followers": "公开粉丝约 {followers}。",
 }

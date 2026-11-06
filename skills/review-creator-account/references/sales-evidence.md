@@ -3,8 +3,10 @@
 Resolve the platform, account, product, metric definitions, observation periods and attribution
 window from the supplied context. Clarify only missing distinctions that affect the comparison.
 Public views, likes and caption wording do not measure clicks, inquiries, paid orders or revenue.
-If orders are unavailable, answer that the claimed sales change and its causes cannot be verified;
-then give useful public observations and a concrete way to test the proposed explanation.
+If the requested sales metric is unavailable, say that its change cannot be verified; then give
+useful public observations and a concrete way to test the proposed explanation. Comparable supplied
+revenue can establish a revenue change even without order counts, but not a change in order count,
+conversion rate or its cause. Keep each conclusion tied to its own measured outcome.
 The headline, opening diagnosis and pattern headings must respect this same boundary. A caveat
 later in the answer cannot repair a title that says a content style sells or a CTA caused losses.
 
@@ -12,7 +14,9 @@ For a supplied funnel table, work from its linked cohorts and declared denominat
 synthetic scenarios as scenarios, not observed account results. When the same account/product,
 metric definitions, observation duration and attribution are comparable, compute each available
 transition separately: clicks/views, inquiries/clicks and paid orders/inquiries. Show the arithmetic
-and the underlying counts; identify the transition that changed without inventing its cause.
+and input volumes as well as rates; fewer upstream visits can reduce orders with every transition
+rate unchanged. Identify only changes the supplied figures establish, including no rate change,
+without inventing their cause.
 Stable downstream ratios do not support blaming closing ability when the loss occurs upstream.
 If a denominator is zero the rate is undefined; missing values are unknown, not zero.
 Still answer the supported transitions when one column is missing.
@@ -32,3 +36,6 @@ Before delivery, read the title, first answer and every pattern as standalone cl
 say only what its source measures? Remove unsupported sales conclusions there, rather than adding
 another disclaimer. Proposed tests should state what to hold comparable and which linked outcome
 to record; do not promise growth or sales.
+Without measured funnel outcomes, do not locate the problem in converting attention to orders or
+label a section as established sales blockers. Wording or offer-clarity concerns remain proposed
+tests; mark that uncertainty in the heading and first claim, not just at the end of the paragraph.
