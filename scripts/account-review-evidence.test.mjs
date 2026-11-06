@@ -11,7 +11,7 @@ import copy, sys, unittest
 sys.path.insert(0, sys.argv[1])
 from evidence_context import baseline_maturity_context, content_maturity
 from build_synthesis_input import build
-from compose_review import compose
+from compose_review import compose, evidence_line, TEXT
 from synthesis_authoring import validate_authoring, AuthoringError
 from validate_artifacts import validate
 
@@ -65,6 +65,8 @@ class EvidenceTests(unittest.TestCase):
             self.assertIn('younger than the baseline cutoff',markdown)
             self.assertEqual(report['what_hurts'][0]['examples'][0]['metrics'],{'views':20})
             self.assertEqual(report['what_hurts'][0]['examples'][0]['baseline_maturity'],'too_recent')
+            example=report['what_hurts'][0]['examples'][0]
+            self.assertNotIn(TEXT['multiple'].format(value=example['view_multiple_vs_format_median']),evidence_line(example))
     def test_young_comparison_rejected_and_mature_allowed(self):
         a=fixture()
         with self.assertRaises(AuthoringError): validate_authoring(a,synthesis(['young'],'performance_association'))
@@ -95,6 +97,13 @@ class EvidenceTests(unittest.TestCase):
         a=fixture();s=synthesis(['young']);r,p,_=compose(a,s)
         r['what_hurts'][0]['examples'][0]['baseline_maturity']='mature'
         with self.assertRaisesRegex(ValueError,'altered evidence age'):validate(a,s,r,p)
+    def test_valid_source_row_cannot_replace_authored_citation(self):
+        a=fixture();s=synthesis(['mature'],'performance_association');r,p,_=compose(a,s)
+        young,_,_=compose(a,synthesis(['young']))
+        r['what_hurts'][0]['examples']=young['what_hurts'][0]['examples']
+        with self.assertRaisesRegex(ValueError,'examples differ from synthesis citations'):validate(a,s,r,p)
+        _,_,markdown=compose(a,s)
+        self.assertIn(TEXT['multiple'].format(value=2),markdown)
 
 unittest.main(argv=['test'],verbosity=2)
 `, scripts], { encoding: "utf8", env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" } });

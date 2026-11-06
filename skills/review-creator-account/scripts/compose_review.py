@@ -151,6 +151,7 @@ def stable_id(prefix: str, *parts: str) -> str:
 
 
 def resolve_patterns(patterns: list[dict[str, Any]], rankings: dict[str, dict[str, Any]], policies: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    """Bind authored patterns to immutable metrics and citation age limits."""
     resolved = []
     for pattern in patterns:
         examples = []
@@ -281,6 +282,7 @@ def counted(key: str, value: float, text: dict[str, Any] = TEXT) -> str:
 
 
 def evidence_line(item: dict[str, Any], text: dict[str, Any] = TEXT) -> str:
+    """Render one citation with the limits of its observation."""
     label = compact_title(item["title"])
     link = f"[{label}]({item['url']})" if item.get("url") else label
     facts = []
@@ -297,7 +299,8 @@ def evidence_line(item: dict[str, Any], text: dict[str, Any] = TEXT) -> str:
     if views and views > 0 and (likes is not None or comments is not None):
         interactions = (likes or 0) + (comments or 0)
         facts.append(text["evidence_interact"].format(value=round(interactions / views * 100 + 1e-12, 2)))
-    if item.get("view_multiple_vs_format_median") is not None:
+    if (item.get("baseline_maturity") not in {"too_recent", "unavailable"}
+            and item.get("view_multiple_vs_format_median") is not None):
         facts.append(text["multiple"].format(value=item["view_multiple_vs_format_median"]))
     if item.get("published_at"):
         facts.append(text["published_at"].format(value=item["published_at"]))
@@ -517,6 +520,7 @@ def compose(
     growth_snapshot: dict[str, Any] | None = None,
     growth_question: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], str]:
+    """Validate and compose the report, profile and readable delivery."""
     validate_authoring(analysis, synthesis)
     if synthesis.get("snapshot_id") != analysis.get("snapshot_id"):
         raise ValueError("synthesis snapshot_id does not match analysis")

@@ -32,6 +32,7 @@ def require(obj: dict[str, Any], keys: set[str], label: str) -> None:
 
 
 def validate(analysis: dict[str, Any], synthesis: dict[str, Any], report: dict[str, Any], profile: dict[str, Any]) -> None:
+    """Verify report and profile provenance against the bound source and synthesis."""
     from evidence_context import maturity_by_format, evidence_age
     from synthesis_authoring import validate_authoring
     validate_authoring(analysis, synthesis)
@@ -78,6 +79,8 @@ def validate(analysis: dict[str, Any], synthesis: dict[str, Any], report: dict[s
         for row, authored in zip(report[key], synthesis[key]):
             if row.get("claim_type") != authored["claim_type"]:
                 raise ValueError(f"{key} claim type differs from synthesis")
+            if [example["content_id"] for example in row["examples"]] != authored["content_ids"]:
+                raise ValueError(f"{key} examples differ from synthesis citations")
             for example in row["examples"]:
                 source = ranking.get(example["content_id"])
                 if source is None:

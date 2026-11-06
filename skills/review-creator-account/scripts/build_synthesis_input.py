@@ -63,6 +63,7 @@ def equal(label: str, left: Any, right: Any) -> None:
 
 
 def highest_view_multiple(content: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Project the highest recorded multiple with its source age restriction."""
     scored: list[tuple[float, float, str, dict[str, Any]]] = []
     for row in content:
         multiple = row.get("view_multiple_vs_format_median")
@@ -133,6 +134,7 @@ def build(
     user_question: str | None = None,
     snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Assemble compact authoring evidence without changing measured metrics."""
     require(
         analysis,
         {
