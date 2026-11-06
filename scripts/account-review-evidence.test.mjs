@@ -66,7 +66,7 @@ class EvidenceTests(unittest.TestCase):
             self.assertEqual(report['what_hurts'][0]['examples'][0]['metrics'],{'views':20})
             self.assertEqual(report['what_hurts'][0]['examples'][0]['baseline_maturity'],'too_recent')
             example=report['what_hurts'][0]['examples'][0]
-            self.assertNotIn(TEXT['multiple'].format(value=example['view_multiple_vs_format_median']),evidence_line(example))
+            self.assertNotIn(TEXT['multiple'].format(value=example['view_multiple_vs_format_median']),evidence_line(example,view_sample_size=5))
     def test_young_comparison_rejected_and_mature_allowed(self):
         a=fixture()
         with self.assertRaises(AuthoringError): validate_authoring(a,synthesis(['young'],'performance_association'))
@@ -86,8 +86,14 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaises(AuthoringError):validate_authoring(a,synthesis(['mature'],'performance_association'))
         validate_authoring(a,synthesis(['mature'],'public_observation'))
         validate_authoring(a,synthesis(['mature'],'hypothesis'))
+        report,profile,markdown=compose(a,synthesis(['mature'],'public_observation'))
+        validate(a,synthesis(['mature'],'public_observation'),report,profile)
+        self.assertNotIn(TEXT['multiple'].format(value=2),markdown)
+        self.assertEqual(report['what_hurts'][0]['examples'][0]['view_multiple_vs_format_median'],2)
         a['baselines'][0]['metrics']['views']['available_n']=3
         validate_authoring(a,synthesis(['mature'],'performance_association'))
+        _,_,markdown=compose(a,synthesis(['mature'],'performance_association'))
+        self.assertIn(TEXT['multiple'].format(value=2),markdown)
     def test_unknown_ids_or_missing_claim_type_fail(self):
         a=fixture()
         with self.assertRaises(AuthoringError):validate_authoring(a,synthesis(['missing']))

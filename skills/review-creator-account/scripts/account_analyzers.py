@@ -15,6 +15,7 @@ from typing import Any
 
 
 RULE_VERSION = "account-analysis.v3.3"
+MIN_COMPARABLE_SAMPLES = 3
 AVAILABLE = {"available", "zero"}
 NON_COMPARABLE_FORMATS = {"unknown", "unknown_video", "format_unknown", "unclassified"}
 FORMAT_CONFIDENCE_PRIORITY = {"unknown": 0, "provisional": 1, "explicit": 2}
@@ -357,6 +358,7 @@ def calculate_baselines(records: list[dict[str, Any]], end: datetime, maturity_d
 
 
 def rank_content(records: list[dict[str, Any]], baselines: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Rank source observations using the existing per-format sample threshold."""
     baseline_map = {row["format"]: row for row in baselines}
     rankings, outliers = [], []
     for row in records:
@@ -365,7 +367,7 @@ def rank_content(records: list[dict[str, Any]], baselines: list[dict[str, Any]])
         view_stats = baseline.get("metrics", {}).get("views", {})
         baseline_views = view_stats.get("median")
         sample_size = baseline.get("sample_size", 0)
-        multiple = round(views / baseline_views, 6) if views is not None and baseline_views not in {None, 0} and sample_size >= 3 else None
+        multiple = round(views / baseline_views, 6) if views is not None and baseline_views not in {None, 0} and sample_size >= MIN_COMPARABLE_SAMPLES else None
         item = {key: row[key] for key in ("content_id", "title", "url", "published_at", "format")}
         for field in ("format_confidence", "format_source"):
             if field in row:

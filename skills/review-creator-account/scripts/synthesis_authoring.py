@@ -8,6 +8,7 @@ from typing import Any
 sys.dont_write_bytecode = True
 from profile_contract import synthesis_schema
 from evidence_context import maturity_by_format, content_maturity
+from account_analyzers import MIN_COMPARABLE_SAMPLES
 
 class AuthoringError(ValueError):
     """Only closed-schema author fields and unknown copied IDs can be corrected in-place."""
@@ -78,7 +79,7 @@ def pattern_evidence_issues(content: list[dict[str, Any]], policies: dict[str, d
                 for item in cited:
                     if (content_maturity(item['published_at'], policies.get(item['format'])) != 'mature'
                             or item.get('view_multiple_vs_format_median') is None
-                            or view_counts.get(item['format'], 0) < 3):
+                            or view_counts.get(item['format'], 0) < MIN_COMPARABLE_SAMPLES):
                         fail(f'synthesis.{kind}[{n}]', f"{item['content_id']} cannot establish a baseline performance pattern: its age or comparable baseline is unavailable; use a bounded public observation or hypothesis instead")
     return issues
 

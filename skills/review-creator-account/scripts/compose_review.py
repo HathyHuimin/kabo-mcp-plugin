@@ -22,7 +22,7 @@ from json_io import load_complete_envelope, load_complete_object
 from public_identity import identity_from_envelope, identity_from_scope, merge_identity, quote_bio
 from profile_contract import synthesis_schema, validate_profile
 from estimate_growth import estimate, with_snapshot, time as growth_time
-from account_analyzers import normalize_format
+from account_analyzers import normalize_format, MIN_COMPARABLE_SAMPLES
 from synthesis_authoring import validate_authoring
 from evidence_context import maturity_by_format, evidence_age
 
@@ -281,7 +281,7 @@ def counted(key: str, value: float, text: dict[str, Any] = TEXT) -> str:
     return (singular if value == 1 else plural).format(value=compact_count(value))
 
 
-def evidence_line(item: dict[str, Any], text: dict[str, Any] = TEXT) -> str:
+def evidence_line(item: dict[str, Any], text: dict[str, Any] = TEXT, *, view_sample_size: int = 0) -> str:
     """Render one citation with the limits of its observation."""
     label = compact_title(item["title"])
     link = f"[{label}]({item['url']})" if item.get("url") else label
@@ -300,6 +300,7 @@ def evidence_line(item: dict[str, Any], text: dict[str, Any] = TEXT) -> str:
         interactions = (likes or 0) + (comments or 0)
         facts.append(text["evidence_interact"].format(value=round(interactions / views * 100 + 1e-12, 2)))
     if (item.get("baseline_maturity") not in {"too_recent", "unavailable"}
+            and view_sample_size >= MIN_COMPARABLE_SAMPLES
             and item.get("view_multiple_vs_format_median") is not None):
         facts.append(text["multiple"].format(value=item["view_multiple_vs_format_median"]))
     if item.get("published_at"):
@@ -476,6 +477,7 @@ def render_growth(growth: dict[str, Any], language: str) -> list[str]:
 
 
 def render_markdown(report: dict[str, Any], output_language: str = "en") -> str:
+    """Render the bound report with source-backed citation comparisons."""
     text = language_text(output_language)
     lines = ["# " + report["headline"], "", report["diagnosis"], ""]
     scope_limits = scope_limits_line(report, text)
@@ -485,6 +487,8 @@ def render_markdown(report: dict[str, Any], output_language: str = "en") -> str:
         platform = report["scope"]["platform"]
         status_text = ZH_PLATFORM_STATUS_CHECK if text is ZH_TEXT else PLATFORM_STATUS_CHECK
         lines += [f"## {status_text['title']}", "", status_text[platform], ""]
+    view_counts = {row["format"]: row.get("metrics", {}).get("views", {}).get("available_n", 0)
+                   for row in report["baselines"]}
     for title, key in ((text["works"], "what_works"), (text["hurts"], "what_hurts")):
         rows = report[key]
         if not rows:
@@ -493,7 +497,7 @@ def render_markdown(report: dict[str, Any], output_language: str = "en") -> str:
         for row in rows:
             lines += [f"### {row['pattern']}", "", row["explanation"], ""]
             for item in row["examples"][:3]:
-                lines.append(f"- {evidence_line(item, text)}")
+                lines.append(f"- {evidence_line(item, text, view_sample_size=view_counts.get(item['format'], 0))}")
             lines.append("")
     if report.get("growth_estimate") is not None:
         lines += render_growth(report["growth_estimate"], output_language)
