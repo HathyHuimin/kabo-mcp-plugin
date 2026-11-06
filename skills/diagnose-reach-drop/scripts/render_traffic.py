@@ -157,6 +157,17 @@ def render(value: dict, language: str = "en") -> str:
                     basis = f"{group_label(last)} ({fmt(last['median'])}) ÷ {group_label(first)} ({fmt(first['median'])})"
                     result = "undefined with zero baseline" if change["ratio"] is None else fmt(change["ratio"]) + "×"
                     lines += ["", "Median comparison (last ÷ first): " + basis + " = " + result]
+                reading = fact.get("age_reading") or {}
+                if reading.get("basis") == "matured_only":
+                    last, first = reading["groups"][-1], reading["groups"][0]
+                    ratio = reading["change"]["ratio"]
+                    lines.append(f"Posts at least {reading['min_age_hours'] // 24} days old only (approximation): "
+                                 f"{group_label(fact['groups'][-1])} n={last['n']}, median {fmt(last['median'])} ÷ "
+                                 f"{group_label(fact['groups'][0])} n={first['n']}, median {fmt(first['median'])} = "
+                                 + ("undefined with zero baseline" if ratio is None else fmt(ratio) + "×"))
+                elif reading.get("basis") == "recent_too_young":
+                    lines.append(f"No recent post is yet {reading['min_age_hours'] // 24} days old, the approximate "
+                                 "age by which most of the value has accrued.")
                 if "target_evaluation" in fact:
                     target_evaluation = fact["target_evaluation"]
                     current = target_evaluation["groups"][-1]

@@ -332,6 +332,39 @@
                     "target": {"type": "number", "minimum": 0},
                     "target_basis": {"enum": ["each_record", "group_median"]},
                     "target_evaluation": {"$ref": "#/$defs/performance_target_evaluation"},
+                    "age_reading": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["basis"],
+                      "properties": {
+                        "basis": {"enum": ["recent_younger_not_lower", "recent_too_young", "matured_only"]},
+                        "min_age_hours": {"type": "number", "exclusiveMinimum": 0},
+                        "groups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["label", "n", "median"],
+                            "properties": {
+                              "label": {"type": "string", "minLength": 1},
+                              "n": {"type": "integer", "minimum": 1},
+                              "median": {"type": "number"}
+                            }
+                          }
+                        },
+                        "change": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["before", "after", "difference", "ratio"],
+                          "properties": {
+                            "before": {"type": "number"},
+                            "after": {"type": "number"},
+                            "difference": {"type": "number"},
+                            "ratio": {"type": ["number", "null"]}
+                          }
+                        }
+                      }
+                    },
                     "target_gap": {
                       "type": [
                         "number",

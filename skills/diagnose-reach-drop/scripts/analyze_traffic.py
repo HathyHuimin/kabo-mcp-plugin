@@ -86,6 +86,50 @@ def digest(value: Any) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+# 近似成熟时长：短内容 7 天，YouTube 长视频 28 天。这是经验假设，不是平台事实；报告按“近似”写明。
+MATURE_HOURS = {"short": 168, "long": 672}
+# 只有随时间累积的计数适用；平均值、比率可能涨也可能跌，退回原来的年龄受限结论。
+CUMULATIVE_METRICS = frozenset(("views", "view_count", "plays", "play_count", "likes", "comments", "shares", "saves",
+                                "reach", "impressions"))
+
+
+def maturity_hours(fmt: str) -> int | None:
+    """Only a format that says it is short or long gets a maturity age; a generic video may be either."""
+    name = fmt.lower()
+    if any(word in name for word in ("long", "长视频")):
+        return MATURE_HOURS["long"]
+    if any(word in name for word in ("short", "tiktok", "reel", "instagram", "短视频")):
+        return MATURE_HOURS["short"]
+    return None
+
+
+def age_reading(q: dict, fmt: str, limits: list, change: dict | None, summaries: list, pairs: list) -> dict | None:
+    """One snapshot makes earlier posts older, so a cumulative comparison favours the earlier group.
+
+    Recent not lower despite being younger: no decline. Recent lower: compare only posts past an
+    approximate maturity age, or say the recent posts are all too young to compare.
+    """
+    if (q["kind"] != "recent_drop" or q["metric"] not in CUMULATIVE_METRICS
+            or "different_observation_ages" not in limits or "minimum_age_hours" in q
+            or not change or change["ratio"] is None
+            or any(len(p) != s["n"] or not p for p, s in zip(pairs, summaries))
+            or max(a for a, _ in pairs[-1]) > min(a for a, _ in pairs[0])):
+        return None
+    if change["ratio"] >= 1:
+        return {"basis": "recent_younger_not_lower"}
+    hours = maturity_hours(fmt)
+    if hours is None:
+        return None
+    mature = [[v for a, v in p if a >= hours] for p in pairs]
+    if not all(mature):
+        return {"basis": "recent_too_young", "min_age_hours": hours}
+    medians = [statistics.median(m) for m in mature]
+    return {"basis": "matured_only", "min_age_hours": hours,
+            "groups": [{"label": s["label"], "n": len(m), "median": md}
+                       for s, m, md in zip(summaries, mature, medians)],
+            "change": delta(medians[0], medians[-1])}
+
+
 def delta(before: float, after: float) -> dict:
     return {"before": before, "after": after, "difference": after - before,
             "ratio": after / before if before else None}
@@ -349,11 +393,11 @@ def performance(q: dict, groups: list) -> tuple[list, list, list]:
                 order_verified = order_verified and max(days_before) < min(days_after)
     formats = sorted({r["format"] for _, rows in groups for r in rows})
     for fmt in formats:
-        summaries, ages, refs, target_groups = [], [], [], []
+        summaries, ages, refs, target_groups, pairs = [], [], [], [], []
         local_limits = [] if order_verified else ["chronology_uses_declared_groups"]
         for label, rows in groups:
             cohort = [r for r in rows if r["format"] == fmt]
-            values, cohort_ages, accepted = [], [], []
+            values, cohort_ages, accepted, aged = [], [], [], []
             for row in cohort:
                 age = post_age(row)
                 if age is None:
@@ -371,8 +415,10 @@ def performance(q: dict, groups: list) -> tuple[list, list, list]:
                 values.append(number(value))
                 if age is not None:
                     cohort_ages.append(age)
+                    aged.append((age, number(value)))
                 accepted.append(row["id"])
             ages.extend(cohort_ages)
+            pairs.append(aged)
             refs.extend(accepted)
             dated = [time(r["published_at"]).isoformat() for r in cohort if r["id"] in accepted and r.get("published_at")]
             publication_range = [min(dated), max(dated)] if dated and len(dated) == len(accepted) else None
@@ -414,6 +460,9 @@ def performance(q: dict, groups: list) -> tuple[list, list, list]:
                       "comparison": "limited" if local_limits else "same_age_descriptive",
                       "limits": sorted(set(local_limits)), "record_ids": refs,
                       "target_gap": None if target_evaluation is None else target_groups[-1]["gap"]})
+        reading = age_reading(q, fmt, local_limits, change, summaries, pairs)
+        if reading:
+            facts[-1]["age_reading"] = reading
         if "target" in q:
             facts[-1]["target"] = q["target"]
             facts[-1]["target_basis"] = q["target_basis"]
