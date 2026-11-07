@@ -29,8 +29,9 @@ Route by the requested deliverable. Stay here for competitor discovery, comparis
 research, including examples of competitors' hooks or structures as evidence. One or more selectable
 topic directions, including lists with titles and hooks, belong to `develop-content-ideas`.
 A concrete next Reel proposal or copy for an identified direction belongs to
-`create-script-and-packaging`. Do not turn a supplied reference post into a search
-for competitors, or replace requested creative work with this research report. When both research
+`create-script-and-packaging`. A post link alone does not authorize replacing a creative request
+with competitor research; an explicit request to discover competitors from a seed post does belong here.
+Do not replace requested creative work with this research report. When both research
 and creative work are explicitly requested, keep the research findings and creative handoff distinct.
 
 `scripts/drive.py` runs every mechanical step; you make the judgments. A run has five: the subject
