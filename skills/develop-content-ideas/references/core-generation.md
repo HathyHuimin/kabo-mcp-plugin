@@ -53,35 +53,87 @@ Passing validation on step 3 means a single generation attempt is enough.
 
 ## Continuations
 
-For a follow-up such as “more in the same style”, keep the current request verbatim in
-`user_brief` and leave `direct_topic=null` unless it also names a literal topic. Copy its referring
-words into `generation_basis.continuation_quote`. First resolve what the user refers to from the
-visible conversation: keep the specific earlier direction or list item, the style and the relevant
-user constraints; current corrections and exclusions take precedence. With several plausible
-referents, ask one focused question instead of choosing silently; do not ask the user to repeat
-context that is already available.
+For a follow-up such as “10 more in the same style”, preserve the current request verbatim in
+`user_brief` and leave `direct_topic=null` unless this turn also names a literal topic. Resolve the
+reference against the visible conversation: which list, version, topic or style does the user mean?
+If history is paged, inspect its range/count metadata or latest available page before treating
+an unread tail as absent. Read the relevant exchange through the current request's boundary.
+Resolve a number against the nearest relevant list and later user corrections; for an unnumbered
+style reference, use the nearest concrete proposal and its clarifications, not the older list of
+possible directions. Carry forward its mechanism, completion goal and restrictions unless the user
+changes them; use the current request's output count. Ask only about
+ambiguity that remains after this check, not context already supplied.
+Copy the current continuation phrase into `generation_basis.continuation_quote` verbatim and choose
+one source route:
 
-Use exactly one source route:
-- **A native earlier IdeaSet:** pass its original complete `idea_set.json` with
-  `--previous-ideas '<path>'`. Prep keeps its exact bytes as `previous_ideas.json` and derives
-  `continuation_context`. Never rebuild an IdeaSet from Markdown or memory.
-- **Ordinary conversation text only:** pass `--conversation-context '<path>'` instead, a JSON object
-  `{"schema_version": "idea-conversation.v1", "messages": [{"role": "user"|"assistant", "text": <exact
-  full message>}, …], "reference": {"message_index": <zero-based>, "quote": <exact referenced
-  passage>}}`. Copy the real message text unchanged, include the earlier user constraints needed to
-  read the passage and enough of the actual list to resolve an ordinal, and no private reasoning.
-  Prep keeps the exact bytes as `conversation_context.json` and derives `conversation_context`; its
-  checksum proves binding to that file, not that you chose the right passage, so check that first.
+- **Earlier native IdeaSet:** pass its unchanged `idea_set.json` to prep with
+  `--previous-ideas '<path>'`. Prep retains `previous_ideas.json` and derives
+  `continuation_context` with its IDs, checksum and creative directions.
+- **Earlier visible chat without an IdeaSet:** write `conversation-source.json` containing only
+  `schema_version: "idea-conversation.v1"`, `messages` (the relevant earlier `user`/`assistant`
+  messages with exact `text`, in order), and `reference` (`message_index`, zero-based within this
+  array, plus `quote`, an exact nonblank span in that message). Include the context needed to retain
+  constraints, exclusions and corrections; a summary is not a substitute for the original text.
+  Copy text mechanically from the available message fields or file ranges. Preserve message
+  boundaries; join streamed fragments only when they belong to the same message, in order and
+  without crossing a user turn. Check the selected quote and zero-based index before prep.
+  Pass `--conversation-context conversation-source.json`. Prep retains the original bytes and
+  derives `conversation_context`; never write that field into `intent.json`.
+  For a chat-only follow-up with no new literal topic or required research, use
+  `prepare_conversation_inputs.py` from `references/prep.md` to construct these inputs from the
+  visible message export instead of manually retyping the source and request layout.
 
-Never author `continuation_context` or `conversation_context`, and never paste earlier text into
-`user_brief`. Both routes are unverified creative context, never account, trend or comment
-evidence, approval, or proof that an idea was published; earlier factual claims stay unverified
-unless current artifacts back them. If the referenced text is genuinely unavailable, ask only for
-that context; never invent a topic or silently drop required research.
+Do not combine both routes, paste history into `user_brief`, invent a previous IdeaSet, or read host
+session files. Reuse context already visible to the Agent; only request missing source material
+when it is unavailable. Chat is unverified creative context, not account, trend, comment or video
+evidence, and never satisfies a missing research requirement. The program checks the literal
+quote, index and retained bytes; the Agent must judge whether the reference and style are correct.
+The conversation reference is already bound by `conversation_context`. Do not copy it into an
+IdeaSet's `source_context_refs` or invent IDs for it. Those arrays reference only the validated
+research contexts in the request's `idea_context`; without those contexts, keep both the top-level
+and each idea's `source_context_refs` empty. Chat binding and research lineage are different fields.
+Earlier claims are not approval or proof that an idea was published; factual claims remain
+unverified unless current artifacts support them. Never author the derived context fields.
+Before generating, read the bound context from `request.json`, preserving current exclusions and
+count; do not invent a topic or silently drop required research.
 
-When generating, read the bound `continuation_context` or `conversation_context` from
-`request.json` first. Compare against the actual previous directions, keep the referenced style,
-and propose new premises or outcomes rather than renaming the same ideas. Apply the current
-request's exclusions and count. Native IdeaSet title repeats are rejected mechanically; reference
-resolution, style and semantic novelty still need this comparison. A brief-only continuation needs
-either a literal `direct_topic` or one of these bound contexts.
+For same-style variants, build the batch by **substitution into the selected example**, not by
+brainstorming other ideas in its genre. Derive a shared title, opening and making-direction
+scaffold from the selected example, leaving only the changeable slots open. Choose all requested
+concrete slot values before expanding any item, then use the same scaffold for each. A shared
+sentence pattern and mechanism are the requested similarity, not duplicates to remove. Rank
+`differentiation` only by the slot substitutions and their consequences within that mechanism.
+Keep the selected subject/domain unless this turn names a literal `direct_topic`;
+keep the format, causal mechanism, completion goal, restrictions and title/opening construction
+unless the user changes them. Later corrections override earlier proposals. These defaults never
+override the current instruction.
+
+In the existing `overview.portfolio_logic`, state the selected example and its relationship in
+plain language: the concrete starting input, how it produces progress, what controls each stage,
+and the end condition. Name the slots this batch changes. Preserve the **kind and number of inputs**
+as well as their causal roles. If one specific resource funds successive unlocks, another specific
+resource can replace it; a location, an activity, a collection of unrelated income sources or a
+new prohibition cannot replace that resource. Merely adding an unlock board to a different
+challenge does not preserve the mechanism. Do not broaden the slots to create variety.
+
+For each item, instantiate those slots first, then write its title, hook and `making_direction`
+from that mapping. The making direction must name the actual starting input, its earning or
+transformation loop, the staged cost/condition and the unchanged goal. Put any necessary proposed
+rules in the idea itself; distinguish them from facts about how a platform or game works. Prices
+and production tuning may remain to be tested, but the input and its progression loop cannot be
+left as "choose a resource", "define a currency" or another task for the creator. A requested
+fill-in template is the exception: retain its blanks and supply the requested filled examples
+under the template rules.
+
+During this same generation pass, compare each completed item with the selected relationship,
+not with the broad genre or the batch introduction. A matching title or a claim that all items
+share the mechanism cannot compensate for a missing or changed link in an individual item.
+Replace such an item with a concrete substitution before writing the complete IdeaSet. Distinct
+substitutions count as useful variety; do not force different mechanisms to satisfy novelty.
+This is the Agent's semantic check within the existing generation budget, not a new script
+validator or extra revision loop. Programmatic validation cannot establish that the referent
+or mechanism is right.
+
+Repeated native IdeaSet titles are rejected; semantic novelty and
+style consistency still need the Agent's comparison. A brief-only continuation needs a literal
+`direct_topic` or one of these bound context routes.

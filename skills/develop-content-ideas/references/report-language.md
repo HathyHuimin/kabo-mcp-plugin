@@ -37,9 +37,10 @@ minute estimate is present, and each nonempty `primary_evidence_ref`. Translate 
 presentation only; never edit the canonical enums, evidence IDs or lineage.
 
 For a language without a built-in catalog, the same array also carries the required UI labels
-above. The array is one strict union of actual source gaps, these finite displayed values and those
-labels: unknown,
-duplicate or missing mappings fail validation. A source present in both sets has exactly one entry.
+above. Extra translations of schema-defined display enums are allowed but remain unused unless
+that value is actually displayed. They never add evidence, gaps or creative copy. Arbitrary
+unreferenced text or evidence IDs, duplicate sources, empty translations and missing required
+mappings still fail validation. A source present in multiple sets has exactly one entry.
 Do not add a new output field or turn a display value into a source gap. When source text already
 matches the report language, repeat it explicitly. The renderer projects only real source gaps into
 the gap section and only the finite canonical values into their display positions, never into

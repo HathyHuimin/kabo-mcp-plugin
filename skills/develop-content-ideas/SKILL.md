@@ -1,6 +1,6 @@
 ---
 name: develop-content-ideas
-description: "Turn a creator's account review, trend or competitor research, a video analysis, a video's YouTube or TikTok comments, or an explicit topic into distinct content ideas the creator can compare and choose from. Use when a creator asks what to make next, wants a first batch of topics for a new account, wants ideas that fit a time or equipment budget, wants follow-up ideas from a video's comments, or wants new hooks for a weak topic. Not for diagnosing an account or planning a posting calendar."
+description: "Generate batches of distinct content ideas from creator research, a stated topic or prior conversation. Use for more ideas in the style of a selected earlier example, first topics for a new account, ideas within a production budget or ideas from video comments."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching a video's comments also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for comments only: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_list_comments tiktok_discovery_list_comments tiktok_discovery_list_comment_replies start_skill_run
@@ -12,17 +12,35 @@ Turn validated upstream artifacts or an explicit topic into an IdeaSet of distin
 ideas. The schemas, builders, validators and renderers ship in this Skill's `references/` and
 `scripts/`.
 
+When the host supports one, run this Skill in a foreground sub-agent, because a run has several
+stages, and wait for its final result before replying; never run it in the background and tell the
+user the report will come later. Without a foreground sub-agent, follow the same steps in the main
+thread.
+
+**Check the requested deliverable first.** Continuing or completing an identified story, draft or
+published episode belongs to `create-script-and-packaging`, even when phrased as "how should I make
+part 2?"; it is not a request for a new batch of ideas. If the creator already supplied or confirmed
+the exact source link, packaging owns recovery of its content; do not ask for that link again.
+If no usable published source content is available, ask only for the missing script, source link
+or summary with the ending and stop this turn. Account reviews,
+titles and another series' characters cannot replace it. Do not start ideation or add story examples
+to that clarification. An already supplied selected draft can be continued through packaging
+without asking for it again. Requests for multiple new variations remain here.
+
+**Variations of one example.** When the user selects one concrete example and asks for more like
+it, use its title, opening and causal progression as a shared scaffold. Choose the requested
+number of concrete values for only its open slots, then instantiate the scaffold for every item.
+Keep each slot's kind and role: changing an input does not allow changing the activity, restriction
+or objective. Repeating the fixed scaffold is required here, not a near-duplicate to eliminate.
+Judge variety only within the permitted slots; do not reward a different mechanism as
+"differentiation". Follow *Continuations* in `references/core-generation.md`.
+
 **Delivery.** The deliverable is `RESULT.md` at the run root, and only after core reports
 `status="ok"` and the final check passes. Read it completely (every chunk when the host pages) and
 copy it exactly to the reply, once: never summarize, rewrite, reorder or retype its numbers, and
 never append a second paraphrased report. `IDEA_REPORT_FULL.md` is audit-only and never delivered.
 A `needs_revision`, `not_met` or failed result is never presented as a validated report; when a
 missing upstream artifact blocked the request, name the Skill that produces it as the next step.
-
-When the host supports one, run this Skill in a foreground sub-agent, because a run has several
-stages, and wait for its final result before replying; never run it in the background and tell the
-user the report will come later. Without a foreground sub-agent, follow the same steps in the main
-thread.
 
 This Skill runs no research: it consumes validated research artifacts through `upstream_sources[]`
 and deterministic `idea_context`. `user_brief.text` preserves the user's request; it is not by
@@ -47,7 +65,8 @@ with `--help` or read their source. Quote paths and use `grep` rather than `rg`.
 and `idea_set.json` at the run root with a single-quoted heredoc or the host's file tool, and make
 model authorship and the one permitted revision between stage commands, never inside one.
 
-A nonzero exit from a script ends the run (for core, see Core step 5): report it, and never reopen
+A nonzero exit from a script ends the run (for core, see Core step 5), except prep's explicit
+`invocation_error` for an unreadable intent path as `references/prep.md` defines. Report terminal failures, and never reopen
 the run, repeat completed prep, reset the generation budget or start a replacement run. Do not write
 or claim a run-record status yourself. For ideas from a video's comments, read
 `references/comment-evidence.md` whole before the first call: it holds the calls, the save, fetch
@@ -65,8 +84,14 @@ handle each prep decision. Also read the fields and definitions for this task in
 
 1. Copy each upstream JSON artifact into the run unchanged (`cp`); a trend or competitor report
    counts only with its `*_idea_context.json` projection. Never write a projection by hand.
-2. Write `intent.json` (no `upstream_sources`, `idea_context`, `continuation_context` or `conversation_context`), then run
-   prep once with the artifact flags this run has:
+2. For a chat-only follow-up with no new literal topic or required external evidence, use
+   `prepare_conversation_inputs.py` as *Chat-only continuation inputs* in `references/prep.md`
+   specifies. It copies the selected visible messages and prepares valid request fields; do not
+   hand-retype their JSON layout. For other requests, write `intent.json` (no `upstream_sources`,
+   `idea_context`, `continuation_context` or `conversation_context`). For either route, run prep
+   once with the artifact flags this run has. The chat route must include
+   `--conversation-context conversation-source.json` as shown in `references/prep.md`; the
+   command below is the base form for other inputs:
 
    ```sh
    cd '<run directory>' && python3 '<skill directory>/scripts/run_ideas_stages.py' prep --intent intent.json --run-dir .
@@ -86,13 +111,20 @@ invent extra critique/rewrite loops. Record network, 5xx or truncation retries w
 `--record-network-retry` as `references/core-generation.md` says; they use no attempt.
 
 1. Apply explicit production constraints. Record only assets the user supplied or evidence shows
-   are available. For a continuation, differ from every previous idea as *Continuations* says.
-2. In **one** generation pass, write the complete `idea_set.json`: distinct titles the Creator could publish, hooks, making direction, evidence basis, ranking, gates, and limitations. Remove near-duplicates and rank by Creator fit, evidence strength, differentiation, timeliness, and realistic production cost. A plain question or statement is sufficient for a title; keep teaching method detail in `making_direction`. Never invent loss amounts, customer outcomes, efficiency gains, market facts, policy facts, numbers, or URLs. Preserve artifact-level lineage in `upstream_sources`, context-level refs in `source_context_refs`, `must_avoid` as `must_differ`, and risk language. `required_assets` must be a subset of the request's declared `available_assets`; when the user supplied no assets, leave both `required_assets` and `assets_used` empty and put possible future props in `assumptions` or `production_missing`. Do not edit, patch, or replace the skill scripts, schemas, or validators; fix a rejected IdeaSet by revising only `idea_set.json` once.
+   are available. For "same style" or a numbered reference, lock the selected example's causal
+   relationship and substitute only its open slots, keeping their kind and number. State this in
+   `overview.portfolio_logic`; map every item's concrete input, progression and goal in
+   `making_direction`. Follow *Continuations* for source binding and the per-item semantic check.
+2. In **one** generation pass, write the complete `idea_set.json`: distinct titles the Creator could publish, hooks, making direction, evidence basis, ranking, gates, and limitations. For an open batch, remove near-duplicates and rank by Creator fit, evidence strength, differentiation, timeliness, and realistic production cost. For variants of one selected example, preserve the shared scaffold and assess distinctness only in its variable slots, as above. A plain question or statement is sufficient for a title; keep teaching method detail in `making_direction`. Never invent loss amounts, customer outcomes, efficiency gains, market facts, policy facts, numbers, or URLs. Preserve artifact-level lineage in `upstream_sources`, context-level refs in `source_context_refs`, `must_avoid` as `must_differ`, and risk language. `assets_used` must stay within declared `available_assets`. For shortlist intents only, unconfirmed future `required_assets` are allowed with `requires_user_confirmation`, explicit `assumptions` and a `production_missing` gate; never treat them as owned or used. Capacity plans require all resources to be available; exclusions still apply. Do not edit, patch, or replace the skill scripts, schemas, or validators; fix a rejected IdeaSet by revising only `idea_set.json` once.
 3. Put missing information into `gates.selection_missing` only when it prevents a valid choice.
    Put filming, editing, CTA, cadence, or other later details into `gates.production_missing`;
    these may coexist with `ready_for_selection`. If `production_missing` is nonempty, include
    `answer_production_question` in `interaction.next_actions` alongside the selection action; do
    not make later production details block topic selection.
+   Match the request's Hook count in every item: one opening means
+   `hook_preview.progressive_line=null`; two means a nonempty, distinct second line. Do not use an
+   empty string for null. For chat-only continuations, both the set and per-item
+   `source_context_refs=[]`; the conversation is bound separately, not as research evidence.
 4. Run the core stage (validate → render, or emit a revision brief):
 
    ```sh
@@ -139,6 +171,8 @@ contract and ranking rules. In short:
 Set `report_language` on both IdeaRequest and IdeaSet to the language of the final report (BCP 47),
 separate from `language_targets`; read `references/report-language.md` whole before writing
 `idea_set.json`. Before asking for a topic, audience, goal or evidence, reuse the conversation up to
-the current turn. When no explicit topic or usable evidence exists, ask only for the topic/niche (or
+the current turn. Follow *Continuations* in `references/core-generation.md` to pass an earlier
+IdeaSet or exact visible chat through prep, while keeping the current request unchanged.
+When no explicit topic or usable evidence exists, ask only for the topic/niche (or
 an account/evidence source); a platform name and an idea count do not supply a niche. Clarification
 is not a completed idea-generation task.

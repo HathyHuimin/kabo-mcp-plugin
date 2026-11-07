@@ -40,6 +40,28 @@ def minute_text(feasibility: dict, tr=lambda value: value, display=lambda value:
     return (str(lower) + tr(' 分钟')) if lower == upper else (str(lower) + '–' + str(upper) + tr(' 分钟'))
 
 
+def pending_asset_lines(idea: dict, request: dict | None = None, tr=lambda value: value) -> list[str]:
+    """展示未来所需资源，不改变已声明可用资源的含义。"""
+    feasibility = idea.get("production_feasibility") or {}
+    if feasibility.get("status") != "requires_user_confirmation":
+        return []
+    required = feasibility.get("required_assets") or []
+    if request is None:
+        # 独立调试没有资源可用性证据，只列依赖，不断言资源缺失或已经拥有。
+        label = ""
+        pending = required
+    else:
+        available = set((request.get("production_constraints") or {}).get("available_assets") or [])
+        label = tr("待确认") + ": "
+        pending = [asset for asset in required if asset not in available]
+    prefix = tr("- **制作前：** ")
+    lines = ([prefix + label + tr("；").join(normalized_whitespace(asset) for asset in pending)]
+             if pending else [])
+    lines.extend(prefix + normalized_whitespace(value)
+                 for value in feasibility.get("assumptions") or [])
+    return lines
+
+
 def evidence_text(idea: dict, tr=lambda value: value, display=lambda value: value) -> str:
     """Preserve the primary evidence reference or localize the missing-evidence label."""
     primary = idea.get("primary_evidence_ref")
@@ -111,7 +133,7 @@ def section_lines(markdown: str, heading: str) -> list[str] | None:
     return body
 
 
-def validate_concise(markdown: str, data: dict) -> None:
+def validate_concise(markdown: str, data: dict, request: dict | None = None) -> None:
     """Fail closed if a value is missing from the field or section that owns it."""
     tr = translator(data)
     values = report_value_translations(data)
@@ -206,6 +228,8 @@ def validate_concise(markdown: str, data: dict) -> None:
                      f"idea {idea['idea_id']} production effort")
         require_line(section, tr('- **依据：** ') + evidence_text(idea, tr, display),
                      f"idea {idea['idea_id']} primary evidence presentation")
+        for pending_line in pending_asset_lines(idea, request, tr):
+            require_line(section, pending_line, f"idea {idea['idea_id']} pending production assets")
         boundaries = tr("；").join(
             normalized_whitespace(item)
             for item in (idea.get("risks") or []) + (idea.get("must_differ") or [])
@@ -263,7 +287,7 @@ def validate_concise(markdown: str, data: dict) -> None:
         raise ValueError(f"Creator-facing idea report dropped material boundaries: {missing}")
 
 
-def concise(data: dict) -> str:
+def concise(data: dict, request: dict | None = None) -> str:
     """Render the selection report with localized fields, gates, and next actions."""
     tr = translator(data)
     values = report_value_translations(data)
@@ -299,7 +323,7 @@ def concise(data: dict) -> str:
             lines.extend(f"- {normalized_whitespace(item)}" for item in data_gaps)
             lines.append("")
         markdown = "\n".join(lines)
-        validate_concise(markdown, data)
+        validate_concise(markdown, data, request)
         return markdown
     first = ideas[0]
     lines = [
@@ -366,6 +390,9 @@ def concise(data: dict) -> str:
                 "",
             ]
         )
+        lines.extend(pending_asset_lines(idea, request, tr))
+        if pending_asset_lines(idea, request, tr):
+            lines.append("")
     selection_questions = data["gates"]["selection_missing"]
     production_questions = data["gates"]["production_missing"]
     lines.extend([tr('## 你来决定下一步'), ""])
@@ -389,11 +416,11 @@ def concise(data: dict) -> str:
         lines.extend(f"- {normalized_whitespace(item)}" for item in data_gaps)
     lines.append("")
     markdown = "\n".join(lines)
-    validate_concise(markdown, data)
+    validate_concise(markdown, data, request)
     return markdown
 
 
-def full(data: dict) -> str:
+def full(data: dict, request: dict | None = None) -> str:
     """Render the complete idea report, including localized empty values and interactions."""
     tr = translator(data)
     values = report_value_translations(data)
@@ -418,6 +445,7 @@ def full(data: dict) -> str:
                 f"{tr('- Shoot：')}{shoot_text(idea)}",
                 f"{tr('- Time：')}{minute_text(idea['production_feasibility'], tr, display)}",
                 f"{tr('- Assets：')}{', '.join(idea['production_feasibility']['assets_used']) or tr('无')}",
+                *pending_asset_lines(idea, request, tr),
                 f"{tr('- Primary evidence：')}{evidence_text(idea, tr, display)}",
                 "",
                 tr('### Evidence lineage'),
@@ -461,12 +489,14 @@ def full(data: dict) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("idea_set", type=Path)
+    parser.add_argument("--request", type=Path, help="Optional validated request for resource availability")
     parser.add_argument("--concise", type=Path, required=True)
     parser.add_argument("--full", type=Path, required=True)
     args = parser.parse_args()
     data = load(args.idea_set)
-    args.concise.write_text(concise(data), encoding="utf-8")
-    args.full.write_text(full(data), encoding="utf-8")
+    request = load(args.request) if args.request else None
+    args.concise.write_text(concise(data, request), encoding="utf-8")
+    args.full.write_text(full(data, request), encoding="utf-8")
     return 0
 
 

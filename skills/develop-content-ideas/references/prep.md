@@ -36,6 +36,47 @@ tools in `allowed-tools`. Read `references/comment-evidence.md` whole before the
 holds the calls, the commands that save, fetch and persist each complete result, and the
 projection.
 
+## Chat-only continuation inputs
+
+For a follow-up referring to earlier visible ideas, with no new literal topic and no required
+external research, prepare the input mechanically before the usual prep command. This helper
+creates a `brief_only` request; it does not choose the referenced example, generate ideas, validate
+the style, or replace prep/core. Other requests retain the normal intent-authoring route below.
+
+Use a JSON export of the relevant **visible** messages: an array, or an object with `messages`,
+with `role` and string `text` or `content` in each entry. Read through the current request boundary,
+select the actual example and later corrections, and record its zero-based index and exact quote.
+Do not read private host session records. Without a visible export, serialize the already visible
+messages with a JSON library into this shape, preserving their full text and order; do not
+summarize or hand-escape JSON. Never ask the creator to export or repeat context already available.
+
+Save the current query verbatim as `current-query.txt` and the exact selected span as
+`reference-quote.txt`. Use the requested count, platform and language from the brief or visible
+context, then run:
+
+```sh
+cd '<run directory>' && python3 '<skill directory>/scripts/prepare_conversation_inputs.py' --messages '<visible-message-export.json>' --reference-index <zero-based-index> --reference-quote-file reference-quote.txt --brief-file current-query.txt --idea-count <requested-count> --platform '<platform>' --language '<language>' --continuation-quote '<exact span from current query>' --run-dir .
+```
+
+`--hook-count` defaults to one opening; pass `2` only when requested. Repeat `--platform` when
+needed. The per-run idea count is 1–10; preserve larger requests under the existing batching rules,
+never silently reduce their count. The helper returns `intent.json` and `conversation-source.json` plus the retained message
+count and reference index. Check those against the selected source. It preserves message text,
+rejects a quote absent from that message, and refuses to overwrite either output. Unknown goal,
+audience and desired action remain missing; production constraints default to absent. If the
+conversation explicitly supplies those fields, update just those values with a JSON library
+before prep, preserving all other keys and source text. Do not invent constraints to fill defaults.
+
+Then run the standard prep once:
+
+```sh
+cd '<run directory>' && python3 '<skill directory>/scripts/run_ideas_stages.py' prep --intent intent.json --conversation-context conversation-source.json --run-dir .
+```
+
+This uses the same input-correction and core budgets as every other request. After a prep error,
+correct the existing named inputs under that budget; do not rerun the helper, delete its files or
+start another run to reset the budget. A failed prep does not authorize an unvalidated prose batch.
+
 ## Prep steps
 
 Split every run into **prep** and **core**; do not move idea authorship or revision into prep to
@@ -54,7 +95,12 @@ lineage validation still apply. Collection failure does not authorize brief fall
      paraphrase (“sourdough shaping techniques”, not “bread tutorials”). A handle, account/display
      name, URL, platform, format, or generic request for ideas is not a topic. Never derive it from
      another Skill's description, the environment, or model knowledge.
-   - For a follow-up such as “more in the same style”, read *Continuations* in
+   - An explicit request for reusable patterns or fill-in templates is itself a concrete creative
+     subject. Use the current request's exact template-topic phrase; keep the requested slots and
+     pair each pattern with its requested example. Label filled examples as illustrative, not as
+     the user's industry or verified results. Do not require an industry just to deliver a general
+     template; ask only when tailoring to an unspecified industry is part of the request.
+   - For a follow-up such as “10 more in the same style”, read *Continuations* in
      `references/core-generation.md` whole before writing the intent.
    - `required_sources` lists evidence the user explicitly requires: `creator`, `account`,
      `trend`, `competitor`, `video`, or `comments`. A request about comments on a video requires
@@ -85,7 +131,9 @@ lineage validation still apply. Collection failure does not authorize brief fall
 
    Add the artifact flags this run has: `--creator-profile`, `--account-review`, `--trend-report`
    with `--trend-context`, `--competitor-report` with `--competitor-context`, `--video-analysis`,
-   or `--comment-context`. Account evidence reaches prep as `--account-review <copied
+   or `--comment-context`. A continuation also takes either `--previous-ideas` or
+   `--conversation-context`, as *Continuations* in `references/core-generation.md` defines.
+   Account evidence reaches prep as `--account-review <copied
    account_review.json>` alone: prep projects that review into `account_idea_context.json` in this
    run itself. Never write or edit an account context by hand; an `--account-context` that differs
    from the review's projection is rejected. Prep writes `request.json`, `decision.json`, and the
@@ -96,6 +144,9 @@ lineage validation still apply. Collection failure does not authorize brief fall
    entry once and rerun the same prep in the same run; never invent identifiers, switch the report
    language, drop required sources or reword the user's brief to pass. A second invalid input ends
    prep as `not_met`.
+   `invocation_error` (exit `1`) for an unreadable `--intent` file is separate: correct that path
+   or its permissions and repeat the same prep command in the same run. No authored input was
+   read, so this neither consumes nor resets the input budget. Other I/O failures remain terminal.
 5. Obey the decision exactly:
    - `blocked_missing_required_source`: write an empty IdeaSet, add every canonical `missing_required_source:<source>` reason, and set `interaction.next_actions` to include all of `blocked`, `refresh_evidence` and `provide_own_direction` (never `choose`). Then run core once to validate/render the empty block (this is not a creative generation success).
    - `needs_selection_context`: write an empty IdeaSet with

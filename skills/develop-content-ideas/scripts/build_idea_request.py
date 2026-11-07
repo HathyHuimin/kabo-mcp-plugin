@@ -180,6 +180,10 @@ def build(intent: dict[str, Any], output: Path, *, creator_profile: Path | None 
             raise RequestInputError(f"{conversation_context} is not an available file", field="conversation_context",
                 next_action="Restore the exact earlier visible messages from this conversation, including the referenced text. Do not invent a previous IdeaSet or rewrite the current brief.")
         if conversation_context.resolve() != retained_conversation.resolve():
+            try:
+                bound_conversation_context(conversation_context, base)
+            except ValueError as error:
+                raise RequestInputError(str(error), field="conversation_context") from error
             base.mkdir(parents=True, exist_ok=True)
             retained_conversation.write_bytes(conversation_context.read_bytes())
         try:
@@ -208,7 +212,8 @@ def main() -> int:
             "  report_language: required for new non-Chinese requests; use a BCP 47 tag.\n"
             "  open_shortlist/capacity_plan/brief_only: 3..10 ideas and 1 or 2 Hook lines.\n"
             "  One Hook line requires progressive_line=null; two require a distinct second line.\n"
-            "  required_assets and assets_used may contain only declared available_assets.\n\n"
+            "  assets_used may contain only declared available_assets.\n"
+            "  Undeclared required_assets need requires_user_confirmation, assumptions and production_missing; capacity_plan forbids them.\n\n"
             "Normal execution (including timing and the two-pass limit):\n"
             "  cd <run directory> && python3 <skill directory>/scripts/run_ideas_stages.py prep --intent intent.json --run-dir .\n"
             "  cd <run directory> && python3 <skill directory>/scripts/run_ideas_stages.py core --run-dir .\n"
