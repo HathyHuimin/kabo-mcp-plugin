@@ -45,6 +45,41 @@ the report or profile schemas once the compact input exists. `scope.user_questio
 
 ## Evidence boundary
 
+- Write the cited patterns first, and the headline and diagnosis last. Build each summary claim
+  about post patterns only from those checked patterns: preserve the same content examples,
+  maturity limits and claim type. Do not add another post category while shortening the answer,
+  or merge a wording observation about young posts into a performance comparison about mature
+  posts. If the cited patterns do not support a comparison, omit it from the summary as well.
+  Separately supplied owner figures may support measured sales or funnel outcomes; identify their
+  source and scope, and apply [sales-evidence.md](sales-evidence.md) to those claims.
+- For sales or conversion questions, apply [sales-evidence.md](sales-evidence.md). Public content
+  can reveal wording and observed reach, not which content sells. Put the unresolved sales premise
+  in the headline/diagnosis themselves when it is central to the question; do not title the report
+  with a sales conclusion and retract it below.
+- `scope.baseline_maturity` gives the actual anchor and per-format cutoff. Publication day counts
+  as day one: a 14-day threshold is 13 elapsed days at that anchor, not fourteen full 24-hour days.
+  Each post and the highest-multiple pointer carry their own maturity status. A young post's low
+  cumulative count cannot establish weak content; a young high outlier does not prove effectiveness
+  either. The cutoff gives minimum-age eligibility, not identical exposure ages or causal evidence.
+- Declare each pattern's `claim_type`: `public_observation` for bounded wording/count descriptions,
+  `performance_association` for mature same-format baseline comparisons, or `hypothesis` for a
+  clearly labelled proposed explanation to test. Young posts may support wording observations and
+  tests, but not established performance patterns. The composer checks the declared comparisons;
+  it does not understand free-text claims, so check the title and explanations before delivery.
+  Check every cited post's maturity before choosing a performance association. If one is too young,
+  remove the performance conclusion or choose eligible evidence; changing only `claim_type` while
+  keeping the same unsupported conclusion is not a correction.
+  Do not compare an ineligible post's cumulative views with the mature median even inside a
+  hypothesis: a hypothesis label does not make exposure ages comparable. Describe its wording,
+  current count and insufficient age together, without using the count as support for weakness.
+  Summaries must inherit these limits; do not compress mixed evidence into a claim that a whole
+  content style underperforms. Each example mentioned in an explanation must appear in its cited IDs.
+  Select eligible same-format examples before drafting performance sections. Keep any young or
+  age-unknown example in a separate current-observation statement: publication date, current count
+  and the missing comparable exposure window. Do not place it beside an older post's count or the
+  mature median as evidence for a stronger/weaker style, even in an optional recommendation.
+  Review the complete answer, including its short summary, for that comparison before delivery.
+
 - Apply the same boundary to `headline`, `verdict`, `diagnosis` and every pattern claim. Without
   historical observations, a single snapshot of cumulative views and dated uploads cannot verify
   recent follower or view growth or explain its cause: say the growth premise cannot be verified,
@@ -79,6 +114,11 @@ the report or profile schemas once the compact input exists. `scope.user_questio
   it — topic, presentation, distribution or one-off event; adopt or not, and why. Do not treat the
   highest multiple as a post that must be copied. Tests return to the most valuable current
   hypothesis, not automatically to that post. Do not hard-code a format such as interviews.
+  Check its maturity and the format baseline's `metrics.views.available_n` first. If its age is
+  too recent or unknown, or fewer than three measured views support that baseline, name it only
+  as a current observation, omit the multiple and withhold performance-based adoption; propose a
+  wording test only on its own merits. The highest-multiple pointer does not override comparison
+  eligibility.
 - Growth figures, when present, are only those `drive.py growth` printed for this run.
 
 ## Recommendations

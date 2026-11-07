@@ -22,8 +22,9 @@ from json_io import load_complete_envelope, load_complete_object
 from public_identity import identity_from_envelope, identity_from_scope, merge_identity, quote_bio
 from profile_contract import synthesis_schema, validate_profile
 from estimate_growth import estimate, with_snapshot, time as growth_time
-from account_analyzers import normalize_format
+from account_analyzers import normalize_format, MIN_COMPARABLE_SAMPLES
 from synthesis_authoring import validate_authoring
+from evidence_context import maturity_by_format, evidence_age
 
 
 # Localize presentation only; preserve source titles, numbers and native evidence facts.
@@ -46,6 +47,9 @@ TEXT = {
     "evidence_interact": "{value:.2f}% interactions/view",
     "multiple": "{value:.2f}x the creator's same-format median",
     "provisional_format": "short/long format inferred from duration, not a platform label",
+    "published_at": "published {value}",
+    "too_recent": "younger than the baseline cutoff {value}; cumulative counts are not an equal-age performance comparison",
+    "maturity_unavailable": "no comparable age baseline; cumulative counts only",
     "identity_bio": "The public bio reads \"{bio}\".",
     "identity_followers": "About {followers} public followers.",
 }
@@ -65,6 +69,9 @@ ZH_TEXT = {
     "evidence_interact": "互动数 / 播放量 {value:.2f}%",
     "multiple": "本人同格式中位数的 {value:.2f} 倍",
     "provisional_format": "短/长视频格式按时长推断，并非平台标记",
+    "published_at": TEXT["published_at"],
+    "too_recent": TEXT["too_recent"],
+    "maturity_unavailable": TEXT["maturity_unavailable"],
     "identity_bio": "公开主页写着「{bio}」。",
     "identity_followers": "公开粉丝约 {followers}。",
 }
@@ -143,7 +150,8 @@ def stable_id(prefix: str, *parts: str) -> str:
     return f"{prefix}-{digest}"
 
 
-def resolve_patterns(patterns: list[dict[str, Any]], rankings: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+def resolve_patterns(patterns: list[dict[str, Any]], rankings: dict[str, dict[str, Any]], policies: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    """Bind authored patterns to immutable metrics and citation age limits."""
     resolved = []
     for pattern in patterns:
         examples = []
@@ -156,12 +164,13 @@ def resolve_patterns(patterns: list[dict[str, Any]], rankings: dict[str, dict[st
                 "title": row["title"],
                 "url": row.get("url"),
                 "format": row["format"],
+                **evidence_age(row, policies),
                 **({"format_confidence": row["format_confidence"]} if "format_confidence" in row else {}),
                 **({"format_source": row["format_source"]} if "format_source" in row else {}),
                 "metrics": dict(row["metrics"]),
                 "view_multiple_vs_format_median": row.get("view_multiple_vs_format_median"),
             })
-        resolved.append({"pattern": pattern["pattern"], "explanation": pattern["explanation"], "examples": examples})
+        resolved.append({"pattern": pattern["pattern"], "explanation": pattern["explanation"], "claim_type": pattern["claim_type"], "examples": examples})
     return resolved
 
 
@@ -272,7 +281,8 @@ def counted(key: str, value: float, text: dict[str, Any] = TEXT) -> str:
     return (singular if value == 1 else plural).format(value=compact_count(value))
 
 
-def evidence_line(item: dict[str, Any], text: dict[str, Any] = TEXT) -> str:
+def evidence_line(item: dict[str, Any], text: dict[str, Any] = TEXT, *, view_sample_size: int = 0) -> str:
+    """Render one citation with the limits of its observation."""
     label = compact_title(item["title"])
     link = f"[{label}]({item['url']})" if item.get("url") else label
     facts = []
@@ -289,8 +299,16 @@ def evidence_line(item: dict[str, Any], text: dict[str, Any] = TEXT) -> str:
     if views and views > 0 and (likes is not None or comments is not None):
         interactions = (likes or 0) + (comments or 0)
         facts.append(text["evidence_interact"].format(value=round(interactions / views * 100 + 1e-12, 2)))
-    if item.get("view_multiple_vs_format_median") is not None:
+    if (item.get("baseline_maturity") not in {"too_recent", "unavailable"}
+            and view_sample_size >= MIN_COMPARABLE_SAMPLES
+            and item.get("view_multiple_vs_format_median") is not None):
         facts.append(text["multiple"].format(value=item["view_multiple_vs_format_median"]))
+    if item.get("published_at"):
+        facts.append(text["published_at"].format(value=item["published_at"]))
+    if item.get("baseline_maturity") == "too_recent":
+        facts.append(text["too_recent"].format(value=item["baseline_cutoff_at"]))
+    elif item.get("baseline_maturity") == "unavailable":
+        facts.append(text["maturity_unavailable"])
     if (
         item.get("view_multiple_vs_format_median") is not None
         and item.get("format_confidence") == "provisional"
@@ -459,6 +477,7 @@ def render_growth(growth: dict[str, Any], language: str) -> list[str]:
 
 
 def render_markdown(report: dict[str, Any], output_language: str = "en") -> str:
+    """Render the bound report with source-backed citation comparisons."""
     text = language_text(output_language)
     lines = ["# " + report["headline"], "", report["diagnosis"], ""]
     scope_limits = scope_limits_line(report, text)
@@ -468,6 +487,8 @@ def render_markdown(report: dict[str, Any], output_language: str = "en") -> str:
         platform = report["scope"]["platform"]
         status_text = ZH_PLATFORM_STATUS_CHECK if text is ZH_TEXT else PLATFORM_STATUS_CHECK
         lines += [f"## {status_text['title']}", "", status_text[platform], ""]
+    view_counts = {row["format"]: row.get("metrics", {}).get("views", {}).get("available_n", 0)
+                   for row in report["baselines"]}
     for title, key in ((text["works"], "what_works"), (text["hurts"], "what_hurts")):
         rows = report[key]
         if not rows:
@@ -476,7 +497,7 @@ def render_markdown(report: dict[str, Any], output_language: str = "en") -> str:
         for row in rows:
             lines += [f"### {row['pattern']}", "", row["explanation"], ""]
             for item in row["examples"][:3]:
-                lines.append(f"- {evidence_line(item, text)}")
+                lines.append(f"- {evidence_line(item, text, view_sample_size=view_counts.get(item['format'], 0))}")
             lines.append("")
     if report.get("growth_estimate") is not None:
         lines += render_growth(report["growth_estimate"], output_language)
@@ -503,12 +524,14 @@ def compose(
     growth_snapshot: dict[str, Any] | None = None,
     growth_question: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], str]:
+    """Validate and compose the report, profile and readable delivery."""
     validate_authoring(analysis, synthesis)
     if synthesis.get("snapshot_id") != analysis.get("snapshot_id"):
         raise ValueError("synthesis snapshot_id does not match analysis")
     if synthesis.get("analysis_id") != analysis.get("analysis_id"):
         raise ValueError("synthesis analysis_id does not match analysis")
     synthesis = relabel_public_connectors(synthesis)
+    policies = maturity_by_format(analysis)
     rankings = {row["content_id"]: row for row in analysis["rankings"]}
     profile = build_profile(analysis, synthesis)
     resolved_identity = merge_identity(identity_from_scope(analysis.get("scope")), identity or {})
@@ -526,8 +549,8 @@ def compose(
         "headline": synthesis["headline"],
         "diagnosis": diagnosis,
         "baselines": analysis["baselines"],
-        "what_works": resolve_patterns(synthesis["what_works"], rankings),
-        "what_hurts": resolve_patterns(synthesis["what_hurts"], rankings),
+        "what_works": resolve_patterns(synthesis["what_works"], rankings, policies),
+        "what_hurts": resolve_patterns(synthesis["what_hurts"], rankings, policies),
         "recommendations": synthesis["recommendations"],
         "data_gaps": synthesis["data_gaps"],
     }

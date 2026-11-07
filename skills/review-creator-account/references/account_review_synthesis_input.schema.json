@@ -22,12 +22,14 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["content_id", "title", "published_at", "format", "metrics", "rank_by_views"],
+        "required": ["content_id", "title", "published_at", "baseline_maturity", "format", "metrics", "rank_by_views"],
         "properties": {
           "content_id": {"type": "string", "minLength": 1},
           "title": {"type": "string", "minLength": 1},
           "url": {"type": "string", "minLength": 1},
           "published_at": {"type": "string", "minLength": 1},
+          "baseline_maturity": {"enum": ["mature", "too_recent", "unavailable"]},
+          "baseline_cutoff_at": {"type": "string", "minLength": 1},
           "format": {"type": "string", "minLength": 1},
           "format_confidence": {"type": "string", "minLength": 1},
           "format_source": {"type": "string", "minLength": 1},

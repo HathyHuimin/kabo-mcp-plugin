@@ -18,6 +18,7 @@ from json_io import load_complete_envelope, load_complete_object
 from public_identity import apply_identity, identity_from_envelope
 from prepare_hook_context import build_research_context_ref
 from account_analyzers import parse_time
+from evidence_context import baseline_maturity_context, maturity_by_format, evidence_age
 
 
 SCHEMA_VERSION = "account-review-synthesis-input.v1"
@@ -62,6 +63,7 @@ def equal(label: str, left: Any, right: Any) -> None:
 
 
 def highest_view_multiple(content: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Project the highest recorded multiple with its source age restriction."""
     scored: list[tuple[float, float, str, dict[str, Any]]] = []
     for row in content:
         multiple = row.get("view_multiple_vs_format_median")
@@ -81,6 +83,7 @@ def highest_view_multiple(content: list[dict[str, Any]]) -> dict[str, Any] | Non
         "format": winner.get("format"),
         "view_multiple_vs_format_median": winner.get("view_multiple_vs_format_median"),
         "rank_by_views": winner.get("rank_by_views"),
+        **{key: winner[key] for key in ("published_at", "baseline_maturity", "baseline_cutoff_at") if key in winner},
     })
 
 
@@ -131,6 +134,7 @@ def build(
     user_question: str | None = None,
     snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Assemble compact authoring evidence without changing measured metrics."""
     require(
         analysis,
         {
@@ -172,6 +176,7 @@ def build(
 
     # The analysis drops media length; without it the synthesis reads as if no duration exists.
     durations = durations_from_snapshot(snapshot, analysis["snapshot_id"]) if snapshot else {}
+    policies = maturity_by_format(analysis)
 
     content = []
     for ranking in rankings:
@@ -202,6 +207,7 @@ def build(
             "title": ranking["title"],
             "url": ranking.get("url"),
             "published_at": ranking["published_at"],
+            **evidence_age(ranking, policies),
             "format": content_format,
             "format_confidence": ranking.get("format_confidence"),
             "format_source": ranking.get("format_source"),
