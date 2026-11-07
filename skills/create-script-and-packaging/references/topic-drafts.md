@@ -6,6 +6,13 @@ or desired audience action required by the native direct-selection builder.
 Reuse established conversation facts first. An account handle or a request to
 write about an unspecified product is not a concrete topic.
 
+A request to propose one specific next video from an account and reference post can use this
+route when their actual content is available. Propose an angle grounded in that evidence and
+deliver the requested title, opening, screen text and beat plan; do not require a prior topic
+selection or pretend the proposed angle was already approved. Without usable source content,
+identify the missing evidence rather than guessing a topic from the handle or view count.
+Read [personal-facts.md](personal-facts.md) for facts and names on every copy surface.
+
 A sequel needs the actual previous episode, not just its topic. Apply
 [source-adaptation.md](source-adaptation.md) first when the user requests a
 continuation; the creative-draft permission here does not authorize inventing

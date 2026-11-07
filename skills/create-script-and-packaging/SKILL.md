@@ -1,6 +1,6 @@
 ---
 name: create-script-and-packaging
-description: "Write, continue or complete scripts and stories, including short follow-ups asking to finish an earlier part or plan a sequel to a previous post. Write hooks, captions, cover text and platform packaging, or adapt a specified video into written clips or carousel copy."
+description: "Write a specific next Reel or video proposal from a stated topic, reference post or creator evidence: titles, opening frames, on-screen text, beat plans, scripts, captions and cover copy. Continue or complete an earlier script or story, plan a sequel to a previous post, or adapt a specified video into written clips or carousel copy. Selectable topic directions without concrete copy belong to develop-content-ideas; competitor discovery and account comparisons belong to competitor research."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Optional saved-script access requires the Kabo MCP at https://kabo.sh/mcp-pub. Source-video facts and channel samples come from the creator or existing evidence. Optional image operations need host image download, resize and preview. Kabo permissions, saved scripts only: workspace:read to read, workspace:write to save or replace on request."
 allowed-tools: list_scripts get_script save_script update_script start_skill_run
@@ -18,6 +18,16 @@ originality boundaries and Creator constraints. Route first: a concrete topic wi
 audience, goal or CTA uses the creative-draft route; a native package uses a frozen `SelectedIdea`
 and the contracts below. The schemas, builders, validators and renderers ship in this Skill's
 `references/` and `scripts/`.
+
+**Reference-led creative requests.** A request for one concrete next video with title, opening,
+screen text or beat plan belongs here, even when it cites an account or source post. Reuse available
+source evidence and treat new framing as a proposal under `references/topic-drafts.md`, not as an
+approved selection. A bare handle is not usable source content; do not invent its topic or evidence.
+
+**Personal facts before copy.** Read `references/personal-facts.md` before any creator-facing
+writing, including creative drafts, titles, screen text and captions. Trace personal numbers,
+experience, identity and third-party names to evidence for that same person and claim; otherwise
+omit the detail or use a visible placeholder. A transcript-only name stays a role description.
 
 **Actual media requests.** This Skill writes scripts and packaging; it renders no video. For "make
 this into a video", hand the resolved script and production requirements to the host's media

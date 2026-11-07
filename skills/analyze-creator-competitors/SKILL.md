@@ -1,6 +1,6 @@
 ---
 name: analyze-creator-competitors
-description: "Find and compare Instagram or YouTube competitors of a creator or product: discover comparable accounts from a name, handle, post link or niche, or compare named accounts; separate direct competitors from adjacent and media references; surface same-account outlier posts, repeated mechanisms, differentiation and topics nobody covers yet, optionally from audience comments. Use for competitor discovery, positioning gaps, or adapting proven topics, hooks or structures without copying."
+description: "Discover and compare Instagram or YouTube competitor accounts, positioning gaps, recurring content mechanisms and same-account outliers. Use for competitor research and account comparisons. A specific next Reel, script, title, opening, on-screen text or beat plan belongs to create-script-and-packaging; one or more selectable topic ideas belong to develop-content-ideas. A reference account or post link alone does not make a creative request competitor research."
 license: MIT
 compatibility: "Requires the Kabo MCP server at https://kabo.sh/mcp-pub, Python 3, read and write access to a local workspace, and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download read_research_data_artifacts collect_instagram_trend_candidates collect_youtube_trend_candidates lookup_instagram_post collect_account_history instagram_search_accounts instagram_search_profiles instagram_list_comments youtube_search_channels youtube_get_channel youtube_list_comments start_skill_run
@@ -24,6 +24,13 @@ When the host supports one, run this Skill in a foreground sub-agent, because a 
 steps, and wait for its final result before replying; never run it in the background and tell the
 user the report will come later. Without a foreground sub-agent, follow the same steps in the main
 thread.
+
+Route by the requested deliverable. Stay here for competitor discovery, comparisons and positioning
+research, including examples of competitors' hooks or structures as evidence. If the requested
+deliverable is new copy or a concrete next Reel, use `create-script-and-packaging`; for selectable
+topic directions, use `develop-content-ideas`. Do not turn a supplied reference post into a search
+for competitors, or replace requested creative work with this research report. When both research
+and creative work are explicitly requested, keep the research findings and creative handoff distinct.
 
 `scripts/drive.py` runs every mechanical step; you make the judgments. A run has five: the subject
 identity, the frozen Request and discovery intents, the discovery Gate, eligibility, and the

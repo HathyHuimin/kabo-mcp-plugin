@@ -1,6 +1,6 @@
 ---
 name: develop-content-ideas
-description: "Generate batches of distinct content ideas from creator research, a stated topic or prior conversation. Use for more ideas in the style of a selected earlier example, first topics for a new account, ideas within a production budget or ideas from video comments."
+description: "Generate one or more selectable content ideas from creator research, a stated topic or prior conversation. Use for next-topic directions, more ideas in the style of a selected earlier example, first topics for a new account, production-budget ideas or ideas from video comments. A concrete next Reel with title, opening, on-screen text or beat plan belongs to create-script-and-packaging; competitor discovery and account comparisons belong to competitor research."
 license: MIT
 compatibility: "Requires Python 3 and read and write access to a local workspace. Fetching a video's comments also requires the Kabo MCP server at https://kabo.sh/mcp-pub and network access from scripts to kabo.sh and to the signed storage.googleapis.com download links that Kabo tool results return (without it, a host that can save a tool's complete result to a file). Kabo permission, for comments only: data."
 allowed-tools: get_research_capabilities get_research_data_job get_research_data_download youtube_list_comments tiktok_discovery_list_comments tiktok_discovery_list_comment_replies start_skill_run
@@ -16,6 +16,16 @@ When the host supports one, run this Skill in a foreground sub-agent, because a 
 stages, and wait for its final result before replying; never run it in the background and tell the
 user the report will come later. Without a foreground sub-agent, follow the same steps in the main
 thread.
+
+Route by the requested deliverable: selectable topic directions stay here; a concrete video
+proposal with copy and a beat plan belongs to `create-script-and-packaging`, even when the request
+includes an account or reference post. Neither an account link nor a performance adjective makes
+that creative request competitor research.
+
+Before generating or delivering ideas, read `references/personal-facts.md`. The prohibition on
+invented numbers also covers personal experience and identity claims, including titles and hooks.
+Use evidence for the same person and claim; omit unsupported details or leave visible placeholders.
+Names found only in automatic transcripts remain role descriptions.
 
 **Check the requested deliverable first.** Continuing or completing an identified story, draft or
 published episode belongs to `create-script-and-packaging`, even when phrased as "how should I make
