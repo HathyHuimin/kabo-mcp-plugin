@@ -10,7 +10,9 @@ A request to propose one specific next video from an account and reference post 
 route when their actual content is available. Propose an angle grounded in that evidence and
 deliver the requested title, opening, screen text and beat plan; do not require a prior topic
 selection or pretend the proposed angle was already approved. Without usable source content,
-identify the missing evidence rather than guessing a topic from the handle or view count.
+name the missing transcript, script or content summary: the creator can supply it, or the host
+can use `analyze-content-video` as a separate evidence task for the supplied URL and return here.
+Do not run another Skill inside this one or guess a topic from the handle or view count.
 Read [personal-facts.md](personal-facts.md) for facts and names on every copy surface.
 
 A sequel needs the actual previous episode, not just its topic. Apply
